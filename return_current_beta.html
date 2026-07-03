@@ -1,0 +1,3872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Return Current</title>
+<style>
+  :root{
+    --bg: #0a0908;
+    --bg-raised: #15120f;
+    --bg-card: #1c1814;
+    --line: #2c2620;
+    --text: #ece5d8;
+    --text-dim: #8a7f70;
+    --safelight: #c43d2e;
+    --safelight-dim: #7a2b22;
+    --safelight-glow: rgba(196,61,46,0.18);
+    --ok: #5a8a6a;
+    --font-display: 'Courier New', monospace;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'Courier New', monospace;
+  }
+
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+
+  /* ---- Theme overrides ---- */
+  body.theme-volt{
+    --bg:#f0f0e4; --bg-raised:#e4e4d6; --bg-card:#d8d8ca; --line:#c0c0ae;
+    --text:#1a1a12; --text-dim:#6a6a58;
+    --safelight:#7da800; --safelight-dim:#c8e86a; --safelight-glow:rgba(206,255,0,.25); --ok:#5a8a3a;
+  }
+  body.theme-plum{
+    --bg:#12081a; --bg-raised:#1c0e28; --bg-card:#261436; --line:#3a2548;
+    --text:#e0d0ea; --text-dim:#7a5a8a;
+    --safelight:#c77dff; --safelight-dim:#5a2880; --safelight-glow:rgba(199,125,255,.25); --ok:#8a6aaa;
+  }
+  body.theme-rose{
+    --bg:#fdf0f4; --bg-raised:#f2e0e8; --bg-card:#e8d0da; --line:#dcc0cc;
+    --text:#2a1520; --text-dim:#997080;
+    --safelight:#e8457a; --safelight-dim:#f5a0b8; --safelight-glow:rgba(232,69,122,.2); --ok:#6a8a7a;
+  }
+  body.theme-holo{
+    --bg:#060e1a; --bg-raised:#0c1828; --bg-card:#142238; --line:#1e3452;
+    --text:#c8e0f8; --text-dim:#4a7090;
+    --safelight:#00c8ff; --safelight-dim:#0a3a55; --safelight-glow:rgba(0,200,255,.2); --ok:#2a8a7a;
+  }
+  body.theme-terminal{
+    --bg:#050805; --bg-raised:#0a120a; --bg-card:#101a10; --line:#1a2e1a;
+    --text:#a0e8a0; --text-dim:#3a6a3a;
+    --safelight:#39ff14; --safelight-dim:#0a3a08; --safelight-glow:rgba(57,255,20,.18); --ok:#2aaa2a;
+  }
+  body.theme-legendary{
+    --bg:#08080e; --bg-raised:#10101a; --bg-card:#181824; --line:#2a2a3e;
+    --text:#e4e0f0; --text-dim:#7070a0;
+    --safelight:#ff2d7b; --safelight-dim:#4a0a2a; --safelight-glow:rgba(255,45,123,.22); --ok:#6aaaaa;
+  }
+  /* Legendary: holographic shimmer on active tab + unseen indicators */
+  body.theme-legendary nav.tabs button.active::after{
+    background:linear-gradient(90deg, #ff2d7b, #ff8c00, #ffe600, #00e87b, #00bfff, #a855ff, #ff2d7b) !important;
+    background-size:300% 100% !important;
+    animation:holoBase 3s linear infinite !important;
+  }
+  body.theme-legendary .gallery-tile.unseen::after{
+    background:linear-gradient(90deg, #ff2d7b, #ffe600, #00e87b, #00bfff, #a855ff) !important;
+    background-size:400% 100% !important;
+    animation:holoBase 2.5s linear infinite !important;
+    box-shadow:0 0 8px rgba(255,45,123,.4), 0 0 8px rgba(0,191,255,.4) !important;
+  }
+  body.theme-legendary .qp-btn.active{
+    background:linear-gradient(135deg, #ff2d7b, #a855ff, #00bfff) !important;
+    box-shadow:0 0 16px rgba(168,85,255,.4), 0 0 8px rgba(0,191,255,.3) !important;
+  }
+  body.theme-legendary .gallery-tile.group-tile{
+    box-shadow:0 0 8px rgba(255,45,123,.3), 0 0 8px rgba(0,191,255,.3) !important;
+  }
+
+  /* ---- Theme picker ---- */
+  .theme-btn{
+    background:none; border:none; color:var(--text-dim); font-size:18px;
+    cursor:pointer; padding:6px; line-height:1; position:relative;
+  }
+  .theme-btn:active{color:var(--text);}
+  .header-actions{display:flex; align-items:center; gap:4px;}
+  .theme-picker{
+    position:absolute; top:100%; right:0; margin-top:6px;
+    display:grid; grid-template-columns:repeat(3,1fr); gap:6px;
+    padding:10px; background:var(--bg-card); border:1px solid var(--line);
+    border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.4); z-index:200;
+    min-width:140px;
+  }
+  .theme-picker.hidden{display:none;}
+  .theme-swatch{
+    width:36px; height:36px; border-radius:8px; border:2px solid transparent;
+    cursor:pointer; position:relative; transition:all .15s;
+  }
+  .theme-swatch:active{transform:scale(.9);}
+  .theme-swatch.active{
+    border-color:#fff;
+    box-shadow:0 0 12px var(--swatch-color), inset 0 0 8px rgba(255,255,255,.15);
+  }
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--font-body); height:100%; overscroll-behavior:none;}
+  body{padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);}
+
+  .app{display:flex; flex-direction:column; height:100vh; height:100dvh;}
+
+  /* Header */
+  header{
+    flex:0 0 auto;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px 12px;
+    border-bottom:1px solid var(--line);
+    background: linear-gradient(180deg, var(--bg-raised), var(--bg));
+  }
+  header .brand{display:flex; align-items:center; gap:10px;}
+  header .brand .dot{
+    width:8px; height:8px; border-radius:50%;
+    background: var(--text-dim);
+    box-shadow: 0 0 0 0 transparent;
+    transition: background .3s, box-shadow .3s;
+  }
+  header .brand .dot.connected{background:var(--ok); box-shadow:0 0 8px rgba(90,138,106,.6);}
+  header .brand .dot.busy{background:var(--safelight); box-shadow:0 0 8px var(--safelight-glow); animation:pulse 1.2s infinite;}
+  @keyframes pulse{0%,100%{opacity:1} 50%{opacity:.4}}
+  header h1{
+    font-family:var(--font-body); font-size:17px; letter-spacing:.06em;
+    text-transform:uppercase; margin:0; font-weight:800; font-style:italic;
+    color:var(--text);
+  }
+  .title-sep{
+    font-style:normal; font-weight:400; color:var(--safelight);
+    text-shadow:0 0 8px var(--safelight-glow);
+  }
+  header .status-text{font-family:var(--font-mono); font-size:10px; color:var(--text-dim); letter-spacing:0.05em;}
+  header button.settings-btn{
+    background:none; border:1px solid var(--line); color:var(--text-dim);
+    width:34px; height:34px; border-radius:8px; font-size:16px; cursor:pointer;
+  }
+
+  /* Tabs */
+  nav.tabs{
+    flex:0 0 auto;
+    display:flex; border-bottom:1px solid var(--line);
+    background:var(--bg);
+  }
+  nav.tabs button{
+    flex:1; background:none; border:none; color:var(--text-dim);
+    font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    padding:11px 0; cursor:pointer; position:relative;
+  }
+  nav.tabs button.active{color:var(--text);}
+  nav.tabs button.active::after{
+    content:''; position:absolute; bottom:-1px; left:20%; right:20%; height:2px; background:var(--safelight);
+  }
+
+  main{flex:1 1 auto; overflow-y:auto; padding:16px; padding-bottom:calc(200px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling:touch;}
+
+  /* Workflow list */
+  .wf-list{display:flex; flex-direction:column; gap:10px;}
+  .wf-card{
+    display:flex; gap:12px; align-items:center;
+    background:var(--bg-card); border:1px solid var(--line); border-radius:10px;
+    padding:10px; cursor:pointer; transition:border-color .15s, background .15s;
+  }
+  .wf-card:active{background:var(--bg-raised);}
+  .wf-card.selected{border-color:var(--safelight-dim); background:var(--safelight-glow);}
+  .wf-card .thumb{
+    width:56px; height:56px; border-radius:7px; background:var(--bg-raised);
+    flex:0 0 auto; object-fit:cover; border:1px solid var(--line);
+    display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:10px;
+  }
+  .wf-card .meta{flex:1; min-width:0;}
+  .wf-card .meta .name{font-size:14px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .wf-card .meta .sub{font-family:var(--font-mono); font-size:10px; color:var(--text-dim); margin-top:2px;}
+  .wf-card .chev{color:var(--text-dim); font-size:18px;}
+  .wf-card .delete-x{
+    background:none; border:1px solid var(--line); color:var(--text-dim);
+    width:26px; height:26px; border-radius:50%; font-size:12px; cursor:pointer;
+    flex:0 0 26px; line-height:26px; padding:0; pointer-events:auto; text-align:center;
+  }
+  .wf-card .delete-x:active{background:var(--safelight-dim); color:#fff;}
+
+  .empty-state{
+    text-align:center; padding:60px 20px; color:var(--text-dim);
+  }
+  .empty-state .icon{font-size:32px; margin-bottom:10px; opacity:.5;}
+  .empty-state p{font-size:13px; line-height:1.5; margin:4px 0;}
+
+  .drop-zone{
+    border:1.5px dashed var(--line); border-radius:12px; padding:24px 16px;
+    text-align:center; color:var(--text-dim); font-size:12px; margin-bottom:16px;
+    transition:border-color .15s, background .15s;
+  }
+  .drop-zone.drag-over{border-color:var(--safelight); background:var(--safelight-glow); color:var(--text);}
+  .drop-zone input{display:none;}
+  .drop-zone .dz-label{display:inline-block; padding:8px 16px; border:1px solid var(--line); border-radius:7px; margin-top:8px; font-size:11px; letter-spacing:.05em; text-transform:uppercase; font-family:var(--font-mono); cursor:pointer;}
+
+  /* Editor */
+  .editor-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .editor-header .wf-name{font-size:15px; font-weight:700;}
+  .editor-header .back-link{font-family:var(--font-mono); font-size:11px; color:var(--text-dim); cursor:pointer; letter-spacing:.05em;}
+
+  .field-group{margin-bottom:18px;}
+  .field-group .node-label{
+    font-family:var(--font-mono); font-size:10px; color:var(--text-dim);
+    text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; padding-bottom:6px;
+    border-bottom:1px solid var(--line);
+  }
+  .field{margin-bottom:12px;}
+  .field label{display:block; font-size:12px; color:var(--text-dim); margin-bottom:5px;}
+  .field input[type=text], .field input[type=number], .field textarea, .field select{
+    width:100%; background:var(--bg-card); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); padding:10px 12px; font-size:13px; font-family:var(--font-mono);
+  }
+  .field input[type=number], .field.seed-field input{font-family:var(--font-mono);}
+  .field textarea{min-height:180px; resize:vertical; font-family:var(--font-mono); line-height:1.5; font-size:13px;}
+  .field textarea.neg-prompt{min-height:52px;}
+  .compact-row{display:flex; gap:8px;}
+  .compact-row .field-group{flex:1; min-width:0;}
+  .compact-row .field-group .node-label{font-size:10px;}
+  .compact-row .field input{text-align:center; padding:10px 6px;}
+
+  /* Model label on workflow cards */
+  .wf-model-label{
+    font-family:var(--font-body); font-size:16px; font-weight:700; font-style:italic;
+    color:var(--safelight); letter-spacing:.01em;
+    text-shadow:0 0 10px var(--safelight-glow);
+    margin-bottom:1px;
+  }
+  .wf-ckpt-detail{
+    font-family:var(--font-mono); font-size:9px; color:var(--text-dim);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus{outline:none; border-color:var(--safelight-dim);}
+  .field.checkbox{display:flex; align-items:center; gap:10px;}
+  .field.checkbox input{width:18px; height:18px; accent-color:var(--safelight);}
+  .field.checkbox label{margin:0;}
+  .seed-row{display:flex; gap:6px; align-items:center;}
+  .seed-row input{flex:1;}
+  .seed-row button{
+    background:var(--bg-card); border:1px solid var(--line); color:var(--text-dim);
+    border-radius:8px; padding:0 12px; font-family:var(--font-mono); font-size:11px; cursor:pointer;
+    white-space:nowrap;
+  }
+  .seed-lock{
+    background:var(--bg-card); border:1px solid var(--line); color:var(--text-dim);
+    border-radius:8px; padding:8px 10px; font-size:12px; cursor:pointer;
+    white-space:nowrap; transition:all .15s; line-height:1;
+  }
+  .seed-lock.locked{
+    background:var(--safelight-dim); border-color:var(--safelight);
+    color:var(--safelight); text-shadow:0 0 6px var(--safelight-glow);
+  }
+  /* Advanced collapsible section */
+  .advanced-section{margin-top:18px; border-top:1px solid var(--line); padding-top:4px;}
+  .advanced-toggle{
+    width:100%; background:none; border:none; padding:12px 0;
+    display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+  }
+  .advanced-toggle .adv-label{
+    font-family:var(--font-mono); font-size:11px; color:var(--text-dim);
+    text-transform:uppercase; letter-spacing:.08em;
+  }
+  .advanced-toggle .adv-chev{
+    color:var(--text-dim); font-size:12px; transition:transform .2s;
+  }
+  .advanced-section.open .adv-chev{transform:rotate(90deg);}
+  .advanced-fields{display:none;}
+  .advanced-section.open .advanced-fields{display:block;}
+  /* Ideogram color palette */
+  .color-palette{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  .color-chip{
+    width:40px; height:40px; border-radius:8px; border:2px solid var(--line);
+    cursor:pointer; position:relative; flex:0 0 40px;
+  }
+  .color-chip .chip-remove{
+    position:absolute; top:-6px; right:-6px; width:18px; height:18px;
+    border-radius:50%; background:var(--bg); border:1px solid var(--line);
+    color:var(--text-dim); font-size:9px; line-height:16px; text-align:center;
+    cursor:pointer; padding:0;
+  }
+  .color-add-chip{
+    width:40px; height:40px; border-radius:8px; border:1px dashed var(--line);
+    background:none; color:var(--text-dim); font-size:18px; cursor:pointer;
+    flex:0 0 40px;
+  }
+  .color-add-chip:active{border-color:var(--safelight-dim); color:var(--safelight);}
+  .color-hex-row{display:flex; gap:6px; margin-top:8px; align-items:center;}
+  .color-hex-row input[type=color]{
+    width:40px; height:36px; border:none; border-radius:6px; background:none;
+    cursor:pointer; padding:0;
+  }
+  .color-hex-row input[type=text]{
+    flex:1; background:var(--bg-card); border:1px solid var(--line); border-radius:6px;
+    color:var(--text); padding:8px 10px; font-size:13px; font-family:var(--font-mono);
+  }
+  .color-hex-row button{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:6px;
+    color:var(--text-dim); padding:8px 12px; font-size:11px; cursor:pointer;
+    font-family:var(--font-mono);
+  }
+  .color-hex-row button:active{background:var(--safelight-dim); color:var(--text);}
+
+  .image-input-preview{
+    width:100%; aspect-ratio:1; border-radius:8px; object-fit:cover; margin-top:8px; border:1px solid var(--line);
+  }
+  .image-input-actions{display:flex; gap:8px; margin-top:8px;}
+  .image-input-actions button{
+    flex:1; background:var(--bg-card); border:1px solid var(--line); color:var(--text);
+    padding:9px; border-radius:8px; font-size:12px; cursor:pointer;
+  }
+
+  /* Bottom action bar */
+  .action-bar{
+    position:fixed; bottom:0; left:0; right:0;
+    padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg, rgba(10,9,8,0), var(--bg) 30%);
+    display:flex; gap:10px;
+    z-index:100;
+  }
+  .action-bar button.primary{
+    flex:1; background:var(--safelight); color:#fff; border:none; border-radius:10px;
+    padding:14px; font-size:14px; font-weight:700; letter-spacing:.03em; cursor:pointer;
+    font-family:var(--font-display); text-transform:uppercase;
+    box-shadow:0 4px 16px var(--safelight-glow);
+  }
+  .action-bar button.primary:disabled{background:var(--bg-card); color:var(--text-dim); box-shadow:none;}
+  .action-bar button.secondary{
+    background:var(--bg-card); border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:14px 16px; font-size:13px; cursor:pointer;
+  }
+
+  /* Progress - compact bottom bar only */
+
+  /* Gallery / Queue */
+  .gallery-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:8px;}
+  .gallery-grid img, .gallery-grid video{width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; border:1px solid var(--line); cursor:pointer; display:block;}
+  .gallery-grid video{background:var(--bg-card);}
+
+  .lightbox-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:300;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .lightbox-topbar{
+    position:absolute; top:0; left:0; right:0;
+    padding:calc(14px + env(safe-area-inset-top)) 16px 14px;
+    display:flex; justify-content:space-between; align-items:center;
+    background:linear-gradient(180deg, rgba(0,0,0,0.6), transparent);
+  }
+  .gallery-tile{
+    position:relative;
+    animation: tileAppear .35s ease-out both;
+  }
+  .gallery-tile.new-tile{
+    animation: tileSlideIn .4s cubic-bezier(.22,1,.36,1) both;
+  }
+  @keyframes tileSlideIn{
+    from{opacity:0; transform:scale(.85) translateY(-8px);}
+    to{opacity:1; transform:scale(1) translateY(0);}
+  }
+  @keyframes tileAppear{
+    from{opacity:0;}
+    to{opacity:1;}
+  }
+  .gallery-tile.unseen::after{
+    content:''; position:absolute; bottom:0; left:15%; right:15%; height:2px;
+    background:var(--safelight); border-radius:1px;
+    box-shadow:0 0 6px var(--safelight-glow);
+  }
+  .gallery-remove{
+    position:absolute; top:4px; right:4px; width:36px; height:36px;
+    background:none; border:none; color:#fff;
+    font-size:18px; cursor:pointer; padding:0; line-height:36px; text-align:center;
+    text-shadow:0 0 8px var(--safelight-glow), 0 1px 3px rgba(0,0,0,.8), 0 0 1px rgba(0,0,0,.9);
+    filter:drop-shadow(0 0 2px rgba(0,0,0,.6));
+  }
+  .gallery-remove:active{text-shadow:0 0 14px var(--safelight), 0 0 4px var(--safelight);}
+  .gallery-download{
+    position:absolute; top:4px; left:4px; width:36px; height:36px;
+    background:none; border:none; color:#fff;
+    font-size:20px; cursor:pointer; padding:0; line-height:36px; text-align:center;
+    text-shadow:0 0 8px var(--safelight-glow), 0 1px 3px rgba(0,0,0,.8), 0 0 1px rgba(0,0,0,.9);
+    filter:drop-shadow(0 0 2px rgba(0,0,0,.6));
+  }
+  .gallery-download:active{text-shadow:0 0 14px var(--safelight), 0 0 4px var(--safelight);}
+  .gallery-iterate{
+    position:absolute; bottom:4px; left:4px; width:40px; height:40px;
+    background:none; border:none; color:#fff;
+    font-size:24px; cursor:pointer; padding:0; line-height:40px; text-align:center;
+    font-family:var(--font-mono);
+    text-shadow:0 0 8px var(--safelight-glow), 0 1px 3px rgba(0,0,0,.8), 0 0 1px rgba(0,0,0,.9);
+    filter:drop-shadow(0 0 2px rgba(0,0,0,.6));
+  }
+  .gallery-iterate:active{text-shadow:0 0 14px var(--safelight), 0 0 4px var(--safelight);}
+  /* Gallery group tiles */
+  .gallery-tile.group-tile{
+    box-shadow:0 0 8px var(--safelight-dim), 0 0 2px var(--safelight);
+    position:relative;
+  }
+  .gallery-tile.group-tile::before, .gallery-tile.group-tile::after{
+    content:''; position:absolute; border-radius:8px;
+    border:1px solid var(--safelight-dim);
+    background:var(--bg-card); pointer-events:none; z-index:-1;
+  }
+  .gallery-tile.group-tile::before{
+    inset:-3px 2px 3px -2px; transform:rotate(-1.5deg);
+    opacity:.5;
+  }
+  .gallery-tile.group-tile::after{
+    inset:-5px 4px 5px -4px; transform:rotate(-3deg);
+    opacity:.3;
+  }
+  .gallery-tile .group-badge{
+    position:absolute; bottom:4px; right:4px;
+    background:none; border:none; border-radius:0;
+    padding:0; font-size:18px; color:#fff; font-weight:700; font-style:italic;
+    font-family:var(--font-body); pointer-events:none;
+    text-shadow:0 0 8px var(--safelight-glow), 0 1px 3px rgba(0,0,0,.8), 0 0 1px rgba(0,0,0,.9);
+    filter:drop-shadow(0 0 2px rgba(0,0,0,.6));
+  }
+  /* Date separators */
+  .gallery-date{
+    grid-column:1 / -1; padding:14px 2px 4px;
+    font-family:var(--font-body); font-size:16px; font-weight:700; font-style:italic;
+    color:var(--safelight); letter-spacing:.01em;
+    text-shadow:0 0 10px var(--safelight-glow);
+  }
+  .gallery-date:first-child{padding-top:2px;}
+  /* Video indicator icon */
+  .gallery-tile .video-icon{
+    position:absolute; bottom:6px; left:6px; pointer-events:none;
+    font-size:16px; color:#fff; line-height:1;
+    text-shadow:0 0 6px var(--safelight-glow), 0 1px 3px rgba(0,0,0,.8);
+    filter:drop-shadow(0 0 2px rgba(0,0,0,.6));
+  }
+  .gallery-tile.group-tile .video-icon{bottom:24px;}
+  .gallery-back-btn{
+    display:flex; align-items:center; gap:6px; background:none; border:none;
+    color:var(--text-dim); font-size:13px; font-family:var(--font-mono);
+    cursor:pointer; padding:8px 0; margin-bottom:6px;
+  }
+  .gallery-back-btn:active{color:var(--text);}
+  .gallery-reuse{
+    position:absolute; bottom:5px; left:5px; width:26px; height:26px; border-radius:50%;
+    background:rgba(0,0,0,0.6); border:1px solid var(--line); color:var(--text);
+    font-size:14px; cursor:pointer; padding:0; line-height:26px; text-align:center;
+    font-family:var(--font-mono);
+  }
+  .gallery-reuse:active{background:var(--safelight-dim); border-color:var(--safelight);}
+  .lightbox-close{
+    color:#fff; font-size:24px; cursor:pointer; padding:8px;
+    text-shadow:0 0 8px var(--safelight-glow), 0 1px 3px rgba(0,0,0,.8);
+  }
+  .lightbox-close:active{text-shadow:0 0 14px var(--safelight), 0 0 4px var(--safelight);}
+  .lightbox-carousel{
+    position:absolute; top:calc(48px + env(safe-area-inset-top)); left:24px; right:24px;
+    height:3px; background:rgba(255,255,255,.12); border-radius:2px; overflow:visible; z-index:2;
+  }
+  .lightbox-carousel-fill{
+    height:100%; background:var(--safelight); border-radius:2px;
+    position:absolute; top:0; left:0;
+    transition:left .15s cubic-bezier(.22,1,.36,1), width .3s;
+    box-shadow:0 0 6px var(--safelight-glow), 0 0 12px var(--safelight-glow);
+  }
+  body.theme-legendary .lightbox-carousel-fill{
+    background:linear-gradient(90deg, #ff2d7b, #ff8c00, #ffe600, #00e87b, #00bfff, #a855ff);
+    background-size:300% 100%;
+    animation:holoBase 3s linear infinite;
+  }
+  /* Auto-pan hold indicator */
+  .autopan-indicator{
+    position:absolute; top:50%; transform:translateY(-50%);
+    width:56px; height:56px; display:flex; align-items:center; justify-content:center;
+    font-size:38px; font-weight:200; color:var(--safelight); z-index:10; pointer-events:none;
+    text-shadow:0 0 16px var(--safelight-glow), 0 0 32px var(--safelight-glow);
+    filter:drop-shadow(0 0 4px var(--safelight-glow));
+    animation:autopanPulse 1s ease-in-out infinite;
+  }
+  .autopan-indicator.left{left:12px;}
+  .autopan-indicator.right{right:12px;}
+  @keyframes autopanPulse{
+    0%,100%{opacity:.5; transform:translateY(-50%) scale(.85);}
+    50%{opacity:1; transform:translateY(-50%) scale(1.1); text-shadow:0 0 24px var(--safelight), 0 0 48px var(--safelight-glow);}
+  }
+  @keyframes autopanFlash{
+    0%{opacity:1; transform:translateY(-50%) scale(1);}
+    100%{opacity:0; transform:translateY(-50%) scale(1.8);}
+  }
+  .lightbox-img{max-width:100%; max-height:100%; object-fit:contain; user-select:none; -webkit-user-drag:none; -webkit-touch-callout:none;}
+  video.lightbox-img{outline:none;}
+  .lightbox-bottombar{
+    position:absolute; bottom:0; left:0; right:0;
+    padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+    display:flex; justify-content:center; gap:16px; align-items:center;
+    background:linear-gradient(0deg, rgba(0,0,0,0.6), transparent);
+  }
+  .lightbox-dl, .lightbox-iterate{
+    width:48px; height:48px; border:none;
+    background:none; color:#fff; font-size:28px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center;
+    text-shadow:0 0 10px var(--safelight-glow), 0 1px 4px rgba(0,0,0,.8), 0 0 1px rgba(0,0,0,.9);
+    filter:drop-shadow(0 0 3px rgba(0,0,0,.6));
+  }
+  .lightbox-dl:active, .lightbox-iterate:active{text-shadow:0 0 16px var(--safelight), 0 0 6px var(--safelight);}
+  .queue-item{
+    display:flex; justify-content:space-between; align-items:center;
+    background:var(--bg-card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:8px;
+    position:relative; overflow:hidden;
+  }
+  .queue-item.running{border-color:var(--safelight-dim);}
+  .queue-item.running::before{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(90deg, transparent, var(--safelight-glow), transparent);
+    background-size:300% 100%;
+    animation:queueShimmer 2.5s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes queueShimmer{
+    0%{background-position:-100% 0;}
+    100%{background-position:200% 0;}
+  }
+  .queue-item .name{font-size:13px; position:relative; z-index:1;}
+  .queue-item.running .name{
+    font-weight:700; font-style:italic; color:var(--safelight);
+    text-shadow:0 0 10px var(--safelight-glow);
+  }
+  .queue-item .when{font-family:var(--font-mono); font-size:10px; color:var(--text-dim);}
+  .queue-item button{
+    background:none; border:1px solid var(--safelight-dim); color:var(--safelight);
+    border-radius:6px; padding:6px 10px; font-size:11px; cursor:pointer;
+    position:relative; z-index:1; transition:all .15s;
+  }
+  .queue-item button:active{background:var(--safelight); color:#000;}
+
+  /* Settings modal */
+  .modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:flex-end; z-index:100;}
+  .modal-backdrop.open{display:flex;}
+  .modal-sheet{
+    width:100%; background:var(--bg-raised); border-radius:18px 18px 0 0; padding:20px 18px calc(24px + env(safe-area-inset-bottom));
+    border-top:1px solid var(--line);
+  }
+  .modal-sheet h2{font-family:var(--font-display); font-size:14px; text-transform:uppercase; letter-spacing:.08em; margin:0 0 16px;}
+  .modal-sheet .field{margin-bottom:14px;}
+  .modal-sheet .save-btn{
+    width:100%; background:var(--safelight); color:#fff; border:none; border-radius:10px; padding:13px;
+    font-family:var(--font-display); text-transform:uppercase; font-size:13px; cursor:pointer; margin-top:6px;
+  }
+  .modal-sheet .close-x{position:absolute; top:16px; right:18px; color:var(--text-dim); font-size:20px; cursor:pointer;}
+
+  .toast{
+    position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+    background:var(--bg-card); border:1px solid var(--safelight-dim); color:var(--text);
+    padding:10px 18px; border-radius:20px; font-size:12px; z-index:200;
+    opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+    box-shadow:0 0 12px var(--safelight-glow), 0 4px 12px rgba(0,0,0,.3);
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+
+  .progress-container{
+    position:fixed; bottom:70px; left:0; right:0;
+    padding:0 16px 12px;
+    z-index:99;
+  }
+  .progress-banner{
+    background:var(--bg-card); border:1px solid var(--safelight-dim); border-radius:10px;
+    padding:12px 14px;
+  }
+  .progress-banner .row{display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); font-family:var(--font-mono); margin-bottom:8px;}
+  .progress-bar-track{height:5px; background:var(--bg-raised); border-radius:3px; overflow:hidden;}
+  .progress-bar-fill{
+    height:100%; background:var(--safelight); width:0%; transition:width .2s;
+    border-radius:3px; position:relative; overflow:hidden;
+  }
+  .progress-bar-fill::after{
+    content:''; position:absolute; top:0; bottom:0; left:-80%; width:60%;
+    background:linear-gradient(90deg,
+      transparent,
+      rgba(255,255,255,.12) 20%,
+      rgba(255,255,255,.35) 45%,
+      rgba(255,255,255,.5) 50%,
+      rgba(255,255,255,.35) 55%,
+      rgba(255,255,255,.12) 80%,
+      transparent
+    );
+    animation: shimmerSweep 2s ease-in-out infinite;
+  }
+  @keyframes shimmerSweep{
+    0%{left:-80%;}
+    100%{left:140%;}
+  }
+  /* Holo foil mode: rainbow prismatic overlay on progress */
+  body.theme-legendary .progress-bar-fill{
+    background:linear-gradient(90deg, #ff2d7b, #ff8c00, #ffe600, #00e87b, #00bfff, #a855ff, #ff2d7b);
+    background-size:300% 100%;
+    animation: holoBase 4s linear infinite;
+  }
+  body.theme-legendary .progress-bar-fill::after{
+    width:40%;
+    background:linear-gradient(90deg,
+      transparent,
+      rgba(255,255,255,.2) 25%,
+      rgba(255,255,255,.7) 50%,
+      rgba(255,255,255,.2) 75%,
+      transparent
+    );
+    animation: shimmerSweep 1.4s ease-in-out infinite;
+  }
+  @keyframes holoBase{
+    0%{background-position:0% 0;}
+    100%{background-position:300% 0;}
+  }
+  /* no images in progress bar */
+
+  /* Power Lora Loader */
+  .lora-stack{display:flex; flex-direction:column; gap:8px;}
+  .lora-entry{
+    background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .lora-entry.disabled{opacity:.45;}
+  .lora-entry .lora-row{display:flex; align-items:center; gap:8px;}
+  .lora-entry .lora-toggle{
+    width:36px; height:20px; border-radius:10px; border:none; cursor:pointer;
+    background:var(--line); position:relative; flex:0 0 36px; transition:background .2s;
+  }
+  .lora-entry .lora-toggle.on{background:var(--ok);}
+  .lora-entry .lora-toggle::after{
+    content:''; position:absolute; top:2px; left:2px;
+    width:16px; height:16px; border-radius:50%; background:var(--text);
+    transition:left .2s;
+  }
+  .lora-entry .lora-toggle.on::after{left:18px;}
+  .lora-entry select{
+    flex:1; min-width:0; background:var(--bg-card); border:1px solid var(--line);
+    border-radius:6px; color:var(--text); padding:7px 8px; font-size:12px;
+    font-family:var(--font-mono); text-overflow:ellipsis;
+  }
+  .lora-entry .lora-delete{
+    background:none; border:1px solid var(--line); color:var(--text-dim);
+    width:24px; height:24px; border-radius:50%; font-size:11px; cursor:pointer;
+    flex:0 0 24px; padding:0; line-height:24px; text-align:center;
+  }
+  .lora-entry .lora-delete:active{background:var(--safelight-dim); color:#fff;}
+  .lora-strength{display:flex; align-items:center; gap:8px;}
+  .lora-strength label{font-size:10px; color:var(--text-dim); font-family:var(--font-mono); flex:0 0 auto; text-transform:uppercase; letter-spacing:.05em;}
+  .lora-strength input[type=range]{flex:1; accent-color:var(--safelight); height:4px;}
+  .lora-strength .str-val{
+    font-family:var(--font-mono); font-size:11px; color:var(--text);
+    width:52px; flex:0 0 52px; text-align:right;
+    background:var(--bg-card); border:1px solid var(--line); border-radius:5px;
+    padding:4px 6px; -moz-appearance:textfield;
+  }
+  .lora-strength .str-val::-webkit-outer-spin-button, .lora-strength .str-val::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
+  .lora-strength .str-val:focus{outline:none; border-color:var(--safelight-dim);}
+  .lora-keywords-input{
+    width:100%; background:var(--bg-card); border:1px solid var(--line); border-radius:5px;
+    color:var(--safelight); padding:5px 8px; font-size:11px; font-family:var(--font-mono);
+    font-style:italic; box-sizing:border-box;
+  }
+  .lora-keywords-input::placeholder{color:var(--text-dim); font-style:italic;}
+  .lora-keywords-input:focus{outline:none; border-color:var(--safelight-dim);}
+  .lora-add-btn{
+    background:var(--bg-card); border:1px dashed var(--line); border-radius:8px;
+    color:var(--text-dim); padding:10px; font-size:12px; font-family:var(--font-mono);
+    cursor:pointer; text-align:center; letter-spacing:.05em;
+  }
+  .lora-add-btn:active{background:var(--bg-raised); border-color:var(--safelight-dim);}
+  /* LoRA trigger keywords */
+  .lora-triggers{
+    background:var(--bg); border:1px solid var(--line); border-radius:8px;
+    padding:10px; display:flex; align-items:center; gap:8px; min-height:40px;
+  }
+  .lora-triggers-label{
+    font-size:9px; font-family:var(--font-body); color:var(--text-dim);
+    text-transform:uppercase; letter-spacing:.06em; flex:0 0 auto;
+  }
+  .lora-triggers-words{
+    flex:1; font-family:var(--font-body); font-size:14px; font-weight:700;
+    font-style:italic; color:var(--safelight);
+    text-shadow:0 0 8px var(--safelight-glow);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .lora-triggers-empty{
+    flex:1; font-family:var(--font-mono); font-size:11px; color:var(--text-dim);
+    font-style:italic;
+  }
+  .lora-triggers-copy{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:6px;
+    color:var(--text-dim); padding:4px 8px; font-size:10px; cursor:pointer;
+    font-family:var(--font-mono); flex:0 0 auto;
+  }
+  .lora-triggers-copy:active{background:var(--safelight-dim); color:var(--text);}
+
+  /* Aspect ratio grid */
+  .aspect-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px;}
+  .aspect-btn{
+    background:var(--bg); border:1px solid var(--line); border-radius:6px;
+    color:var(--text-dim); padding:8px 4px; font-size:12px; font-family:var(--font-mono);
+    cursor:pointer; text-align:center;
+  }
+  .aspect-btn.active{background:var(--safelight-dim); border-color:var(--safelight); color:var(--text);}
+  .aspect-btn:active{background:var(--bg-raised);}
+  .res-presets{display:flex; gap:6px; margin-top:8px;}
+  .res-btn{
+    flex:1; padding:7px; border-radius:6px; border:1px solid var(--line);
+    background:var(--bg); color:var(--text-dim); font-size:11px; font-family:var(--font-mono);
+    cursor:pointer; text-align:center; letter-spacing:.03em;
+  }
+  .res-btn.active{background:var(--safelight-dim); border-color:var(--safelight); color:var(--text);}
+
+  /* Quality presets — icon cutout glow */
+  .quality-presets{display:flex; gap:0; border-radius:8px; overflow:hidden; border:1px solid var(--line); margin-top:4px; margin-bottom:4px;}
+  .qp-btn{
+    flex:1; padding:12px 6px; border:none; cursor:pointer; text-align:center;
+    background:var(--bg); color:var(--text-dim); position:relative; transition:all .2s;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+  }
+  .qp-btn + .qp-btn{border-left:1px solid var(--line);}
+  .qp-btn .qp-icon{font-size:22px; line-height:1; filter:grayscale(1) opacity(.35);}
+  .qp-btn .qp-label{font-size:9px; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.08em;}
+  .qp-btn.active{
+    background:var(--safelight); color:#000;
+    box-shadow:0 0 16px var(--safelight-dim), inset 0 0 12px rgba(255,255,255,.15);
+  }
+  .qp-btn.active .qp-icon{
+    filter:none; 
+    -webkit-text-stroke:1px rgba(0,0,0,.7);
+    text-shadow:0 0 10px var(--safelight), 0 0 20px var(--safelight);
+  }
+  .qp-btn.active .qp-label{font-weight:700;}
+
+  /* RIFE interpolation toggle */
+  .rife-toggle-bar{
+    display:flex; border-radius:8px; overflow:hidden; border:1px solid var(--line);
+    cursor:pointer; user-select:none;
+  }
+  .rife-toggle-bar .rife-status{
+    flex:1; padding:12px 14px; text-align:center;
+    font-family:var(--font-mono); font-size:12px; font-weight:700;
+    letter-spacing:.05em; transition:all .2s;
+    background:var(--bg); color:var(--text-dim);
+  }
+  .rife-toggle-bar.on .rife-status{
+    background:var(--safelight-dim); color:var(--safelight);
+    text-shadow:0 0 10px var(--safelight-glow);
+    box-shadow:inset 0 0 16px var(--safelight-glow);
+  }
+
+  /* Tools pane */
+  .tools-mode-toggle{display:flex; gap:6px; margin-bottom:14px;}
+  .tools-mode-toggle button{
+    flex:1; padding:10px; border-radius:8px; border:1px solid var(--line);
+    background:var(--bg-card); color:var(--text-dim); font-size:13px;
+    font-family:var(--font-mono); cursor:pointer; font-weight:700; letter-spacing:.03em;
+  }
+  .tools-mode-toggle button.active{background:var(--safelight-dim); border-color:var(--safelight); color:var(--text);}
+  .tools-input-area{margin-bottom:12px;}
+  .tools-input-area textarea{
+    width:100%; min-height:160px; background:var(--bg); border:1px solid var(--line);
+    border-radius:8px; color:var(--text); padding:10px; font-size:13px;
+    font-family:var(--font-mono); resize:vertical; box-sizing:border-box;
+    line-height:1.5;
+  }
+  .tools-img-upload{
+    border:2px dashed var(--line); border-radius:8px; padding:20px; text-align:center;
+    color:var(--text-dim); font-size:13px; cursor:pointer; position:relative;
+  }
+  .tools-img-upload.has-image{border-style:solid; padding:4px;}
+  .tools-img-upload img{width:100%; border-radius:6px; display:block;}
+  .tools-img-upload input{position:absolute; inset:0; opacity:0; cursor:pointer;}
+  .tools-generate-btn{
+    width:100%; padding:12px; border-radius:8px; border:none;
+    background:var(--safelight); color:#000; font-weight:600; font-size:14px;
+    font-family:var(--font-mono); cursor:pointer; margin-bottom:14px;
+  }
+  .tools-generate-btn:disabled{opacity:.4; cursor:default;}
+  .tools-generate-btn:active:not(:disabled){opacity:.8;}
+  .tools-result{position:relative; margin-top:8px;}
+  .tools-result textarea{
+    width:100%; min-height:200px; background:var(--bg); border:1px solid var(--line);
+    border-radius:8px; color:var(--safelight); padding:10px; font-size:12px;
+    font-family:var(--font-mono); resize:vertical; box-sizing:border-box;
+  }
+  .tools-result .copy-btn{
+    position:absolute; top:8px; right:8px; background:var(--bg-card);
+    border:1px solid var(--line); border-radius:6px; color:var(--text-dim);
+    padding:4px 10px; font-size:11px; cursor:pointer; font-family:var(--font-mono);
+  }
+  .tools-result .copy-btn:active{background:var(--safelight-dim); color:var(--text);}
+  .tools-status{font-size:11px; color:var(--text-dim); font-family:var(--font-mono); margin-bottom:8px; letter-spacing:.05em;}
+  /* Tools prompt history */
+  .tools-history-title{
+    font-family:var(--font-body); font-size:12px; font-weight:700; font-style:italic;
+    color:var(--safelight); text-shadow:0 0 8px var(--safelight-glow);
+    margin:16px 0 8px; letter-spacing:.02em;
+  }
+  .tools-history-item{
+    display:flex; align-items:center; gap:8px;
+    background:var(--bg-card); border:1px solid var(--line); border-radius:8px;
+    padding:10px 12px; margin-bottom:6px; cursor:pointer;
+  }
+  .tools-history-item:active{border-color:var(--safelight-dim);}
+  .tools-history-item .th-preview{
+    flex:1; min-width:0; font-size:12px; color:var(--text);
+    font-family:var(--font-mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .tools-history-item .th-date{
+    font-size:9px; color:var(--text-dim); font-family:var(--font-mono);
+    flex:0 0 auto; white-space:nowrap;
+  }
+  .tools-history-item .th-delete{
+    background:none; border:none; color:var(--text-dim); font-size:14px;
+    cursor:pointer; padding:0 2px; flex:0 0 auto;
+  }
+  .tools-history-item .th-delete:active{color:var(--safelight);}
+
+  ::-webkit-scrollbar{display:none;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="brand">
+      <div class="dot" id="connDot"></div>
+      <div>
+        <h1>RETURN <span class="title-sep">//</span> CURRENT</h1>
+        <div class="status-text" id="statusText">Disconnected</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div style="position:relative;">
+        <button class="theme-btn" id="themeToggle">✦</button>
+        <div class="theme-picker hidden" id="themePicker">
+          <div class="theme-swatch" data-theme="" style="background:#c43d2e; --swatch-color:#c43d2e;" title="Return Current"></div>
+          <div class="theme-swatch" data-theme="theme-volt" style="background:#CEFF00; --swatch-color:#CEFF00;" title="Volt"></div>
+          <div class="theme-swatch" data-theme="theme-plum" style="background:#c77dff; --swatch-color:#c77dff;" title="Plum"></div>
+          <div class="theme-swatch" data-theme="theme-rose" style="background:#e8457a; --swatch-color:#e8457a;" title="Rosé"></div>
+          <div class="theme-swatch" data-theme="theme-holo" style="background:#00c8ff; --swatch-color:#00c8ff;" title="Holo"></div>
+          <div class="theme-swatch" data-theme="theme-terminal" style="background:#39ff14; --swatch-color:#39ff14;" title="Terminal"></div>
+          <div class="theme-swatch" data-theme="theme-legendary" style="background:linear-gradient(135deg,#ff2d7b,#ff8c00,#ffe600,#00e87b,#00bfff,#a855ff); --swatch-color:#a855ff;" title="Legendary"></div>
+        </div>
+      </div>
+      <button class="settings-btn" id="openSettings">⚙</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="active" data-tab="workflows">Workflows</button>
+    <button data-tab="queue">Queue</button>
+    <button data-tab="gallery">Gallery</button>
+    <button data-tab="tools">Tools</button>
+  </nav>
+
+  <main id="main">
+    <!-- populated by JS -->
+  </main>
+
+  <div class="action-bar" id="actionBar" style="display:none;"></div>
+  <div class="progress-container" id="progressContainer" style="display:none;">
+    <div class="progress-banner">
+      <div class="row" id="progressRow">QUEUED</div>
+      <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal-sheet">
+      <span class="close-x" id="closeSettings">✕</span>
+      <h2>Server</h2>
+      <div class="field">
+        <label>Host or IP (Tailscale address)</label>
+        <input type="text" id="hostInput" placeholder="100.x.x.x">
+      </div>
+      <div class="field">
+        <label>Port</label>
+        <input type="text" id="portInput" placeholder="8188">
+      </div>
+      <button class="save-btn" id="saveSettings">Save & Connect</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ====================== STATE ====================== */
+const state = {
+  host: localStorage.getItem('returncurrent_host') || '',
+  port: localStorage.getItem('returncurrent_port') || '8188',
+  connected: false,
+  ws: null,
+  clientId: localStorage.getItem('returncurrent_client_id') || (crypto.randomUUID ? crypto.randomUUID() : String(Math.random())),
+  workflows: JSON.parse(localStorage.getItem('returncurrent_workflows') || '[]'),
+  currentWorkflow: null, // {name, json, thumb}
+  currentTab: 'workflows',
+  queue: [],
+  gallery: JSON.parse(localStorage.getItem('returncurrent_gallery') || '[]').filter(item => typeof item === 'string'),
+  seenImages: new Set(JSON.parse(localStorage.getItem('returncurrent_seen') || '[]')),
+  galleryMeta: JSON.parse(localStorage.getItem('returncurrent_gallery_meta') || '{}'),
+  newImageCount: 0, // tracks how many images are fresh for animation
+  galleryExpandedGroup: null, // promptHash of expanded group, or null for main view
+  galleryDirty: false, // set when new images arrive, cleared on render
+  busy: false,
+  activeJobs: new Map(), // {promptId: {fields, timestamp}}
+  processedPrompts: new Set(JSON.parse(sessionStorage.getItem('returncurrent_processed') || '[]')),
+  availableLoras: [], // fetched from server on connect
+  serverOptions: {samplers:[], schedulers:[], checkpoints:[], unets:[], unet_gguf:[], upscale_models:[], _res_ratios:[]},
+  toolsMode: 'text2json', // 'text2json' or 'image2json'
+  toolsNodeInfo: null, // cached /object_info for LM Studio nodes
+  toolsResult: '', // last extracted JSON prompt
+  toolsImageFile: null, // uploaded image for image2json
+};
+localStorage.setItem('returncurrent_client_id', state.clientId);
+
+function baseUrl(){
+  return `http://${state.host}:${state.port}`;
+}
+function wsUrl(){
+  return `ws://${state.host}:${state.port}/ws?clientId=${state.clientId}`;
+}
+
+/* ====================== TOAST ====================== */
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ====================== CONNECTION ====================== */
+function setConnDot(mode){
+  const dot = document.getElementById('connDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'dot';
+  if(mode) dot.classList.add(mode);
+  if(mode === 'connected') txt.textContent = 'Connected';
+  else if(mode === 'busy') txt.textContent = 'Generating…';
+  else if(!mode) txt.textContent = 'Disconnected';
+}
+
+async function tryConnect(){
+  if(!state.host){
+    document.getElementById('statusText').textContent = 'Disconnected';
+    return;
+  }
+  document.getElementById('statusText').textContent = 'connecting…';
+  try{
+    const res = await fetch(`${baseUrl()}/system_stats`, {mode:'cors'});
+    if(!res.ok) throw new Error('bad response');
+    state.connected = true;
+    setConnDot('connected');
+    document.getElementById('statusText').textContent = 'Connected';
+    connectWebSocket();
+    fetchAvailableLoras();
+    syncMissedHistory();
+  }catch(e){
+    state.connected = false;
+    setConnDot('');
+    document.getElementById('statusText').textContent = 'Disconnected';
+  }
+}
+
+function connectWebSocket(){
+  if(state.ws) { try{state.ws.close();}catch(e){} }
+  state.ws = new WebSocket(wsUrl());
+  state.ws.onmessage = (event) => {
+    if(typeof event.data !== 'string') return;
+    let msg;
+    try{ msg = JSON.parse(event.data); }catch(e){ return; }
+    handleWsMessage(msg);
+  };
+  state.ws.onclose = () => {
+    setConnDot('');
+    // Auto-reconnect after 3s if we were connected
+    if(state.connected) setTimeout(()=>{
+      if(state.connected && (!state.ws || state.ws.readyState > 1)){
+        connectWebSocket();
+        syncMissedHistory();
+      }
+    }, 3000);
+  };
+  state.ws.onerror = () => {};
+}
+
+/** Sync any generations that completed while app was backgrounded or WS was disconnected */
+async function syncMissedHistory(){
+  if(!state.connected) return;
+  const pending = getSubmittedPrompts();
+  // Find promptIds we submitted but haven't processed yet
+  const missed = pending.filter(pid => !state.processedPrompts.has(pid));
+  if(!missed.length) return;
+  console.log('Syncing missed generations:', missed);
+  for(const pid of missed){
+    await onGenerationComplete(pid);
+  }
+}
+
+function getSubmittedPrompts(){
+  try{ return JSON.parse(sessionStorage.getItem('returncurrent_submitted') || '[]'); }catch(e){ return []; }
+}
+function trackSubmittedPrompt(promptId){
+  const list = getSubmittedPrompts();
+  list.push(promptId);
+  // Keep only last 50
+  sessionStorage.setItem('returncurrent_submitted', JSON.stringify(list.slice(-50)));
+}
+
+// Re-sync when app returns from background
+document.addEventListener('visibilitychange', ()=>{
+  if(document.visibilityState === 'visible' && state.connected){
+    // Reconnect WS if dead
+    if(!state.ws || state.ws.readyState > 1) connectWebSocket();
+    syncMissedHistory();
+  }
+});
+
+async function fetchAvailableLoras(){
+  try{
+    const res = await fetch(`${baseUrl()}/object_info/LoraLoader`);
+    const info = await res.json();
+    const loraNode = info['LoraLoader'];
+    if(loraNode && loraNode.input && loraNode.input.required && loraNode.input.required.lora_name){
+      state.availableLoras = loraNode.input.required.lora_name[0] || [];
+    }
+  }catch(e){
+    try{
+      const res2 = await fetch(`${baseUrl()}/object_info/LoraLoaderModelOnly`);
+      const info2 = await res2.json();
+      const n = info2['LoraLoaderModelOnly'];
+      if(n && n.input && n.input.required && n.input.required.lora_name){
+        state.availableLoras = n.input.required.lora_name[0] || [];
+      }
+    }catch(e2){}
+  }
+  // Fetch samplers, schedulers, checkpoints from KSampler node info
+  try{
+    const res = await fetch(`${baseUrl()}/object_info/KSampler`);
+    const info = await res.json();
+    const ks = info['KSampler'];
+    if(ks && ks.input && ks.input.required){
+      const r = ks.input.required;
+      if(r.sampler_name) state.serverOptions.samplers = r.sampler_name[0] || [];
+      if(r.scheduler) state.serverOptions.schedulers = r.scheduler[0] || [];
+    }
+  }catch(e){}
+  try{
+    const res = await fetch(`${baseUrl()}/object_info/CheckpointLoaderSimple`);
+    const info = await res.json();
+    const cl = info['CheckpointLoaderSimple'];
+    if(cl && cl.input && cl.input.required && cl.input.required.ckpt_name){
+      state.serverOptions.checkpoints = cl.input.required.ckpt_name[0] || [];
+    }
+  }catch(e){}
+  try{
+    const res = await fetch(`${baseUrl()}/object_info/UNETLoader`);
+    const info = await res.json();
+    const ul = info['UNETLoader'];
+    if(ul && ul.input && ul.input.required && ul.input.required.unet_name){
+      state.serverOptions.unets = ul.input.required.unet_name[0] || [];
+    }
+  }catch(e){}
+  try{
+    const res = await fetch(`${baseUrl()}/object_info/${encodeURIComponent('UnetLoaderGGUF')}`);
+    const info = await res.json();
+    const n = info['UnetLoaderGGUF'];
+    if(n && n.input && n.input.required && n.input.required.unet_name){
+      state.serverOptions.unet_gguf = n.input.required.unet_name[0] || [];
+    }
+  }catch(e){}
+  try{
+    const res = await fetch(`${baseUrl()}/object_info/${encodeURIComponent('UpscaleModelLoader')}`);
+    const info = await res.json();
+    const n = info['UpscaleModelLoader'];
+    if(n && n.input && n.input.required && n.input.required.model_name){
+      state.serverOptions.upscale_models = n.input.required.model_name[0] || [];
+    }
+  }catch(e){}
+  try{
+    const res = await fetch(`${baseUrl()}/object_info/${encodeURIComponent('ResolutionSelector')}`);
+    const info = await res.json();
+    const n = info['ResolutionSelector'];
+    if(n && n.input){
+      const allInputs = {...(n.input.required||{}), ...(n.input.optional||{})};
+      for(const [key, def] of Object.entries(allInputs)){
+        if(Array.isArray(def) && Array.isArray(def[0]) && def[0].length > 2){
+          state.serverOptions._res_ratios = def[0];
+          break;
+        }
+      }
+    }
+  }catch(e){}
+  // Fallback common ratios if server didn't provide them
+  if(!state.serverOptions._res_ratios.length){
+    state.serverOptions._res_ratios = [
+      '1:1 (Square)','3:2 (Photo)','4:3 (Standard)','16:9 (Widescreen)',
+      '21:9 (Ultrawide)','2:3 (Portrait Photo)','3:4 (Portrait Standard)','9:16 (Portrait Widescreen)'
+    ];
+  }
+}
+
+function handleWsMessage(msg){
+  if(msg.type === 'progress'){
+    state.busy = true;
+    setConnDot('busy');
+    updateProgressUI(msg.data.value, msg.data.max);
+  } else if(msg.type === 'executing'){
+    if(msg.data.node === null){
+      // finished
+      const promptId = msg.data.prompt_id;
+      state.activeJobs.delete(promptId);
+      if(state.activeJobs.size === 0){
+        state.busy = false;
+        setConnDot('connected');
+        document.getElementById('progressContainer').style.display = 'none';
+      }
+      onGenerationComplete(promptId);
+    }
+  } else if(msg.type === 'execution_error'){
+    const promptId = msg.data.prompt_id;
+    state.activeJobs.delete(promptId);
+    if(state.activeJobs.size === 0){
+      state.busy = false;
+      setConnDot('connected');
+      document.getElementById('progressContainer').style.display = 'none';
+    }
+    toast('Generation failed — check ComfyUI console');
+  }
+}
+
+function updateProgressUI(value, max){
+  document.getElementById('progressContainer').style.display = 'block';
+  const fill = document.getElementById('progressFill');
+  if(fill){
+    const pct = max ? Math.round((value/max)*100) : 0;
+    fill.style.width = pct + '%';
+    const row = document.getElementById('progressRow');
+
+    // ETA calculation: need at least step 1 timestamp + one more step
+    const now = Date.now();
+    if(value <= 1){
+      state._progressStepOneTime = now;
+      state._progressEta = '';
+    } else if(state._progressStepOneTime){
+      const elapsed = now - state._progressStepOneTime;
+      const stepsCompleted = value - 1;
+      const msPerStep = elapsed / stepsCompleted;
+      const remaining = msPerStep * (max - value);
+      if(remaining > 1000){
+        const secs = Math.ceil(remaining / 1000);
+        state._progressEta = secs >= 60 ? `~${Math.floor(secs/60)}m ${secs%60}s` : `~${secs}s`;
+      } else {
+        state._progressEta = 'Finishing image…';
+      }
+    }
+
+    const eta = state._progressEta || '';
+    const queueText = state.activeJobs.size > 1 ? ` +${state.activeJobs.size - 1} queued` : '';
+    if(row) row.innerHTML = `<span>${value}/${max}${eta ? ' — ' + eta : ''}</span><span>${queueText}</span>`;
+  }
+}
+
+/* ---- Model name extraction for download naming ---- */
+function extractModelShortName(graph){
+  for(const nodeId in graph){
+    const inputs = graph[nodeId].inputs || {};
+    for(const key of ['ckpt_name','unet_name','unet_filename']){
+      if(inputs[key] && typeof inputs[key] === 'string'){
+        return simplifyModelName(inputs[key]);
+      }
+    }
+  }
+  return 'Output';
+}
+
+function extractCkptName(graph){
+  for(const nodeId in graph){
+    const inputs = graph[nodeId].inputs || {};
+    for(const key of ['ckpt_name','unet_name','unet_filename']){
+      if(inputs[key] && typeof inputs[key] === 'string') return inputs[key];
+    }
+  }
+  return '';
+}
+
+function simplifyModelName(full){
+  let name = full.replace(/\\/g,'/').split('/').pop().replace(/\.(safetensors|ckpt|pt|bin|pth)$/i,'');
+  const patterns = [
+    [/animagine|anima/i,'Anima'], [/ideogram/i,'Ideogram'], [/sdxl|stable.*diffusion.*xl/i,'SDXL'],
+    [/sd3|stable.*diffusion.*3/i,'SD3'], [/sd_?1\.?5|v1-5/i,'SD15'], [/flux/i,'Flux'],
+    [/pony/i,'Pony'], [/jugg/i,'Juggernaut'], [/dream.*shaper/i,'DreamShaper'],
+    [/aura.*flow/i,'AuraFlow'], [/hunyuan/i,'Hunyuan'], [/kolors/i,'Kolors'],
+    [/pixart/i,'PixArt'], [/wan/i,'Wan'], [/cascade/i,'Cascade'],
+    [/playground/i,'Playground'], [/lumina/i,'Lumina'], [/illustrious/i,'Illustrious'],
+    [/noob/i,'NoobAI'], [/real/i,'Realistic'], [/chillout/i,'ChilloutMix'],
+    [/krea/i,'Krea2'], [/ltx/i,'LTX'],
+  ];
+  for(const [pat,short] of patterns){ if(pat.test(name)) return short; }
+  name = name.replace(/[_-]/g,' ').replace(/\b(fp\d+|bf16|f16|f32|q\d+|nf4|scaled|unconditional|dev|base|turbo|lightning|checkpoint|merged?)\b/gi,'').trim();
+  return name.split(/\s+/)[0] || 'Output';
+}
+
+function markImageSeen(url){
+  state.seenImages.add(url);
+  localStorage.setItem('returncurrent_seen', JSON.stringify([...state.seenImages]));
+  // Update tile in DOM if visible
+  const tile = main.querySelector(`[data-gallery-url="${CSS.escape(url)}"]`);
+  if(tile) tile.classList.remove('unseen');
+}
+
+async function downloadGalleryImage(url){
+  toast('Downloading…');
+  try{
+    const modelName = (state.galleryMeta[url] && state.galleryMeta[url].model) || 'Output';
+    const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    const filename = `ReturnCurrent/${modelName}/${modelName}_${ts}.png`;
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    toast(`Saved to ${modelName}/`);
+  }catch(e){
+    toast('Download failed');
+  }
+}
+
+function deleteGalleryImage(url){
+  const idx = state.gallery.indexOf(url);
+  if(idx >= 0) state.gallery.splice(idx, 1);
+  delete state.galleryMeta[url];
+  state.seenImages.delete(url);
+  localStorage.setItem('returncurrent_gallery', JSON.stringify(state.gallery));
+  localStorage.setItem('returncurrent_gallery_meta', JSON.stringify(state.galleryMeta));
+  localStorage.setItem('returncurrent_seen', JSON.stringify([...state.seenImages]));
+  renderGallery();
+}
+
+async function onGenerationComplete(promptId){
+  if(state.processedPrompts.has(promptId)) return;
+  state.processedPrompts.add(promptId); // in-memory guard against duplicate async calls
+  // NOTE: we persist to sessionStorage ONLY after successfully collecting images below
+  
+  try{
+    // Retry fetching history — ComfyUI may not have written it yet
+    let entry = null;
+    for(let retry = 0; retry < 8; retry++){
+      const res = await fetch(`${baseUrl()}/history/${promptId}`);
+      const hist = await res.json();
+      entry = hist[promptId];
+      if(entry && entry.outputs && Object.keys(entry.outputs).length > 0) break;
+      await new Promise(r => setTimeout(r, 500));
+    }
+    if(!entry) return;
+
+    // Extract model name from the prompt graph stored in history
+    let modelName = 'Output';
+    let promptHash = '';
+    try{
+      const promptData = entry.prompt;
+      const graph = Array.isArray(promptData) ? promptData[2] : promptData;
+      if(graph){
+        modelName = extractModelShortName(graph);
+        promptHash = extractPromptHash(graph);
+      }
+    }catch(e){}
+
+    const seenFilenames = new Set();
+    const outputImages = [];
+    const otherImages = [];
+    let isVideo = false;
+    let lastVideoUrl = null;
+    for(const nodeId in entry.outputs){
+      const out = entry.outputs[nodeId];
+      if(out.images){
+        for(const img of out.images){
+          const key = `${img.type||''}:${img.subfolder||''}/${img.filename}`;
+          if(seenFilenames.has(key)) continue;
+          seenFilenames.add(key);
+          const imgType = img.type || 'output';
+          const url = `${baseUrl()}/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder||'')}&type=${encodeURIComponent(imgType)}`;
+          if(imgType === 'output') outputImages.push(url);
+          else otherImages.push(url);
+        }
+      }
+      if(out.gifs){
+        isVideo = true;
+        for(const vid of out.gifs){
+          const vidType = vid.type || 'output';
+          lastVideoUrl = `${baseUrl()}/view?filename=${encodeURIComponent(vid.filename)}&subfolder=${encodeURIComponent(vid.subfolder||'')}&type=${encodeURIComponent(vidType)}`;
+        }
+      }
+    }
+    // For video workflows, only keep the final video but remember the PNG for workflow extraction
+    let associatedPng = null;
+    if(isVideo && lastVideoUrl){
+      if(outputImages.length) associatedPng = outputImages[outputImages.length - 1];
+      else if(otherImages.length) associatedPng = otherImages[otherImages.length - 1];
+      outputImages.length = 0;
+      otherImages.length = 0;
+      outputImages.push(lastVideoUrl);
+    }
+    const images = outputImages.length ? outputImages : otherImages;
+    if(images.length){
+      images.forEach(url => {
+        state.galleryMeta[url] = {model: modelName, promptHash: promptHash, ts: Date.now(), video: isVideo, pngUrl: associatedPng || null};
+      });
+      localStorage.setItem('returncurrent_gallery_meta', JSON.stringify(state.galleryMeta));
+
+      state.newImageCount = images.length;
+      state.gallery.unshift(...images);
+      localStorage.setItem('returncurrent_gallery', JSON.stringify(state.gallery.slice(0,200)));
+
+      // Re-render gallery FIRST, then persist processed state
+      state.galleryDirty = true;
+      toast('✓ New image');
+      try{
+        if(state.currentTab === 'gallery') renderGallery();
+      }catch(e){ console.error('Gallery render error:', e); }
+
+      try{ sessionStorage.setItem('returncurrent_processed', JSON.stringify([...state.processedPrompts].slice(-100))); }catch(e){}
+    } else if(entry){
+      try{ sessionStorage.setItem('returncurrent_processed', JSON.stringify([...state.processedPrompts].slice(-100))); }catch(e){}
+    } else {
+      // History not found after retries — remove from in-memory set so sync can retry later
+      state.processedPrompts.delete(promptId);
+    }
+  }catch(e){
+    console.error(e);
+  }
+}
+
+/** Extract a hash string from the prompt text in a graph for grouping */
+function extractPromptHash(graph){
+  for(const nodeId in graph){
+    const inputs = graph[nodeId].inputs || {};
+    // Check for text prompts (CLIPTextEncode, etc.)
+    for(const key of ['text','caption','prompt']){
+      const val = inputs[key];
+      if(typeof val === 'string' && val.length > 10){
+        return simpleHash(val);
+      }
+    }
+    // Check IdeogramStudio nested caption
+    for(const key in inputs){
+      const val = inputs[key];
+      if(typeof val === 'object' && val !== null && !Array.isArray(val)){
+        const hld = val?.caption?.high_level_description || val?.studio?.high_level_description;
+        if(hld && hld.length > 10) return simpleHash(hld);
+      }
+    }
+  }
+  return '';
+}
+
+function simpleHash(str){
+  let h = 0;
+  for(let i = 0; i < str.length; i++){
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return 'ph_' + Math.abs(h).toString(36);
+}
+
+
+/* progress images removed — gallery is sufficient */
+
+/* ====================== PNG METADATA EXTRACTION ====================== */
+// ComfyUI embeds workflow JSON in a PNG tEXt chunk keyed "workflow" (or "prompt" for API format)
+async function inflateZlib(bytes){
+  // Browser-native zlib inflate via DecompressionStream (widely supported in 2026).
+  const ds = new DecompressionStream('deflate');
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  const buf = await new Response(stream).arrayBuffer();
+  return new TextDecoder('utf-8').decode(buf);
+}
+
+function findNullByte(data, start){
+  for(let i=start; i<data.length; i++) if(data[i]===0) return i;
+  return data.length;
+}
+
+async function extractWorkflowFromPng(file){
+  const buf = await file.arrayBuffer();
+  const view = new DataView(buf);
+  if(view.getUint32(0) !== 0x89504e47) throw new Error('Not a valid PNG');
+  let offset = 8;
+  let promptJson = null;   // resolved, executable API-format graph — authoritative
+  let workflowJson = null; // UI-format graph — used only for friendlier labels
+  while(offset < buf.byteLength){
+    const length = view.getUint32(offset);
+    const typeBytes = new Uint8Array(buf, offset+4, 4);
+    const type = String.fromCharCode(...typeBytes);
+
+    if(type === 'tEXt'){
+      const data = new Uint8Array(buf, offset+8, length);
+      const nullIdx = findNullByte(data, 0);
+      const keyword = new TextDecoder('latin1').decode(data.slice(0, nullIdx));
+      const value = new TextDecoder('utf-8').decode(data.slice(nullIdx+1));
+      if(keyword === 'prompt') promptJson = value;
+      if(keyword === 'workflow') workflowJson = value;
+    } else if(type === 'iTXt'){
+      // Byte-precise iTXt layout: keyword\0, compressionFlag(1B), compressionMethod(1B),
+      // languageTag\0, translatedKeyword\0, text (zlib-compressed if compressionFlag===1)
+      const data = new Uint8Array(buf, offset+8, length);
+      let pos = findNullByte(data, 0);
+      const keyword = new TextDecoder('latin1').decode(data.slice(0, pos));
+      pos += 1;
+      const compressionFlag = data[pos]; pos += 2; // skip flag + method byte
+      const langEnd = findNullByte(data, pos);
+      pos = langEnd + 1;
+      const transEnd = findNullByte(data, pos);
+      pos = transEnd + 1;
+      const textBytes = data.slice(pos);
+      const value = compressionFlag === 1
+        ? await inflateZlib(textBytes)
+        : new TextDecoder('utf-8').decode(textBytes);
+      if(keyword === 'prompt') promptJson = value;
+      if(keyword === 'workflow') workflowJson = value;
+    }
+
+    if(type === 'IEND') break;
+    offset += 8 + length + 4;
+  }
+  if(!promptJson) throw new Error('No resolved workflow ("prompt") found in this PNG — was it saved by ComfyUI?');
+  let apiGraph, uiGraph;
+  try{
+    apiGraph = JSON.parse(sanitizeJsonText(promptJson));
+  }catch(e){
+    console.error('ReturnCurrent: prompt JSON parse failed —', e.message);
+    console.error('ReturnCurrent: raw prompt text (first 2000 chars):', promptJson.slice(0,2000));
+    throw new Error(`Workflow metadata is corrupted or unreadable (${e.message}) — check browser console for raw data`);
+  }
+  try{
+    uiGraph = workflowJson ? JSON.parse(sanitizeJsonText(workflowJson)) : null;
+  }catch(e){
+    console.error('ReturnCurrent: workflow JSON parse failed (labels only, non-fatal) —', e.message);
+    uiGraph = null;
+  }
+  return {apiGraph, uiGraph};
+}
+
+// Python's json.dumps allows bare NaN/Infinity/-Infinity tokens by default, but those are not
+// valid JSON per spec — JSON.parse throws "Unexpected token N..." on them. These can appear as
+// object values (`"cfg": NaN`) or inside arrays (`[1, NaN, 3]`), so match the bare token itself
+// rather than anchoring on a preceding colon — but avoid touching anything inside a quoted string.
+function sanitizeJsonText(text){
+  return text.replace(/(["'])(?:(?=(\\?))\2.)*?\1|(-?Infinity|NaN)/g, (match, quote, _esc, token) => {
+    return token ? 'null' : match; // leave quoted strings alone, replace bare tokens
+  });
+}
+
+// Pull node titles out of the UI graph (if present) so prompt/sampler fields can show
+// human-set names instead of generic class names. Purely cosmetic — never affects execution.
+function getUiTitleMap(uiGraph){
+  const map = {};
+  if(uiGraph && Array.isArray(uiGraph.nodes)){
+    uiGraph.nodes.forEach(n=>{ if(n.title) map[String(n.id)] = n.title; });
+  }
+  return map;
+}
+
+/* ====================== WORKFLOW PARSING → FIELDS ====================== */
+// The graph we get from extractWorkflowFromPng().apiGraph is already a resolved,
+// executable API-format graph straight from ComfyUI — no reconstruction needed.
+
+// Universal field detection: scan every node, for known INPUT KEY NAMES, regardless of
+// node class_type. This means custom/unknown node packs (Ideogram, Flux wrappers, LM Studio
+// nodes, anything) are supported automatically — we never need to whitelist a node type.
+// Anything not matched here is left completely untouched in the graph.
+const KNOWN_KEYS = {
+  text:            {label:'Prompt', kind:'text'},
+  caption:         {label:'Caption', kind:'text'},
+  prompt:          {label:'Prompt', kind:'text'},
+  input_text:      {label:'Prompt', kind:'text'},
+  string:          {label:'Text', kind:'text'},
+  negative_prompt: {label:'Negative Prompt', kind:'text'},
+  seed:            {label:'Seed', kind:'seed'},
+  noise_seed:      {label:'Seed', kind:'seed'},
+  steps:           {label:'Steps', kind:'number'},
+  cfg:             {label:'CFG', kind:'number'},
+  denoise:         {label:'Denoise', kind:'number'},
+  ckpt_name:       {label:'Model', kind:'select', optionsKey:'checkpoints'},
+  unet_name:       {label:'Model', kind:'select', optionsKey:'unets'},
+  unet_filename:   {label:'Model', kind:'select', optionsKey:'unet_gguf'},
+  lora_name:       {label:'LoRA file', kind:'text'},
+  strength_model:  {label:'LoRA Strength', kind:'number'},
+  width:           {label:'Width', kind:'number'},
+  height:          {label:'Height', kind:'number'},
+  length:          {label:'Frames', kind:'number'},
+  image:           {label:'Input Image', kind:'image'},
+  start_image:     {label:'Start Image', kind:'image'},
+  sampler_name:    {label:'Sampler', kind:'select', optionsKey:'samplers'},
+  scheduler:       {label:'Scheduler', kind:'select', optionsKey:'schedulers'},
+};
+
+function buildEditableFields(apiGraph, titleMap){
+  const groups = [];
+  for(const nodeId in apiGraph){
+    const node = apiGraph[nodeId];
+    const title = titleMap[nodeId] || node.class_type;
+
+    // Power Lora Loader (rgthree) — special handling
+    if(node.class_type === 'Power Lora Loader (rgthree)'){
+      const loras = [];
+      for(const key in node.inputs){
+        if(/^lora_\d+$/.test(key) && typeof node.inputs[key] === 'object' && node.inputs[key] !== null){
+          const entry = node.inputs[key];
+          loras.push({
+            key,
+            on: entry.on !== false,
+            lora: entry.lora || '',
+            strength: typeof entry.strength === 'number' ? entry.strength : 1,
+          });
+        }
+      }
+      if(loras.length){
+        groups.push({
+          nodeId, key: '__lora_stack__', kind: 'lora_stack',
+          label: `LoRAs — ${title}`,
+          value: loras
+        });
+      }
+      continue;
+    }
+
+    // RIFE VFI — just a toggle, hide the model/settings
+    if(node.class_type === 'RIFE VFI'){
+      groups.push({
+        nodeId, key:'__rife_toggle__', kind:'rife_toggle',
+        label:`Interpolation — ${title}`,
+        value: true, // on by default
+        rifeInputKey: null // will be resolved at submit time
+      });
+      // Find what feeds into RIFE's frames input to enable bypass
+      for(const key in node.inputs){
+        if(Array.isArray(node.inputs[key])){
+          const lastField = groups[groups.length-1];
+          lastField.rifeInput = node.inputs[key]; // e.g. ["135", 0]
+          break;
+        }
+      }
+      continue;
+    }
+
+    // ResolutionSelector — aspect ratio + megapixels
+    if(node.class_type === 'ResolutionSelector'){
+      for(const key in node.inputs){
+        const val = node.inputs[key];
+        if(Array.isArray(val)) continue;
+        if(typeof val === 'string' && val.includes(':')){
+          // Aspect ratio combo
+          groups.push({
+            nodeId, key, kind:'select', optionsKey:'_res_ratios',
+            label:`Aspect Ratio — ${title}`, value: val
+          });
+        } else if(typeof val === 'number' && key !== 'batch_size'){
+          const lk = key.toLowerCase();
+          const label = lk.includes('mega') ? 'Megapixels' : lk.includes('snap') ? 'Snap' : key;
+          groups.push({ nodeId, key, kind:'number', label:`${label} — ${title}`, value: val });
+        }
+      }
+      continue;
+    }
+
+    // UpscaleModelLoader — specific model_name handling (too generic for KNOWN_KEYS)
+    if(node.class_type === 'UpscaleModelLoader'){
+      if(node.inputs.model_name && typeof node.inputs.model_name === 'string'){
+        groups.push({
+          nodeId, key:'model_name', kind:'select', optionsKey:'upscale_models',
+          label:`Upscale Model — ${title}`, value: node.inputs.model_name
+        });
+      }
+      continue;
+    }
+
+    // UnetLoaderGGUF — unet_name key (different from UNETLoader)
+    if(node.class_type === 'UnetLoaderGGUF'){
+      if(node.inputs.unet_name && typeof node.inputs.unet_name === 'string'){
+        groups.push({
+          nodeId, key:'unet_name', kind:'select', optionsKey:'unet_gguf',
+          label:`Model — ${title}`, value: node.inputs.unet_name
+        });
+      }
+      continue;
+    }
+
+    // Ideogram4Scheduler — quality preset (Turbo/Default/Quality)
+    if(node.class_type === 'Ideogram4Scheduler'){
+      // Steps may be a link or direct value; detect current step count
+      const stepsVal = Array.isArray(node.inputs.steps) ? 20 : (node.inputs.steps || 20);
+      let preset = 'default';
+      if(stepsVal <= 10) preset = 'turbo';
+      else if(stepsVal >= 30) preset = 'quality';
+      groups.push({
+        nodeId, key: 'steps', kind: 'quality_preset',
+        label: `Quality — ${title}`,
+        value: preset,
+        steps: stepsVal
+      });
+      continue; // don't scan KNOWN_KEYS for this node
+    }
+
+    // IdeogramStudio — the prompt & dimensions live inside a nested widget object
+    if(node.class_type === 'IdeogramStudio'){
+      for(const key in node.inputs){
+        const val = node.inputs[key];
+        if(typeof val !== 'object' || val === null || Array.isArray(val)) continue;
+        // Found the studio widget object
+        const cap = val.caption || {};
+        const stu = val.studio || {};
+        // Prompt text (the big JSON string the user writes)
+        if(cap.high_level_description !== undefined){
+          groups.push({
+            nodeId, key, kind: 'text',
+            subPaths: [['caption','high_level_description'],['studio','high_level_description']],
+            label: `Prompt — ${title}`,
+            value: cap.high_level_description
+          });
+        }
+        // Aspect ratio
+        if(stu.aspect !== undefined){
+          groups.push({
+            nodeId, key, kind: 'ideo_aspect',
+            subPaths: [['studio','aspect']],
+            label: `Aspect Ratio — ${title}`,
+            value: stu.aspect,
+            width: stu.width, height: stu.height
+          });
+        }
+        // Width & Height (editable, auto-set by aspect but can override)
+        if(stu.width !== undefined){
+          groups.push({
+            nodeId, key, kind: 'number',
+            subPaths: [['studio','width']],
+            label: `Width — ${title}`,
+            value: stu.width
+          });
+        }
+        if(stu.height !== undefined){
+          groups.push({
+            nodeId, key, kind: 'number',
+            subPaths: [['studio','height']],
+            label: `Height — ${title}`,
+            value: stu.height
+          });
+        }
+        // Color palette (studio.style.color_palette — array of hex strings, max 12)
+        if(stu.style && Array.isArray(stu.style.color_palette)){
+          groups.push({
+            nodeId, key, kind: 'color_palette',
+            subPaths: [['studio','style','color_palette']],
+            label: `Color Palette — ${title}`,
+            value: [...stu.style.color_palette]
+          });
+        }
+      }
+      continue;
+    }
+
+    for(const key in node.inputs){
+      const known = KNOWN_KEYS[key];
+      if(!known) continue;
+      const val = node.inputs[key];
+      if(Array.isArray(val)) continue; // it's a link to another node, not an editable value
+      const field = {
+        nodeId, key, kind: known.kind,
+        label: `${known.label} — ${title}`,
+        value: val
+      };
+      if(known.optionsKey) field.optionsKey = known.optionsKey;
+      groups.push(field);
+    }
+
+    // Broad scan: find hidden prompt/caption JSON in any string input not caught by KNOWN_KEYS.
+    // The Ideogram Studio node stores its prompt data as a widget value under an internal key
+    // name we can't predict. Look for string values containing structured prompt JSON.
+    for(const key in node.inputs){
+      if(KNOWN_KEYS[key]) continue; // already handled above
+      const val = node.inputs[key];
+      if(typeof val !== 'string' || val.length < 30) continue;
+      if(Array.isArray(val)) continue;
+      // Check if this looks like Ideogram prompt JSON
+      try{
+        const parsed = JSON.parse(val);
+        if(parsed && typeof parsed === 'object' && (
+          parsed.prompt !== undefined ||
+          parsed.high_level_description !== undefined ||
+          parsed.compositional_deconstruction !== undefined
+        )){
+          groups.push({
+            nodeId, key, kind: 'text',
+            label: `Prompt — ${title}`,
+            value: val
+          });
+          continue;
+        }
+      }catch(e){}
+      // Also surface long text values on Ideogram/Studio nodes even if not JSON
+      if(/ideogram|studio/i.test(node.class_type) && val.length > 50 && !val.startsWith('{')){
+        groups.push({
+          nodeId, key, kind: 'text',
+          label: `${key} — ${title}`,
+          value: val
+        });
+      }
+    }
+  }
+
+  // --- Sort fields by priority, group by nodeId within same priority ---
+  const FIELD_PRIORITY = {
+    'ckpt_name':1, 'unet_name':1, 'unet_filename':1, 'model_name':1.5,
+    'seed':2, 'noise_seed':2,
+    'text':3, 'caption':3, 'prompt':3, 'input_text':3, 'string':3,
+    'negative_prompt':4,
+    'sampler_name':5,
+    'scheduler':6,
+    'steps':7, 'cfg':7, 'denoise':7,
+    'width':8.5, 'height':8.5, 'length':8.5,
+    '__lora_stack__':99
+  };
+
+  function getFieldPriority(f){
+    if(f.advanced) return 200;
+    if(f.kind === 'quality_preset') return 7.5;
+    if(f.kind === 'ideo_aspect') return 8;
+    if(f.kind === 'color_palette') return 9;
+    if(f.kind === 'rife_toggle') return 85;
+    // IdeogramStudio prompt → same priority as regular prompts
+    if(f.subPaths && f.kind === 'text') return 3;
+    // IdeogramStudio width/height → after aspect ratio
+    if(f.subPaths){
+      const lastSeg = f.subPaths[0]?.[f.subPaths[0].length-1] || '';
+      if(lastSeg === 'width' || lastSeg === 'height') return 8.5;
+      return 10;
+    }
+    return FIELD_PRIORITY[f.key] || 50;
+  }
+
+  groups.forEach(f => {
+    if(f.key === 'negative_prompt') f.negPrompt = true;
+  });
+
+  // --- Universal fallback: expose remaining primitive inputs as Advanced fields ---
+  const capturedKeys = new Set(groups.map(f => `${f.nodeId}:${f.key}`));
+  const SKIP_NODE_TYPES = new Set(['Power Lora Loader (rgthree)','RIFE VFI','IdeogramStudio','Ideogram4Scheduler','UpscaleModelLoader','UnetLoaderGGUF','ResolutionSelector','Note','MarkdownNote','Reroute','PrimitiveNode','VHS_VideoCombine','SaveImage','PreviewImage']);
+  const SKIP_KEYS = new Set(['control_after_generate','filename_prefix','choose file to upload']);
+  for(const nodeId in apiGraph){
+    const node = apiGraph[nodeId];
+    if(SKIP_NODE_TYPES.has(node.class_type)) continue;
+    const title = titleMap[nodeId] || node.class_type;
+    for(const key in (node.inputs || {})){
+      if(Array.isArray(node.inputs[key])) continue; // linked input
+      if(capturedKeys.has(`${nodeId}:${key}`)) continue;
+      if(SKIP_KEYS.has(key)) continue;
+      const val = node.inputs[key];
+      const t = typeof val;
+      if(t === 'number'){
+        groups.push({nodeId, key, kind:'number', label:`${key} — ${title}`, value: val, advanced:true});
+      } else if(t === 'boolean'){
+        groups.push({nodeId, key, kind:'checkbox', label:`${key} — ${title}`, value: val, advanced:true});
+      } else if(t === 'string' && val.length < 500){
+        groups.push({nodeId, key, kind: val.length > 60 ? 'text' : 'shorttext', label:`${key} — ${title}`, value: val, advanced:true});
+      }
+    }
+  }
+
+  // Ensure a lora_stack always exists for workflows with model loaders
+  const hasLoraStack = groups.some(f => f.kind === 'lora_stack');
+  if(!hasLoraStack){
+    // Find a model loader to attach the virtual LoRA stack to
+    let modelLoaderNodeId = null;
+    let clipLoaderNodeId = null;
+    for(const nid in apiGraph){
+      const ct = apiGraph[nid].class_type;
+      if(['UNETLoader','CheckpointLoaderSimple','UnetLoaderGGUF'].includes(ct)) modelLoaderNodeId = nid;
+      if(['CLIPLoader','CheckpointLoaderSimple'].includes(ct)) clipLoaderNodeId = nid;
+    }
+    if(modelLoaderNodeId){
+      groups.push({
+        nodeId: '_virtual_pll', key:'__lora_stack__', kind:'lora_stack',
+        label:'LoRAs',
+        value: [],
+        _virtualPll: true,
+        _modelLoaderNodeId: modelLoaderNodeId,
+        _clipLoaderNodeId: clipLoaderNodeId
+      });
+    }
+  }
+
+  groups.sort((a, b) => {
+    const pa = getFieldPriority(a);
+    const pb = getFieldPriority(b);
+    if(pa !== pb) return pa - pb;
+    // Within same priority, keep fields from the same node together
+    return (a.nodeId || '').localeCompare(b.nodeId || '');
+  });
+
+  return groups;
+}
+
+/* ====================== UI RENDERING ====================== */
+const main = document.getElementById('main');
+const actionBar = document.getElementById('actionBar');
+
+function renderTab(tab){
+  state.currentTab = tab;
+  document.querySelectorAll('nav.tabs button').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
+  if(tab === 'workflows'){
+    // If user was editing a workflow, return to that editor
+    if(state.currentWorkflow){
+      renderEditor();
+    } else {
+      renderWorkflowList();
+    }
+  }
+  if(tab === 'queue') renderQueue();
+  if(tab === 'gallery') renderGallery();
+  if(tab === 'tools') renderTools();
+}
+
+function renderWorkflowList(){
+  actionBar.style.display = 'none';
+  if(!state.workflows.length){
+    main.innerHTML = `
+      <div class="drop-zone" id="dropZone">
+        <div>Drop a workflow PNG or JSON here</div>
+        <label class="dz-label" for="fileInput">Choose file</label>
+        <input type="file" id="fileInput" accept="image/png,.json">
+      </div>
+      <div class="empty-state">
+        <div class="icon">◫</div>
+        <p>No saved workflows yet.</p>
+        <p>Import from a ComfyUI-generated PNG (workflow is baked into the file) or a .json workflow export.</p>
+      </div>
+    `;
+  } else {
+    main.innerHTML = `
+      <div class="drop-zone" id="dropZone" style="padding:14px;">
+        <label class="dz-label" for="fileInput" style="margin-top:0;">+ Import workflow (PNG / JSON)</label>
+        <input type="file" id="fileInput" accept="image/png,.json">
+      </div>
+      <div class="wf-list">
+        ${state.workflows.map((w,i)=>{
+          const modelShort = extractModelShortName(w.apiGraph || {});
+          const ckptFull = extractCkptName(w.apiGraph || {});
+          return `
+          <div class="wf-card" data-idx="${i}">
+            ${w.thumb ? `<img class="thumb" src="${w.thumb}">` : `<div class="thumb">◫</div>`}
+            <div class="meta">
+              <div class="wf-model-label">${escapeHtml(modelShort)}</div>
+              <div class="name">${escapeHtml(w.name)}</div>
+              ${ckptFull ? `<div class="wf-ckpt-detail">${escapeHtml(ckptFull.replace(/\\/g,'/').split('/').pop())}</div>` : ''}
+            </div>
+            <button class="delete-x" data-delete-idx="${i}">✕</button>
+            <div class="chev">›</div>
+          </div>`;
+        }).join('')}
+      </div>
+    `;
+    main.querySelectorAll('.wf-card').forEach(card=>{
+      card.addEventListener('click', (e)=>{
+        if(e.target.closest('.delete-x')) return;
+        openWorkflow(parseInt(card.dataset.idx));
+      });
+    });
+    main.querySelectorAll('.delete-x').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        const idx = parseInt(btn.dataset.deleteIdx);
+        state.workflows.splice(idx,1);
+        safeSaveWorkflows();
+        toast('Workflow deleted');
+        renderWorkflowList();
+      });
+    });
+  }
+  setupDropZone();
+}
+
+function setupDropZone(){
+  const dz = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  fileInput.addEventListener('change', e=>{
+    if(e.target.files[0]) handleImportFile(e.target.files[0]);
+  });
+  dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', ()=> dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e=>{
+    e.preventDefault();
+    dz.classList.remove('drag-over');
+    if(e.dataTransfer.files[0]) handleImportFile(e.dataTransfer.files[0]);
+  });
+}
+
+async function handleImportFile(file){
+  try{
+    let apiGraph, uiGraph, thumb = '';
+    if(/\.json$/i.test(file.name)){
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      if(parsed.nodes && parsed.links !== undefined){
+        // UI workflow format — convert via server object_info
+        uiGraph = parsed;
+        apiGraph = await convertUiToApi(parsed);
+      } else if(Object.values(parsed).some(v => v && typeof v === 'object' && v.class_type)){
+        // API format — directly usable
+        apiGraph = parsed;
+        uiGraph = null;
+      } else {
+        throw new Error('Unrecognized JSON format — export from ComfyUI as workflow or API format');
+      }
+    } else {
+      const extracted = await extractWorkflowFromPng(file);
+      apiGraph = extracted.apiGraph;
+      uiGraph = extracted.uiGraph;
+      thumb = await generateThumbnail(file, 96, 0.5);
+    }
+    const titleMap = getUiTitleMap(uiGraph);
+    const fields = buildEditableFields(apiGraph, titleMap);
+    const name = file.name.replace(/\.(png|json)$/i,'');
+    const saved = {name, apiGraph, titleMap, thumb, fieldCount: fields.length};
+    state.workflows.unshift(saved);
+    safeSaveWorkflows();
+    toast(`Imported "${name}" — ${fields.length} fields found`);
+    renderWorkflowList();
+  }catch(e){
+    toast(e.message || 'Could not read workflow from this file');
+    console.error(e);
+  }
+}
+
+/** Convert ComfyUI UI-format workflow JSON to API format using server object_info */
+async function convertUiToApi(ui){
+  if(!state.connected) throw new Error('Connect to your server first — JSON conversion needs node definitions');
+  // Fetch full object_info (cached per session)
+  if(!state._fullObjectInfo){
+    const res = await fetch(`${baseUrl()}/object_info`);
+    state._fullObjectInfo = await res.json();
+  }
+  const objectInfo = state._fullObjectInfo;
+  const api = {};
+  const linkMap = {};
+  (ui.links || []).forEach(l => {
+    if(Array.isArray(l)) linkMap[l[0]] = [String(l[1]), l[2]];
+    else if(l && l.id !== undefined) linkMap[l.id] = [String(l.origin_id), l.origin_slot];
+  });
+  const CTRL_VALUES = ['fixed','increment','decrement','randomize'];
+
+  for(const n of (ui.nodes || [])){
+    if(n.mode === 2 || n.mode === 4) continue; // muted or bypassed
+    // Skip pure UI nodes
+    if(['Note','MarkdownNote','Reroute','PrimitiveNode'].includes(n.type)) continue;
+    const def = objectInfo[n.type];
+    if(!def) throw new Error(`Unknown node type "${n.type}" — is the custom node installed on the server?`);
+
+    const inputs = {};
+    const linkedNames = new Set();
+    (n.inputs || []).forEach(inp => {
+      if(inp.link != null && linkMap[inp.link]){
+        inputs[inp.name] = linkMap[inp.link];
+        linkedNames.add(inp.name);
+      }
+    });
+
+    // Determine widget input names in definition order
+    const widgetNames = [];
+    const allDefs = {...(def.input?.required || {}), ...(def.input?.optional || {})};
+    for(const [name, spec] of Object.entries(allDefs)){
+      const t = Array.isArray(spec) ? spec[0] : spec;
+      if(Array.isArray(t) || ['INT','FLOAT','STRING','BOOLEAN'].includes(t)){
+        widgetNames.push(name);
+      }
+    }
+
+    let wv = Array.isArray(n.widgets_values) ? n.widgets_values : [];
+    let wi = 0;
+    for(const name of widgetNames){
+      if(linkedNames.has(name)) continue; // converted-to-input widgets don't consume a slot in modern ComfyUI
+      if(wi >= wv.length) break;
+      inputs[name] = wv[wi];
+      wi++;
+      // Skip the control_after_generate widget slot after seeds
+      if((name === 'seed' || name === 'noise_seed') && wi < wv.length &&
+         typeof wv[wi] === 'string' && CTRL_VALUES.includes(wv[wi])){
+        wi++;
+      }
+    }
+    api[String(n.id)] = {class_type: n.type, inputs};
+  }
+  return api;
+}
+
+/** Resize an image file to a small JPEG thumbnail via canvas */
+function generateThumbnail(file, size, quality){
+  return new Promise((resolve)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      // Cover-crop to square
+      const s = Math.min(img.width, img.height);
+      const sx = (img.width - s) / 2;
+      const sy = (img.height - s) / 2;
+      ctx.drawImage(img, sx, sy, s, s, 0, 0, size, size);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+      URL.revokeObjectURL(img.src);
+    };
+    img.onerror = ()=> resolve('');
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+/** Save workflows to localStorage, gracefully handling quota errors */
+function safeSaveWorkflows(){
+  const data = JSON.stringify(state.workflows);
+  try{
+    localStorage.setItem('returncurrent_workflows', data);
+  }catch(e){
+    // Quota exceeded — try stripping thumbnails from older workflows
+    console.warn('Storage quota hit, stripping old thumbnails…');
+    for(let i = state.workflows.length - 1; i >= 1; i--){
+      state.workflows[i].thumb = '';
+    }
+    try{
+      localStorage.setItem('returncurrent_workflows', JSON.stringify(state.workflows));
+    }catch(e2){
+      // Still too big — drop oldest workflows until it fits
+      while(state.workflows.length > 1){
+        state.workflows.pop();
+        try{
+          localStorage.setItem('returncurrent_workflows', JSON.stringify(state.workflows));
+          break;
+        }catch(e3){}
+      }
+      console.warn('Trimmed stored workflows to fit quota');
+    }
+  }
+}
+
+function fileToDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function escapeHtml(s){
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ---- Editor ---- */
+function openWorkflow(idx){
+  try{
+    const saved = state.workflows[idx];
+    const fields = buildEditableFields(saved.apiGraph, saved.titleMap || {});
+    state.currentWorkflow = {saved, apiGraph: saved.apiGraph, fields};
+    history.pushState({editor: true}, '');
+    renderEditor();
+  }catch(e){
+    console.error('openWorkflow error:', e);
+    toast(`Error: ${e.message}`);
+  }
+}
+
+/* ---- LoRA organization: filter video loras, nest by folder, prioritize model-matching ---- */
+function buildOrganizedLoraOptions(apiGraph){
+  if(!state.availableLoras.length) return '';
+
+  // 1. Filter out video LoRAs (wan 2.1/2.2 and video-specific ones)
+  const VIDEO_FILTER = /\b(wan[_ ]?2[\._]?[12]|wan[_ ]?video|cogvideo|animatediff|svd[_ ]|video[_ ]lora|mochi|hunyuan[_ ]?video)\b/i;
+  const filtered = state.availableLoras.filter(l => !VIDEO_FILTER.test(l));
+
+  // 2. Detect current model name to prioritize matching LoRA folders
+  let modelHint = '';
+  if(apiGraph){
+    for(const nodeId in apiGraph){
+      const inputs = apiGraph[nodeId].inputs;
+      if(inputs.ckpt_name && typeof inputs.ckpt_name === 'string'){
+        modelHint = inputs.ckpt_name.toLowerCase();
+        break;
+      }
+      if(inputs.unet_name && typeof inputs.unet_name === 'string'){
+        modelHint = inputs.unet_name.toLowerCase();
+        break;
+      }
+    }
+  }
+
+  // 3. Group by top-level folder (normalize slashes)
+  const groups = {};
+  const rootItems = [];
+  filtered.forEach(l => {
+    const norm = l.replace(/\\/g, '/');
+    const slashIdx = norm.indexOf('/');
+    if(slashIdx === -1){
+      rootItems.push(l);
+    } else {
+      const folder = norm.substring(0, slashIdx);
+      if(!groups[folder]) groups[folder] = [];
+      groups[folder].push(l);
+    }
+  });
+
+  // 4. Sort folders: model-matching folders first, then alphabetical
+  const folderNames = Object.keys(groups).sort((a, b) => {
+    const aMatch = modelHint && modelHint.includes(a.toLowerCase()) ? 0 : 1;
+    const bMatch = modelHint && modelHint.includes(b.toLowerCase()) ? 0 : 1;
+    if(aMatch !== bMatch) return aMatch - bMatch;
+    return a.localeCompare(b);
+  });
+
+  // 5. Build HTML with optgroups
+  let html = '';
+
+  // Model-matching folders get a star prefix
+  folderNames.forEach(folder => {
+    const isMatch = modelHint && modelHint.includes(folder.toLowerCase());
+    const label = isMatch ? `★ ${folder}` : folder;
+    html += `<optgroup label="${escapeHtml(label)}">`;
+    groups[folder].sort((a,b) => a.localeCompare(b)).forEach(l => {
+      const displayName = l.replace(/\\/g,'/').split('/').pop();
+      html += `<option value="${escapeHtml(l)}">${escapeHtml(displayName)}</option>`;
+    });
+    html += `</optgroup>`;
+  });
+
+  // Root-level loras (no folder) go last
+  if(rootItems.length){
+    html += `<optgroup label="— Root —">`;
+    rootItems.sort((a,b) => a.localeCompare(b)).forEach(l => {
+      html += `<option value="${escapeHtml(l)}">${escapeHtml(l)}</option>`;
+    });
+    html += `</optgroup>`;
+  }
+
+  return html;
+}
+
+/** LoRA keyword map — stored in localStorage, keyed by lora path */
+function getLoraKeywordMap(){
+  try{ return JSON.parse(localStorage.getItem('returncurrent_lora_keywords') || '{}'); }catch(e){ return {}; }
+}
+function setLoraKeyword(loraPath, keywords){
+  const map = getLoraKeywordMap();
+  if(keywords.trim()) map[loraPath] = keywords.trim();
+  else delete map[loraPath];
+  localStorage.setItem('returncurrent_lora_keywords', JSON.stringify(map));
+}
+function getLoraKeyword(loraPath){
+  return getLoraKeywordMap()[loraPath] || '';
+}
+
+/** Get all active LoRA trigger keywords for display */
+function getActiveTriggers(loraEntries){
+  const all = [];
+  loraEntries.forEach(entry => {
+    if(!entry.on) return;
+    const kw = getLoraKeyword(entry.lora);
+    if(kw) all.push(...kw.split(',').map(s => s.trim()).filter(Boolean));
+  });
+  return all;
+}
+
+/** Organize checkpoint/model list by subfolder, prioritize model-matching folder */
+function buildOrganizedSelectOptions(options, currentValue, apiGraph){
+  if(!Array.isArray(options) || !options.length) return `<option value="${escapeHtml(String(currentValue || ''))}">${escapeHtml(String(currentValue || ''))}</option>`;
+  // Detect current model folder for prioritization
+  let modelHint = '';
+  if(currentValue) modelHint = currentValue.replace(/\\/g,'/').split('/')[0].toLowerCase();
+
+  const groups = {};
+  const rootItems = [];
+  options.forEach(opt => {
+    const norm = String(opt).replace(/\\/g,'/');
+    const slashIdx = norm.indexOf('/');
+    if(slashIdx === -1){
+      rootItems.push(opt);
+    } else {
+      const folder = norm.substring(0, slashIdx);
+      if(!groups[folder]) groups[folder] = [];
+      groups[folder].push(opt);
+    }
+  });
+
+  const folderNames = Object.keys(groups).sort((a, b) => {
+    const aMatch = modelHint && a.toLowerCase() === modelHint ? 0 : 1;
+    const bMatch = modelHint && b.toLowerCase() === modelHint ? 0 : 1;
+    if(aMatch !== bMatch) return aMatch - bMatch;
+    return a.localeCompare(b);
+  });
+
+  let html = '';
+  folderNames.forEach(folder => {
+    const isMatch = modelHint && folder.toLowerCase() === modelHint;
+    const label = isMatch ? `★ ${folder}` : folder;
+    html += `<optgroup label="${escapeHtml(label)}">`;
+    groups[folder].sort().forEach(opt => {
+      const display = String(opt).replace(/\\/g,'/').split('/').pop();
+      html += `<option value="${escapeHtml(String(opt))}" ${opt === currentValue ? 'selected' : ''}>${escapeHtml(display)}</option>`;
+    });
+    html += `</optgroup>`;
+  });
+  if(rootItems.length){
+    html += `<optgroup label="— Root —">`;
+    rootItems.sort().forEach(opt => {
+      html += `<option value="${escapeHtml(String(opt))}" ${opt === currentValue ? 'selected' : ''}>${escapeHtml(String(opt))}</option>`;
+    });
+    html += `</optgroup>`;
+  }
+  return html;
+}
+
+function renderEditor(){
+  try{
+  const {saved, apiGraph, fields} = state.currentWorkflow;
+  fields.forEach(f => delete f._rendered); // clear compact row flags from prior render
+  const editorModelShort = extractModelShortName(apiGraph || {});
+  const editorCkpt = extractCkptName(apiGraph || {});
+  let html = `
+    <div class="editor-header">
+      <div>
+        <div class="wf-model-label">${escapeHtml(editorModelShort)}</div>
+        <div class="wf-name">${escapeHtml(saved.name)}</div>
+        ${editorCkpt ? `<div class="wf-ckpt-detail">${escapeHtml(editorCkpt.replace(/\\/g,'/').split('/').pop())}</div>` : ''}
+      </div>
+      <div class="back-link" id="backToList">‹ Workflows</div>
+    </div>
+  `;
+
+  let advancedOpened = false;
+  fields.forEach((f, i)=>{
+    // Open the Advanced collapsible before the first advanced field
+    if(f.advanced && !advancedOpened){
+      advancedOpened = true;
+      html += `
+        <div class="advanced-section" id="advancedSection">
+          <button class="advanced-toggle" id="advancedToggle">
+            <span class="adv-label">Advanced — ${fields.filter(ff=>ff.advanced).length} more settings</span>
+            <span class="adv-chev">›</span>
+          </button>
+          <div class="advanced-fields">`;
+    }
+    // Check for compact row: group Steps+CFG+Denoise or Width+Height side by side (same nodeId)
+    const COMPACT_KEYS = ['steps','cfg','denoise','width','height'];
+    const isCompactCandidate = COMPACT_KEYS.includes(f.key) && f.kind === 'number';
+    const isSubPathWH = f.subPaths && f.kind === 'number' && f.subPaths[0] && 
+      (f.subPaths[0][f.subPaths[0].length-1] === 'width' || f.subPaths[0][f.subPaths[0].length-1] === 'height');
+    
+    if(isCompactCandidate || isSubPathWH){
+      if(!f._rendered){
+        // Find adjacent fields of the same type group and nodeId
+        const isWH = f.key === 'width' || f.key === 'height' || isSubPathWH;
+        const groupKeys = isWH ? ['width','height'] : ['steps','cfg','denoise'];
+        const siblings = fields.filter(ff => {
+          if(ff._rendered) return false;
+          if(!!ff.advanced !== !!f.advanced) return false; // don't mix advanced and main fields
+          if(isWH){
+            // Match width/height by nodeId (or subPaths for IdeogramStudio)
+            const ffLastSeg = ff.subPaths ? ff.subPaths[0]?.[ff.subPaths[0].length-1] : ff.key;
+            return (ffLastSeg === 'width' || ffLastSeg === 'height') && 
+                   ff.kind === 'number' && ff.nodeId === f.nodeId;
+          } else {
+            return groupKeys.includes(ff.key) && ff.kind === 'number' && ff.nodeId === f.nodeId;
+          }
+        });
+        if(siblings.length > 1){
+          html += `<div class="compact-row">`;
+          siblings.forEach(cf => {
+            cf._rendered = true;
+            const ci = fields.indexOf(cf);
+            html += `
+              <div class="field-group">
+                <div class="node-label">${escapeHtml(cf.label)}</div>
+                <div class="field">
+                  <input type="number" step="any" data-field-idx="${ci}" value="${cf.value ?? 0}">
+                </div>
+              </div>`;
+          });
+          html += `</div>`;
+          return;
+        }
+      }
+    }
+    if(f._rendered) return;
+
+    if(f.kind === 'text'){
+      const negClass = f.negPrompt ? ' neg-prompt' : '';
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)}</div>
+          <div class="field">
+            <textarea class="${negClass}" data-field-idx="${i}">${escapeHtml(f.value ?? '')}</textarea>
+          </div>
+        </div>`;
+    } else if(f.kind === 'seed'){
+      const isLocked = f._locked || false;
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)}</div>
+          <div class="field seed-field">
+            <div class="seed-row">
+              <input type="number" data-field-idx="${i}" value="${f.value ?? 0}">
+              <button data-randomize-idx="${i}">🎲</button>
+              <button class="seed-lock ${isLocked ? 'locked' : ''}" data-seed-lock="${i}" title="${isLocked ? 'Seed locked — won\'t randomize on Generate' : 'Seed unlocked — randomizes on Generate'}">${isLocked ? '🔒' : '🔓'}</button>
+            </div>
+          </div>
+        </div>`;
+    } else if(f.kind === 'color_palette'){
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)} <span style="opacity:.6">(${f.value.length}/12)</span></div>
+          <div class="field">
+            <div class="color-palette" data-palette-field="${i}">
+              ${f.value.map((hex, ci) => `
+                <div class="color-chip" style="background:${escapeHtml(hex)}" data-chip-idx="${ci}" title="${escapeHtml(hex)}">
+                  <button class="chip-remove" data-chip-remove="${ci}">✕</button>
+                </div>
+              `).join('')}
+              ${f.value.length < 12 ? `<button class="color-add-chip" data-palette-add="${i}">+</button>` : ''}
+            </div>
+            <div class="color-hex-row" style="display:none;" data-hex-row="${i}">
+              <input type="color" data-color-picker="${i}" value="#ff2d7b">
+              <input type="text" data-hex-input="${i}" placeholder="#ff2d7b" maxlength="7">
+              <button data-hex-confirm="${i}">Add</button>
+            </div>
+          </div>
+        </div>`;
+    } else if(f.kind === 'checkbox'){
+      html += `
+        <div class="field-group">
+          <div class="field checkbox">
+            <input type="checkbox" data-field-idx="${i}" ${f.value ? 'checked' : ''}>
+            <div class="node-label" style="margin:0;">${escapeHtml(f.label)}</div>
+          </div>
+        </div>`;
+    } else if(f.kind === 'shorttext'){
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)}</div>
+          <div class="field">
+            <input type="text" data-field-idx="${i}" value="${escapeHtml(String(f.value ?? ''))}">
+          </div>
+        </div>`;
+    } else if(f.kind === 'number'){
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)}</div>
+          <div class="field">
+            <input type="number" step="any" data-field-idx="${i}" value="${f.value ?? 0}">
+          </div>
+        </div>`;
+    } else if(f.kind === 'select'){
+      const rawOpts = (f.optionsKey && state.serverOptions[f.optionsKey]);
+      const options = Array.isArray(rawOpts) ? rawOpts : [];
+      const useGrouped = ['checkpoints','unets','unet_gguf','upscale_models'].includes(f.optionsKey) && options.length > 0;
+      const optionsHtml = useGrouped ? buildOrganizedSelectOptions(options, f.value, state.currentWorkflow?.apiGraph) : 
+        ((!options.length ? `<option value="${escapeHtml(String(f.value ?? ''))}">${escapeHtml(String(f.value ?? ''))}</option>` : '') +
+        options.map(opt => {
+          const display = String(opt).replace(/\\/g,'/').split('/').pop();
+          return `<option value="${escapeHtml(String(opt))}" ${opt === f.value ? 'selected' : ''}>${escapeHtml(display)}</option>`;
+        }).join(''));
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)}</div>
+          <div class="field">
+            <select data-field-idx="${i}">
+              ${optionsHtml}
+            </select>
+          </div>
+        </div>`;
+    } else if(f.kind === 'ideo_aspect'){
+      const ratios = ['1:1','3:2','4:3','16:9','21:9','2:3','3:4','9:16'];
+      // Determine current resolution tier
+      const minDim = Math.min(f.width||1080, f.height||1920);
+      const resTier = minDim >= 1440 ? '2k' : '1080p';
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)}</div>
+          <div class="field">
+            <div class="aspect-grid" data-aspect-field="${i}">
+              ${ratios.map(r => `<button class="aspect-btn ${r === f.value ? 'active' : ''}" data-ratio="${r}">${r}</button>`).join('')}
+            </div>
+            <div class="res-presets" data-res-field="${i}">
+              <button class="res-btn ${resTier==='1080p'?'active':''}" data-res="1080">1080p</button>
+              <button class="res-btn ${resTier==='2k'?'active':''}" data-res="1440">2K</button>
+            </div>
+          </div>
+        </div>`;
+    } else if(f.kind === 'quality_preset'){
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)}</div>
+          <div class="quality-presets" data-qp-field="${i}">
+            <button class="qp-btn ${f.value==='turbo'?'active':''}" data-qp="turbo">
+              <span class="qp-icon">🐇</span><span class="qp-label">Turbo</span>
+            </button>
+            <button class="qp-btn ${f.value==='default'?'active':''}" data-qp="default">
+              <span class="qp-icon">🦅</span><span class="qp-label">Default</span>
+            </button>
+            <button class="qp-btn ${f.value==='quality'?'active':''}" data-qp="quality">
+              <span class="qp-icon">🐢</span><span class="qp-label">Quality</span>
+            </button>
+          </div>
+        </div>`;
+    } else if(f.kind === 'rife_toggle'){
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)}</div>
+          <div class="rife-toggle-bar ${f.value ? 'on' : ''}" data-rife-field="${i}">
+            <div class="rife-status">${f.value ? 'INTERPOLATION ON' : 'INTERPOLATION OFF'}</div>
+          </div>
+        </div>`;
+    } else if(f.kind === 'image'){
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)}</div>
+          <div class="field">
+            <div class="image-input-actions">
+              <button data-camera-idx="${i}">📷 Camera</button>
+              <button data-library-idx="${i}">🖼 Library</button>
+            </div>
+            <input type="file" accept="image/*" capture="environment" id="cameraInput${i}" style="display:none;">
+            <input type="file" accept="image/*" id="libraryInput${i}" style="display:none;">
+            <img class="image-input-preview" id="imgPreview${i}" style="display:none;">
+          </div>
+        </div>`;
+    } else if(f.kind === 'lora_stack'){
+      const loraOptionsHtml = buildOrganizedLoraOptions(state.currentWorkflow.apiGraph);
+      html += `
+        <div class="field-group">
+          <div class="node-label">${escapeHtml(f.label)}</div>
+          <div class="lora-stack" data-lora-field-idx="${i}">
+            ${f.value.map((entry, li) => `
+              <div class="lora-entry ${entry.on ? '' : 'disabled'}" data-lora-idx="${li}">
+                <div class="lora-row">
+                  <button class="lora-toggle ${entry.on ? 'on' : ''}" data-lora-toggle="${li}"></button>
+                  <select data-lora-select="${li}">
+                    ${!state.availableLoras.length ? `<option value="${escapeHtml(entry.lora)}">${escapeHtml(entry.lora.replace(/\\/g,'/').split('/').pop())}</option>` : ''}
+                    ${loraOptionsHtml}
+                  </select>
+                  <button class="lora-delete" data-lora-delete="${li}">✕</button>
+                </div>
+                <div class="lora-strength">
+                  <label>Str</label>
+                  <input type="range" min="-2" max="2" step="0.05" value="${Math.max(-2, Math.min(2, entry.strength))}" data-lora-strength="${li}">
+                  <input type="number" step="any" class="str-val" data-lora-str-display="${li}" value="${entry.strength}">
+                </div>
+                <input class="lora-keywords-input" data-lora-kw="${li}" placeholder="trigger words" value="${escapeHtml(getLoraKeyword(entry.lora))}">
+              </div>
+            `).join('')}
+            <div class="lora-triggers" data-triggers-field="${i}">
+              <span class="lora-triggers-label">Keywords</span>
+              <span class="lora-triggers-words" id="triggerWords${i}"></span>
+              <button class="lora-triggers-copy" data-triggers-copy="${i}">Copy</button>
+            </div>
+            <button class="lora-add-btn" data-lora-add="${i}">+ Add LoRA</button>
+          </div>
+        </div>`;
+    }
+  });
+  // Close the Advanced collapsible if it was opened
+  if(advancedOpened){
+    html += `</div></div>`;
+  }
+
+  main.innerHTML = html;
+  document.getElementById('backToList').addEventListener('click', ()=>{
+    state.currentWorkflow = null;
+    renderWorkflowList();
+  });
+
+  // Advanced section toggle
+  const advToggle = document.getElementById('advancedToggle');
+  if(advToggle){
+    advToggle.addEventListener('click', ()=>{
+      document.getElementById('advancedSection').classList.toggle('open');
+    });
+  }
+
+  // wire inputs
+  main.querySelectorAll('[data-field-idx]').forEach(el=>{
+    el.addEventListener('input', onFieldChange);
+    if(el.tagName === 'SELECT') el.addEventListener('change', onFieldChange);
+  });
+  main.querySelectorAll('[data-randomize-idx]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = btn.dataset.randomizeIdx;
+      const input = main.querySelector(`[data-field-idx="${idx}"]`);
+      const newSeed = Math.floor(Math.random()*1e15);
+      input.value = newSeed;
+      fields[idx].value = newSeed;
+    });
+  });
+  // Seed lock toggles
+  main.querySelectorAll('[data-seed-lock]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = parseInt(btn.dataset.seedLock);
+      fields[idx]._locked = !fields[idx]._locked;
+      const locked = fields[idx]._locked;
+      btn.classList.toggle('locked', locked);
+      btn.textContent = locked ? '🔒' : '🔓';
+      btn.title = locked ? "Seed locked — won't randomize on Generate" : 'Seed unlocked — randomizes on Generate';
+    });
+  });
+  fields.forEach((f,i)=>{
+    if(f.kind==='image'){
+      const camBtn = main.querySelector(`[data-camera-idx="${i}"]`);
+      const libBtn = main.querySelector(`[data-library-idx="${i}"]`);
+      const camInput = document.getElementById(`cameraInput${i}`);
+      const libInput = document.getElementById(`libraryInput${i}`);
+      camBtn.addEventListener('click', ()=>camInput.click());
+      libBtn.addEventListener('click', ()=>libInput.click());
+      [camInput, libInput].forEach(inp=>{
+        inp.addEventListener('change', async e=>{
+          if(e.target.files[0]) await handleImageFieldUpload(e.target.files[0], i);
+        });
+      });
+    }
+    // Wire aspect ratio grid
+    if(f.kind === 'ideo_aspect'){
+      const grid = main.querySelector(`[data-aspect-field="${i}"]`);
+      if(grid){
+        grid.querySelectorAll('.aspect-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            grid.querySelectorAll('.aspect-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            f.value = btn.dataset.ratio;
+            // Auto-calculate dimensions based on aspect ratio and current megapixels
+            const [rw, rh] = btn.dataset.ratio.split(':').map(Number);
+            const currentMP = (f.width * f.height) / 1e6;
+            const mp = Math.max(currentMP, 0.5);
+            const totalPx = mp * 1e6;
+            const newW = Math.round(Math.sqrt(totalPx * rw / rh) / 16) * 16;
+            const newH = Math.round(Math.sqrt(totalPx * rh / rw) / 16) * 16;
+            f.width = newW;
+            f.height = newH;
+            // Update width/height fields if they exist
+            const wField = fields.find(ff => ff.subPaths && ff.subPaths.some(p => p[p.length-1]==='width'));
+            const hField = fields.find(ff => ff.subPaths && ff.subPaths.some(p => p[p.length-1]==='height'));
+            if(wField){ wField.value = newW; const el = main.querySelector(`[data-field-idx="${fields.indexOf(wField)}"]`); if(el) el.value = newW; }
+            if(hField){ hField.value = newH; const el = main.querySelector(`[data-field-idx="${fields.indexOf(hField)}"]`); if(el) el.value = newH; }
+          });
+        });
+      }
+      // Resolution presets (1080p / 2K)
+      const resGrid = main.querySelector(`[data-res-field="${i}"]`);
+      if(resGrid){
+        resGrid.querySelectorAll('.res-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            resGrid.querySelectorAll('.res-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const base = parseInt(btn.dataset.res); // 1080 or 1440
+            const [rw, rh] = (f.value || '1:1').split(':').map(Number);
+            let newW, newH;
+            if(rw >= rh){
+              newH = base; newW = Math.round(base * rw / rh / 8) * 8;
+            } else {
+              newW = base; newH = Math.round(base * rh / rw / 8) * 8;
+            }
+            f.width = newW; f.height = newH;
+            const wField = fields.find(ff => ff.subPaths && ff.subPaths.some(p => p[p.length-1]==='width'));
+            const hField = fields.find(ff => ff.subPaths && ff.subPaths.some(p => p[p.length-1]==='height'));
+            if(wField){ wField.value = newW; const el = main.querySelector(`[data-field-idx="${fields.indexOf(wField)}"]`); if(el) el.value = newW; }
+            if(hField){ hField.value = newH; const el = main.querySelector(`[data-field-idx="${fields.indexOf(hField)}"]`); if(el) el.value = newH; }
+          });
+        });
+      }
+    }
+    // Quality preset wiring
+    if(f.kind === 'quality_preset'){
+      const qpContainer = main.querySelector(`[data-qp-field="${i}"]`);
+      if(qpContainer){
+        qpContainer.querySelectorAll('.qp-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            qpContainer.querySelectorAll('.qp-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const preset = btn.dataset.qp;
+            f.value = preset;
+            const stepMap = {turbo: 8, default: 20, quality: 35};
+            f.steps = stepMap[preset];
+            // Update steps field if visible
+            const stepsField = fields.find(ff => ff.key === 'steps' && ff.kind === 'number');
+            if(stepsField){
+              stepsField.value = f.steps;
+              const el = main.querySelector(`[data-field-idx="${fields.indexOf(stepsField)}"]`);
+              if(el) el.value = f.steps;
+            }
+          });
+        });
+      }
+    }
+    // Color palette wiring
+    if(f.kind === 'color_palette'){
+      const paletteEl = main.querySelector(`[data-palette-field="${i}"]`);
+      const hexRow = main.querySelector(`[data-hex-row="${i}"]`);
+      if(paletteEl && hexRow){
+        const picker = hexRow.querySelector(`[data-color-picker="${i}"]`);
+        const hexInput = hexRow.querySelector(`[data-hex-input="${i}"]`);
+        // + chip opens the hex row
+        const addBtn = paletteEl.querySelector(`[data-palette-add="${i}"]`);
+        if(addBtn){
+          addBtn.addEventListener('click', ()=>{
+            hexRow.style.display = hexRow.style.display === 'none' ? 'flex' : 'none';
+          });
+        }
+        // Color picker syncs to hex text
+        picker.addEventListener('input', ()=>{ hexInput.value = picker.value; });
+        // Hex text syncs to picker when valid
+        hexInput.addEventListener('input', ()=>{
+          if(/^#[0-9a-fA-F]{6}$/.test(hexInput.value)) picker.value = hexInput.value;
+        });
+        // Add button commits the color
+        hexRow.querySelector(`[data-hex-confirm="${i}"]`).addEventListener('click', ()=>{
+          let hex = hexInput.value.trim() || picker.value;
+          if(!hex.startsWith('#')) hex = '#' + hex;
+          if(!/^#[0-9a-fA-F]{6}$/.test(hex)){ toast('Invalid hex — use #rrggbb'); return; }
+          if(f.value.length >= 12){ toast('Palette full (12 max)'); return; }
+          f.value.push(hex.toLowerCase());
+          renderEditor();
+        });
+        // Remove chips
+        paletteEl.querySelectorAll('[data-chip-remove]').forEach(btn => {
+          btn.addEventListener('click', (e)=>{
+            e.stopPropagation();
+            f.value.splice(parseInt(btn.dataset.chipRemove), 1);
+            renderEditor();
+          });
+        });
+      }
+    }
+    // RIFE toggle wiring
+    if(f.kind === 'rife_toggle'){
+      const bar = main.querySelector(`[data-rife-field="${i}"]`);
+      if(bar){
+        bar.addEventListener('click', ()=>{
+          f.value = !f.value;
+          bar.classList.toggle('on', f.value);
+          bar.querySelector('.rife-status').textContent = f.value ? 'INTERPOLATION ON' : 'INTERPOLATION OFF';
+        });
+      }
+    }
+    // Wire lora_stack controls
+    if(f.kind === 'lora_stack'){
+      const stackEl = main.querySelector(`[data-lora-field-idx="${i}"]`);
+      if(stackEl){
+        // Set initial select values
+        f.value.forEach((entry, li) => {
+          const sel = stackEl.querySelector(`[data-lora-select="${li}"]`);
+          if(sel) sel.value = entry.lora;
+        });
+
+        // Trigger keyword display updater
+        const updateTriggers = () => {
+          const triggers = getActiveTriggers(f.value);
+          const el = document.getElementById(`triggerWords${i}`);
+          if(el){
+            if(triggers.length){
+              el.textContent = triggers.join(', ');
+              el.className = 'lora-triggers-words';
+            } else {
+              el.textContent = 'enable LoRAs with _keyword names';
+              el.className = 'lora-triggers-empty';
+            }
+          }
+        };
+        updateTriggers(); // initial render
+
+        // Copy triggers button
+        const copyBtn = stackEl.querySelector(`[data-triggers-copy="${i}"]`);
+        if(copyBtn){
+          copyBtn.addEventListener('click', () => {
+            const triggers = getActiveTriggers(f.value);
+            if(!triggers.length){ toast('No active triggers'); return; }
+            // Check if Ideogram workflow (has IdeogramStudio node)
+            const isIdeogram = Object.values(state.currentWorkflow.apiGraph || {}).some(n => n.class_type === 'IdeogramStudio');
+            const text = isIdeogram
+              ? `"LoRA": "${triggers.join(', ')}"`
+              : triggers.join(', ');
+            copyToClipboard(text);
+          });
+        }
+
+        // Toggle on/off
+        stackEl.querySelectorAll('[data-lora-toggle]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const li = parseInt(btn.dataset.loraToggle);
+            f.value[li].on = !f.value[li].on;
+            btn.classList.toggle('on', f.value[li].on);
+            btn.closest('.lora-entry').classList.toggle('disabled', !f.value[li].on);
+            updateTriggers();
+          });
+        });
+        // Select lora
+        stackEl.querySelectorAll('[data-lora-select]').forEach(sel => {
+          sel.addEventListener('change', () => {
+            const li = parseInt(sel.dataset.loraSelect);
+            f.value[li].lora = sel.value;
+            // Update keyword input with stored keyword for new lora
+            const kwInput = stackEl.querySelector(`[data-lora-kw="${li}"]`);
+            if(kwInput) kwInput.value = getLoraKeyword(sel.value);
+            updateTriggers();
+          });
+        });
+        // Keyword inputs
+        stackEl.querySelectorAll('[data-lora-kw]').forEach(input => {
+          input.addEventListener('input', () => {
+            const li = parseInt(input.dataset.loraKw);
+            setLoraKeyword(f.value[li].lora, input.value);
+            updateTriggers();
+          });
+        });
+        // Strength slider ↔ number input two-way sync
+        stackEl.querySelectorAll('[data-lora-strength]').forEach(slider => {
+          slider.addEventListener('input', () => {
+            const li = parseInt(slider.dataset.loraStrength);
+            const v = parseFloat(slider.value);
+            f.value[li].strength = v;
+            const numInput = stackEl.querySelector(`[data-lora-str-display="${li}"]`);
+            if(numInput) numInput.value = v;
+          });
+        });
+        stackEl.querySelectorAll('[data-lora-str-display]').forEach(numInput => {
+          numInput.addEventListener('input', () => {
+            const li = parseInt(numInput.dataset.loraStrDisplay);
+            const v = parseFloat(numInput.value);
+            if(isNaN(v)) return;
+            f.value[li].strength = v; // exact value, no clamping
+            const slider = stackEl.querySelector(`[data-lora-strength="${li}"]`);
+            if(slider) slider.value = Math.max(-2, Math.min(2, v)); // slider pegs at its range
+          });
+        });
+        // Delete lora
+        stackEl.querySelectorAll('[data-lora-delete]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const li = parseInt(btn.dataset.loraDelete);
+            f.value.splice(li, 1);
+            renderEditor();
+          });
+        });
+        // Add lora
+        const addBtn = stackEl.querySelector(`[data-lora-add="${i}"]`);
+        if(addBtn){
+          addBtn.addEventListener('click', () => {
+            const nextIdx = f.value.length + 1;
+            f.value.push({
+              key: `lora_${nextIdx}`,
+              on: true,
+              lora: state.availableLoras[0] || '',
+              strength: 1.0
+            });
+            renderEditor(); // re-render
+          });
+        }
+      }
+    }
+  });
+
+  // action bar
+  actionBar.style.display = 'flex';
+  actionBar.innerHTML = `
+    <button class="secondary" id="saveWfBtn">Save</button>
+    <button class="primary" id="queueBtn">Generate</button>
+  `;
+  document.getElementById('queueBtn').addEventListener('click', submitCurrentWorkflow);
+  document.getElementById('saveWfBtn').addEventListener('click', ()=>toast('Saved to your workflow list'));
+  updateQueueButton();
+  }catch(e){
+    console.error('renderEditor error:', e);
+    main.innerHTML = `<div class="empty-state"><p style="color:var(--safelight)">Editor error: ${e.message}</p><p style="font-size:11px;color:var(--text-dim)">Check browser console for details</p></div>`;
+  }
+}
+
+function onFieldChange(e){
+  const idx = parseInt(e.target.dataset.fieldIdx);
+  const f = state.currentWorkflow.fields[idx];
+  if(e.target.type === 'checkbox') f.value = e.target.checked;
+  else if(e.target.type === 'number') f.value = parseFloat(e.target.value);
+  else f.value = e.target.value;
+}
+
+async function handleImageFieldUpload(file, fieldIdx){
+  const preview = document.getElementById(`imgPreview${fieldIdx}`);
+  const dataUrl = await fileToDataUrl(file);
+  preview.src = dataUrl;
+  preview.style.display = 'block';
+  // upload to ComfyUI's /upload/image endpoint so it can be referenced by filename
+  if(state.connected){
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('overwrite', 'true');
+    try{
+      const res = await fetch(`${baseUrl()}/upload/image`, {method:'POST', body:formData});
+      const json = await res.json();
+      state.currentWorkflow.fields[fieldIdx].value = json.name;
+      toast('Image uploaded to server');
+    }catch(e){
+      toast('Upload failed — check connection');
+    }
+  }
+}
+
+/* ---- Submit workflow ----
+   The graph is sent through exactly as extracted from the PNG, except for the
+   specific keys the user actually edited. Nothing is rebuilt, validated, or
+   guessed — unknown/custom nodes ride along completely untouched. */
+async function submitCurrentWorkflow(){
+  if(!state.connected){ toast('Not connected to server'); return; }
+  
+  // Auto-randomize seed unless locked by user
+  const seedField = state.currentWorkflow.fields.find(f => f.key === 'seed' || f.key === 'noise_seed');
+  if(seedField && !seedField._locked){
+    const newSeed = Math.floor(Math.random()*1e15);
+    seedField.value = newSeed;
+    const seedIdx = state.currentWorkflow.fields.indexOf(seedField);
+    const seedInput = main.querySelector(`[data-field-idx="${seedIdx}"]`);
+    if(seedInput) seedInput.value = newSeed;
+  }
+  
+  const {apiGraph, fields} = state.currentWorkflow;
+  const graph = JSON.parse(JSON.stringify(apiGraph));
+  fields.forEach(f=>{
+    if(f.kind === 'rife_toggle'){
+      if(!f.value && f.rifeInput){
+        // Bypass RIFE: redirect all nodes that reference RIFE's output to RIFE's input source
+        const rifeNodeId = f.nodeId;
+        for(const nid in graph){
+          const inputs = graph[nid].inputs;
+          for(const key in inputs){
+            if(Array.isArray(inputs[key]) && inputs[key][0] === rifeNodeId){
+              inputs[key] = f.rifeInput; // point to what fed into RIFE
+            }
+          }
+        }
+        delete graph[rifeNodeId]; // remove RIFE node entirely
+      }
+    } else if(f.kind === 'quality_preset'){
+      // Replace linked steps with direct preset value
+      graph[f.nodeId].inputs.steps = f.steps;
+    } else if(f.kind === 'lora_stack'){
+      if(f._virtualPll && f.value.length > 0){
+        // Inject a new Power Lora Loader node into the graph
+        const pllId = '_pll_' + Date.now();
+        const modelNid = f._modelLoaderNodeId;
+        const clipNid = f._clipLoaderNodeId;
+        const pllInputs = {
+          model: [modelNid, 0],
+          clip: clipNid ? [clipNid, 0] : [modelNid, 1]
+        };
+        f.value.forEach((entry, idx) => {
+          pllInputs[`lora_${idx + 1}`] = {on: entry.on, lora: entry.lora, strength: entry.strength};
+        });
+        graph[pllId] = {class_type: 'Power Lora Loader (rgthree)', inputs: pllInputs};
+        // Redirect all nodes using the model loader's output to use the PLL instead
+        for(const nid in graph){
+          if(nid === pllId) continue;
+          const inputs = graph[nid].inputs;
+          for(const key in inputs){
+            if(Array.isArray(inputs[key]) && inputs[key][0] === modelNid && inputs[key][1] === 0){
+              inputs[key] = [pllId, 0]; // model output
+            }
+            if(clipNid && Array.isArray(inputs[key]) && inputs[key][0] === clipNid && inputs[key][1] === 0){
+              inputs[key] = [pllId, 1]; // clip output
+            }
+          }
+        }
+      } else if(!f._virtualPll){
+        // Existing Power Lora Loader — rebuild entries
+        const nodeInputs = graph[f.nodeId].inputs;
+        for(const key in nodeInputs){
+          if(/^lora_\d+$/.test(key)) delete nodeInputs[key];
+        }
+        f.value.forEach((entry, idx) => {
+          nodeInputs[`lora_${idx + 1}`] = {on: entry.on, lora: entry.lora, strength: entry.strength};
+        });
+      }
+    } else if(f.subPaths){
+      // Nested field inside an object input (e.g., IdeogramStudio widget)
+      const obj = graph[f.nodeId].inputs[f.key];
+      f.subPaths.forEach(path => {
+        let target = obj;
+        for(let p = 0; p < path.length - 1; p++){
+          if(!target[path[p]]) target[path[p]] = {};
+          target = target[path[p]];
+        }
+        target[path[path.length - 1]] = f.value;
+      });
+    } else {
+      graph[f.nodeId].inputs[f.key] = f.value;
+    }
+  });
+  try{
+    const res = await fetch(`${baseUrl()}/prompt`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt: graph, client_id: state.clientId})
+    });
+    const json = await res.json();
+    if(json.error){
+      toast('ComfyUI rejected this workflow — see console');
+      console.error(json.error);
+      return;
+    }
+    const promptId = json.prompt_id;
+    state.activeJobs.set(promptId, {fields, timestamp: Date.now()});
+    trackSubmittedPrompt(promptId);
+    toast('Queued');
+    document.getElementById('progressContainer').style.display = 'block';
+    document.getElementById('progressFill').style.width = '0%';
+    document.getElementById('progressRow').innerHTML = `<span>QUEUED</span><span>${state.activeJobs.size} in queue</span>`;
+    updateQueueButton();
+  }catch(e){
+    toast('Could not reach ComfyUI');
+  }
+}
+
+function updateQueueButton(){
+  const btn = actionBar.querySelector('#queueBtn');
+  if(btn){
+    const qCount = state.activeJobs.size;
+    btn.textContent = qCount > 0 ? `Generate (+${qCount})` : 'Generate';
+  }
+}
+
+/* ---- Queue tab ---- */
+async function renderQueue(){
+  actionBar.style.display = 'none';
+  if(!state.connected){
+    main.innerHTML = `<div class="empty-state"><div class="icon">⏳</div><p>Connect to your server to view the queue.</p></div>`;
+    return;
+  }
+  try{
+    const res = await fetch(`${baseUrl()}/queue`);
+    const data = await res.json();
+    const items = [...data.queue_running.map(q=>({...q, status:'Running'})), ...data.queue_pending.map(q=>({...q, status:'Pending'}))];
+    if(!items.length){
+      main.innerHTML = `<div class="empty-state"><div class="icon" style="color:var(--safelight); text-shadow:0 0 20px var(--safelight-glow), 0 0 40px var(--safelight-glow);">✌︎</div><p>Queue is empty.</p></div>`;
+      return;
+    }
+    main.innerHTML = items.map(item=>`
+      <div class="queue-item ${item.status === 'Running' ? 'running' : ''}">
+        <div>
+          <div class="name">${item.status} — #${item[0]}</div>
+        </div>
+        <button data-cancel-id="${item[1]}">Cancel</button>
+      </div>
+    `).join('');
+    main.querySelectorAll('[data-cancel-id]').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        await fetch(`${baseUrl()}/queue`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({delete:[btn.dataset.cancelId]})});
+        renderQueue();
+      });
+    });
+  }catch(e){
+    main.innerHTML = `<div class="empty-state"><p>Couldn't load queue.</p></div>`;
+  }
+}
+
+/* ---- Gallery tab ---- */
+
+function formatGalleryDate(ts){
+  if(!ts) return '';
+  const d = new Date(ts);
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const day = d.getDate();
+  const suf = day===1||day===21||day===31?'st':day===2||day===22?'nd':day===3||day===23?'rd':'th';
+  return `${months[d.getMonth()]} ${day}${suf}, ${d.getFullYear()}`;
+}
+
+function getItemDate(url){
+  const m = state.galleryMeta[url];
+  return m && m.ts ? formatGalleryDate(m.ts) : '';
+}
+
+function renderGallery(){
+  actionBar.style.display = 'none';
+  state.galleryDirty = false;
+  if(!state.gallery.length){
+    main.innerHTML = `<div class="empty-state"><div class="icon">▣</div><p>Nothing generated yet — your results will land here.</p></div>`;
+    return;
+  }
+  const newCount = state.newImageCount || 0;
+  state.newImageCount = 0;
+
+  // If viewing an expanded group, show only that group's images
+  if(state.galleryExpandedGroup){
+    const groupUrls = state.gallery.filter(url => {
+      const m = state.galleryMeta[url];
+      return m && m.promptHash === state.galleryExpandedGroup;
+    });
+    renderGalleryTiles(groupUrls, 0, true);
+    return;
+  }
+
+  // Group images by promptHash
+  const groups = []; // [{urls:[], hash:string, cover:string}]
+  const seen = new Set();
+  for(const url of state.gallery){
+    const m = state.galleryMeta[url];
+    const hash = (m && m.promptHash) || url; // unique fallback for ungrouped
+    if(seen.has(hash)){
+      // Add to existing group
+      const g = groups.find(g => g.hash === hash);
+      if(g) g.urls.push(url);
+    } else {
+      seen.add(hash);
+      groups.push({hash, urls:[url], cover: url});
+    }
+  }
+
+  // Build display list: for single-image groups show the image, for multi show a group tile
+  const displayItems = [];
+  for(const g of groups){
+    if(g.urls.length === 1){
+      displayItems.push({type:'single', url: g.urls[0], hash: g.hash});
+    } else {
+      displayItems.push({type:'group', cover: g.cover, count: g.urls.length, hash: g.hash});
+    }
+  }
+
+  const isNew = (url) => state.gallery.indexOf(url) < newCount;
+
+  // Build HTML with date separators
+  let gridHtml = '';
+  let lastDate = '';
+  displayItems.forEach((item, i) => {
+    const url = item.type === 'group' ? item.cover : item.url;
+    const dateStr = getItemDate(url);
+    if(dateStr && dateStr !== lastDate){
+      gridHtml += `<div class="gallery-date">${dateStr}</div>`;
+      lastDate = dateStr;
+    } else if(!dateStr && !lastDate && i === 0){
+      // No date info for first items
+    }
+    const unseen = !state.seenImages.has(url);
+    const classes = ['gallery-tile'];
+    if(isNew(url)) classes.push('new-tile');
+    if(unseen) classes.push('unseen');
+    if(item.type === 'group') classes.push('group-tile');
+    gridHtml += `
+    <div class="${classes.join(' ')}" data-gallery-url="${escapeHtml(url)}" ${isNew(url) ? 'style="animation-delay:'+i*60+'ms"' : ''}>
+      ${(()=>{
+        const isVid = state.galleryMeta[url]?.video;
+        const action = item.type === 'group' ? 'expand' : 'view';
+        return isVid
+          ? `<video src="${url}" muted loop preload="metadata" playsinline data-action="${action}" data-hash="${escapeHtml(item.hash)}" data-url="${escapeHtml(url)}" data-vid="1"></video>`
+          : `<img src="${url}" loading="lazy" data-action="${action}" data-hash="${escapeHtml(item.hash)}" data-url="${escapeHtml(url)}">`;
+      })()}
+      <button class="gallery-download" data-download-url="${escapeHtml(url)}" title="Download">↓</button>
+      <button class="gallery-remove" data-remove-url="${escapeHtml(url)}">✕</button>
+      ${item.type === 'single' ? `<button class="gallery-iterate" data-iterate-url="${escapeHtml(url)}" title="Iterate">∞</button>` : ''}
+      ${(()=>{
+        const meta = state.galleryMeta[url];
+        const isVid = meta && meta.video;
+        if(item.type === 'group') return `${isVid ? '<span class="video-icon">▶</span>' : ''}<span class="group-badge">${item.count}</span>`;
+        if(isVid) return '<span class="video-icon">▶</span>';
+        return '';
+      })()}
+    </div>`;
+  });
+  main.innerHTML = `<div class="gallery-grid">${gridHtml}</div>`;
+
+  wireGalleryEvents();
+}
+
+function renderGalleryTiles(urls, newCount, isExpanded){
+  let header = '';
+  if(isExpanded){
+    header = `<button class="gallery-back-btn" id="galleryBack">‹ Back to gallery</button>`;
+  }
+  main.innerHTML = header + `<div class="gallery-grid">${urls.map((url, i) => {
+    const unseen = !state.seenImages.has(url);
+    const isNew = i < newCount;
+    const classes = ['gallery-tile'];
+    if(isNew) classes.push('new-tile');
+    if(unseen) classes.push('unseen');
+    return `
+    <div class="${classes.join(' ')}" data-gallery-url="${escapeHtml(url)}" ${isNew ? 'style="animation-delay:'+i*60+'ms"' : ''}>
+      ${state.galleryMeta[url]?.video
+        ? `<video src="${url}" muted loop preload="metadata" playsinline data-action="view" data-url="${escapeHtml(url)}" data-vid="1"></video>`
+        : `<img src="${url}" loading="lazy" data-action="view" data-url="${escapeHtml(url)}">`}
+      <button class="gallery-download" data-download-url="${escapeHtml(url)}" title="Download">↓</button>
+      <button class="gallery-remove" data-remove-url="${escapeHtml(url)}">✕</button>
+      <button class="gallery-iterate" data-iterate-url="${escapeHtml(url)}" title="Iterate">∞</button>
+    </div>`;
+  }).join('')}</div>`;
+
+  if(isExpanded){
+    document.getElementById('galleryBack').addEventListener('click', ()=>{
+      state.galleryExpandedGroup = null;
+      renderGallery();
+    });
+  }
+  wireGalleryEvents();
+}
+
+function wireGalleryEvents(){
+  // Image click: view or expand group
+  main.querySelectorAll('[data-action]').forEach(img=>{
+    img.addEventListener('click', ()=>{
+      if(img.dataset.action === 'expand'){
+        state.galleryExpandedGroup = img.dataset.hash;
+        history.pushState({galleryGroup: true}, '');
+        renderGallery();
+      } else {
+        markImageSeen(img.dataset.url);
+        const idx = state.gallery.indexOf(img.dataset.url);
+        if(idx >= 0) openLightbox(idx);
+      }
+    });
+  });
+  main.querySelectorAll('[data-remove-url]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const url = btn.dataset.removeUrl;
+      deleteGalleryImage(url);
+    });
+  });
+  main.querySelectorAll('[data-iterate-url]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      markImageSeen(btn.dataset.iterateUrl);
+      loadWorkflowFromGalleryImage(btn.dataset.iterateUrl);
+    });
+  });
+  main.querySelectorAll('[data-download-url]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      downloadGalleryImage(btn.dataset.downloadUrl);
+    });
+  });
+
+  // Auto-play video thumbnails when they scroll into the center ~40% of viewport
+  const videoThumbs = main.querySelectorAll('video[data-vid]');
+  if(videoThumbs.length){
+    if(state._galleryVideoObserver) state._galleryVideoObserver.disconnect();
+    state._galleryVideoObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        const vid = entry.target;
+        if(entry.isIntersecting){
+          vid.currentTime = 0;
+          vid.play().catch(()=>{});
+        } else {
+          vid.pause();
+          vid.currentTime = 0;
+        }
+      });
+    }, {
+      root: null,
+      rootMargin: '-30% 0px -30% 0px', // center 40% of viewport
+      threshold: 0.3
+    });
+    videoThumbs.forEach(v => state._galleryVideoObserver.observe(v));
+  }
+}
+
+
+async function loadWorkflowFromGalleryImage(url){
+  toast('Extracting workflow…');
+  try{
+    // For videos, swap the file extension to .png in the URL to get the workflow metadata
+    const meta = state.galleryMeta[url];
+    let fetchUrl = url;
+    if(meta && meta.video){
+      fetchUrl = url.replace(/filename=([^&]+)/, (m, fname) => {
+        const decoded = decodeURIComponent(fname);
+        const pngName = decoded.replace(/\.[^.]+$/, '.png');
+        return 'filename=' + encodeURIComponent(pngName);
+      });
+      console.log('Video iterate: swapped to', fetchUrl);
+    }
+    const res = await fetch(fetchUrl);
+    const blob = await res.blob();
+    const file = new File([blob], 'iterate.png', {type:'image/png'});
+    const {apiGraph, uiGraph} = await extractWorkflowFromPng(file);
+    const titleMap = getUiTitleMap(uiGraph);
+    const fields = buildEditableFields(apiGraph, titleMap);
+    const thumb = (meta && meta.video) ? '' : url;
+    const name = 'Iteration';
+    const saved = {name, apiGraph, titleMap, thumb, fieldCount: fields.length};
+    state.currentWorkflow = {saved, apiGraph, fields};
+    history.pushState({editor: true}, '');
+    toast(`Loaded — ${fields.length} fields. Seed preserved for iteration.`);
+    renderTab('workflows');
+  }catch(e){
+    toast(e.message || 'No workflow data embedded in this file');
+    console.error(e);
+  }
+}
+
+/* ====================== TOOLS PANE ====================== */
+const TOOLS_SYSTEM_TEXT2JSON = `Generate a detailed prompt from this text using the readme located at https://github.com/ideogram-oss/ideogram4/blob/main/docs/prompting.md Follow the guidelines on JSON prompting and translate the text prompt you're given into a detailed Ideogram JSON prompt.`;
+const TOOLS_SYSTEM_IMG2JSON = `You are a helpful AI assistant.  You will use https://github.com/ideogram-oss/ideogram4/blob/main/docs/prompting.md to learn how to translate images into JSON prompts for the image model Ideogram 4.  Think in the background, your only output should be the completed prompt.`;
+const TOOLS_USER_IMG = `Generate an incredibly detailed JSON prompt from this image.`;
+
+function renderTools(){
+  actionBar.style.display = 'none';
+  const mode = state.toolsMode;
+  const hasResult = !!state.toolsResult;
+  main.innerHTML = `
+    <div class="tools-mode-toggle">
+      <button class="${mode==='text2json'?'active':''}" data-tools-mode="text2json">Text ➔ JSON</button>
+      <button class="${mode==='image2json'?'active':''}" data-tools-mode="image2json">Image ➔ JSON</button>
+    </div>
+    <div class="tools-input-area">
+      ${mode === 'text2json' ? `
+        <textarea id="toolsTextInput" placeholder="Describe your image in natural language…">${escapeHtml(state._toolsTextDraft || '')}</textarea>
+      ` : `
+        <div class="tools-img-upload ${state.toolsImageBlob ? 'has-image' : ''}" id="toolsImgDrop">
+          ${state.toolsImageBlob ? `<img id="toolsImgPreview" src="">` : 'Tap to upload or drop an image'}
+          <input type="file" accept="image/*" id="toolsImgInput">
+        </div>
+      `}
+    </div>
+    <div class="tools-status" id="toolsStatus"></div>
+    <button class="tools-generate-btn" id="toolsGenBtn">Generate JSON Prompt</button>
+    ${hasResult ? `
+      <div class="tools-result">
+        <button class="copy-btn" id="toolsCopyBtn">Copy</button>
+        <textarea id="toolsResultArea" readonly>${escapeHtml(state.toolsResult)}</textarea>
+      </div>
+    ` : ''}
+    ${(()=>{
+      const history = getToolsHistory();
+      if(!history.length) return '';
+      return `<div class="tools-history-title">Recent Prompts</div>` +
+        history.map((h, i) => `
+          <div class="tools-history-item" data-th-idx="${i}">
+            <div class="th-preview">${escapeHtml(h.text.slice(0,60))}</div>
+            <div class="th-date">${new Date(h.ts).toLocaleDateString()}</div>
+            <button class="th-delete" data-th-delete="${i}">✕</button>
+          </div>
+        `).join('');
+    })()}
+  `;
+
+  // Mode toggle
+  main.querySelectorAll('[data-tools-mode]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.toolsMode = btn.dataset.toolsMode;
+      state.toolsResult = '';
+      renderTools();
+    });
+  });
+
+  // Text draft persistence
+  const textInput = document.getElementById('toolsTextInput');
+  if(textInput) textInput.addEventListener('input', ()=> state._toolsTextDraft = textInput.value);
+
+  // Image upload — store as blob immediately so it survives DOM re-renders
+  const imgInput = document.getElementById('toolsImgInput');
+  if(imgInput){
+    imgInput.addEventListener('change', async e=>{
+      if(e.target.files[0]){
+        const file = e.target.files[0];
+        const buf = await file.arrayBuffer();
+        state.toolsImageBlob = new Blob([buf], {type: file.type || 'image/png'});
+        state.toolsImageName = file.name || 'tools_input.png';
+        state.toolsImageUrl = URL.createObjectURL(state.toolsImageBlob);
+        renderTools();
+      }
+    });
+  }
+  // Show existing preview
+  if(state.toolsImageUrl){
+    const preview = document.getElementById('toolsImgPreview');
+    if(preview) preview.src = state.toolsImageUrl;
+  }
+
+  // Generate button
+  document.getElementById('toolsGenBtn').addEventListener('click', ()=> runToolsGenerate());
+
+  // Copy button
+  const copyBtn = document.getElementById('toolsCopyBtn');
+  if(copyBtn){
+    copyBtn.addEventListener('click', ()=>{
+      copyToClipboard(state.toolsResult);
+    });
+  }
+
+  // History item handlers
+  main.querySelectorAll('[data-th-idx]').forEach(item => {
+    item.addEventListener('click', (e)=>{
+      if(e.target.closest('.th-delete')) return;
+      const idx = parseInt(item.dataset.thIdx);
+      const history = getToolsHistory();
+      if(history[idx]){
+        state.toolsResult = history[idx].text;
+        renderTools();
+      }
+    });
+  });
+  main.querySelectorAll('[data-th-delete]').forEach(btn => {
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.thDelete);
+      const history = getToolsHistory();
+      history.splice(idx, 1);
+      localStorage.setItem('returncurrent_tools_history', JSON.stringify(history));
+      renderTools();
+    });
+  });
+}
+
+function getToolsHistory(){
+  try{ return JSON.parse(localStorage.getItem('returncurrent_tools_history') || '[]'); }catch(e){ return []; }
+}
+function saveToolsHistory(text){
+  const history = getToolsHistory();
+  history.unshift({text, ts: Date.now()});
+  localStorage.setItem('returncurrent_tools_history', JSON.stringify(history.slice(0, 50)));
+}
+
+/** Clipboard copy with fallback for non-HTTPS contexts */
+function copyToClipboard(text){
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(()=> toast('Copied')).catch(()=> fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
+function fallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;left:-9999px;';
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand('copy'); toast('Copied'); }
+  catch(e){ toast('Copy failed — select manually'); }
+  document.body.removeChild(ta);
+}
+
+/** Extract clean JSON prompt from LLM output (strips thinking, markdown fences, etc.) */
+function extractJsonPrompt(rawText){
+  // 1. Try extracting from ```json ... ``` code blocks — take the LAST one (most refined)
+  const codeBlockRegex = /```(?:json)?\s*(\{[\s\S]*?\})\s*```/g;
+  let lastBlock = null;
+  let match;
+  while((match = codeBlockRegex.exec(rawText)) !== null){
+    lastBlock = match[1];
+  }
+  if(lastBlock){
+    try{ JSON.parse(lastBlock); return lastBlock.trim(); }catch(e){}
+  }
+
+  // 2. Try finding raw JSON object with "prompt" key (no code fence)
+  const rawJsonRegex = /\{[^]*?"prompt"\s*:\s*"[^]*?\}/g;
+  let lastRaw = null;
+  while((match = rawJsonRegex.exec(rawText)) !== null){
+    lastRaw = match[0];
+  }
+  if(lastRaw){
+    try{ JSON.parse(lastRaw); return lastRaw.trim(); }catch(e){}
+  }
+
+  // 3. Fallback: strip <|channel>thought blocks and common LLM junk, return whatever remains
+  let cleaned = rawText
+    .replace(/<\|channel>thought[\s\S]*?(?=\{)/i, '')  // strip thinking before first {
+    .replace(/```(?:json)?/g, '')                       // strip code fence markers
+    .trim();
+  // Try to find valid JSON in what's left
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  if(firstBrace !== -1 && lastBrace > firstBrace){
+    const candidate = cleaned.slice(firstBrace, lastBrace + 1);
+    try{ JSON.parse(candidate); return candidate.trim(); }catch(e){}
+    return candidate.trim(); // return even if not valid JSON — let user fix it
+  }
+  return cleaned || rawText;
+}
+
+async function fetchToolsNodeInfo(){
+  if(state.toolsNodeInfo) return state.toolsNodeInfo;
+  const textName = 'Expo Lmstudio Text Generation';
+  const imgName = 'Expo Lmstudio Unified';
+  const [textRes, imgRes] = await Promise.all([
+    fetch(`${baseUrl()}/object_info/${encodeURIComponent(textName)}`).then(r=>r.json()).catch(()=>null),
+    fetch(`${baseUrl()}/object_info/${encodeURIComponent(imgName)}`).then(r=>r.json()).catch(()=>null)
+  ]);
+  state.toolsNodeInfo = {
+    text: textRes ? textRes[textName] : null,
+    img: imgRes ? imgRes[imgName] : null
+  };
+  console.log('Tools node info:', state.toolsNodeInfo);
+  return state.toolsNodeInfo;
+}
+
+/** Build an inputs dict from object_info, filling defaults and overrides */
+function buildNodeInputs(nodeInfo, overrides){
+  const inputs = {};
+  if(!nodeInfo || !nodeInfo.input) return overrides || {};
+  const required = nodeInfo.input.required || {};
+  const optional = nodeInfo.input.optional || {};
+  const all = {...required, ...optional};
+  for(const [key, def] of Object.entries(all)){
+    if(overrides && overrides[key] !== undefined){
+      inputs[key] = overrides[key];
+    } else if(Array.isArray(def) && Array.isArray(def[0])){
+      // COMBO type — use first option as default
+      inputs[key] = def[0][0];
+    } else if(Array.isArray(def) && def[1] && def[1].default !== undefined){
+      inputs[key] = def[1].default;
+    }
+  }
+  // Add any overrides for keys not in the schema (like links)
+  if(overrides){
+    for(const [k, v] of Object.entries(overrides)){
+      if(inputs[k] === undefined) inputs[k] = v;
+    }
+  }
+  return inputs;
+}
+
+async function runToolsGenerate(){
+  if(!state.connected){ toast('Not connected to server'); return; }
+
+  const statusEl = document.getElementById('toolsStatus');
+  const genBtn = document.getElementById('toolsGenBtn');
+  genBtn.disabled = true;
+  statusEl.textContent = 'Discovering node inputs…';
+
+  let info;
+  try{
+    info = await fetchToolsNodeInfo();
+  }catch(e){
+    statusEl.textContent = 'Could not fetch node info';
+    genBtn.disabled = false;
+    return;
+  }
+
+  const mode = state.toolsMode;
+  let graph;
+
+  if(mode === 'text2json'){
+    const inputText = (state._toolsTextDraft || '').trim();
+    if(!inputText){ toast('Enter some text first'); genBtn.disabled = false; statusEl.textContent=''; return; }
+    if(!info.text){
+      statusEl.textContent = 'Expo Lmstudio Text Generation not found on server';
+      genBtn.disabled = false;
+      return;
+    }
+    const req = info.text.input.required || {};
+    const opt = info.text.input.optional || {};
+    const allInputNames = [...Object.keys(req), ...Object.keys(opt)];
+    console.log('Text Gen node inputs:', allInputNames);
+    statusEl.textContent = 'Inputs: ' + allInputNames.join(', ');
+
+    const overrides = {};
+    for(const key of allInputNames){
+      const kl = key.toLowerCase();
+      if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text')
+        overrides[key] = inputText;
+      else if(kl.includes('system')) overrides[key] = TOOLS_SYSTEM_TEXT2JSON;
+      else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+      else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
+      else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 3000;
+      else if(kl === 'temperature') overrides[key] = 0.7;
+      else if(kl.includes('timeout')) overrides[key] = 300;
+    }
+    const nodeInputs = buildNodeInputs(info.text, overrides);
+    console.log('Built inputs:', nodeInputs);
+    graph = {
+      "1": { "class_type": "Expo Lmstudio Text Generation", "inputs": nodeInputs },
+      "2": { "class_type": "ShowText|pysssss", "inputs": {"text": ["1", 0]} }
+    };
+  } else {
+    if(!state.toolsImageBlob){ toast('Upload an image first'); genBtn.disabled = false; statusEl.textContent=''; return; }
+    if(!info.img){
+      statusEl.textContent = 'Expo Lmstudio Unified not found on server';
+      genBtn.disabled = false;
+      return;
+    }
+    statusEl.textContent = 'Uploading image…';
+    let uploadedName;
+    try{
+      const formData = new FormData();
+      formData.append('image', state.toolsImageBlob, state.toolsImageName);
+      const upRes = await fetch(baseUrl() + '/upload/image', {method:'POST', body:formData});
+      if(!upRes.ok){
+        const errBody = await upRes.text().catch(()=>'');
+        throw new Error('HTTP ' + upRes.status + ' ' + errBody.slice(0,100));
+      }
+      const upJson = await upRes.json();
+      uploadedName = upJson.name;
+      if(!uploadedName) throw new Error('No filename in response');
+    }catch(e){
+      statusEl.textContent = 'Upload failed: ' + e.message;
+      console.error('Upload error:', e);
+      genBtn.disabled = false;
+      return;
+    }
+    const req = info.img.input.required || {};
+    const opt = info.img.input.optional || {};
+    const allInputNames = [...Object.keys(req), ...Object.keys(opt)];
+    console.log('Unified node inputs:', allInputNames);
+
+    const overrides = {};
+    for(const key of allInputNames){
+      const kl = key.toLowerCase();
+      if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = TOOLS_USER_IMG;
+      else if(kl.includes('system')) overrides[key] = TOOLS_SYSTEM_IMG2JSON;
+      else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+      else if(kl === 'image') overrides[key] = ["1", 0];
+      else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
+      else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 3000;
+      else if(kl === 'temperature') overrides[key] = 0.7;
+      else if(kl.includes('timeout')) overrides[key] = 300;
+    }
+    const nodeInputs = buildNodeInputs(info.img, overrides);
+    console.log('Built inputs:', nodeInputs);
+    graph = {
+      "1": { "class_type": "LoadImage", "inputs": {"image": uploadedName} },
+      "2": { "class_type": "Expo Lmstudio Unified", "inputs": nodeInputs },
+      "3": { "class_type": "ShowText|pysssss", "inputs": {"text": ["2", 0]} }
+    };
+  }
+
+  statusEl.textContent = 'Submitting to LM Studio…';
+  console.log('Tools graph:', JSON.stringify(graph, null, 2));
+
+  try{
+    const res = await fetch(baseUrl() + '/prompt', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt: graph, client_id: state.clientId})
+    });
+    const json = await res.json();
+    if(json.error){
+      statusEl.textContent = 'Rejected — check browser console';
+      console.error('ComfyUI error:', json);
+      genBtn.disabled = false;
+      return;
+    }
+    const promptId = json.prompt_id;
+    statusEl.textContent = 'Waiting for LLM… (30-90s)';
+
+    for(let attempt = 0; attempt < 180; attempt++){
+      await new Promise(r => setTimeout(r, 2000));
+      try{
+        const hRes = await fetch(baseUrl() + '/history/' + promptId);
+        const hist = await hRes.json();
+        const entry = hist[promptId];
+        if(entry && entry.outputs){
+          for(const nodeId in entry.outputs){
+            const out = entry.outputs[nodeId];
+            if(out.text){
+              const rawText = Array.isArray(out.text) ? out.text.join('') : String(out.text);
+              state.toolsResult = extractJsonPrompt(rawText);
+              saveToolsHistory(state.toolsResult);
+              genBtn.disabled = false;
+              statusEl.textContent = 'Done — JSON prompt extracted';
+              renderTools();
+              return;
+            }
+          }
+        }
+      }catch(e){}
+      if(statusEl) statusEl.textContent = 'Waiting for LLM… ' + ((attempt+1)*2) + 's';
+    }
+    statusEl.textContent = 'Timed out';
+    genBtn.disabled = false;
+  }catch(e){
+    statusEl.textContent = 'Could not reach ComfyUI';
+    console.error(e);
+    genBtn.disabled = false;
+  }
+}
+
+function openLightbox(idx){
+  // Determine the image list to navigate (expanded group or full gallery)
+  const imageList = state.galleryExpandedGroup
+    ? state.gallery.filter(u => { const m = state.galleryMeta[u]; return m && m.promptHash === state.galleryExpandedGroup; })
+    : state.gallery;
+  let current = Math.max(0, imageList.indexOf(state.gallery[idx]));
+  if(current < 0) current = 0;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'lightbox-overlay';
+  state._lightboxOpen = true;
+  history.pushState({lightbox: true}, '');
+
+  let autopanTimer = null;
+  let autopanInterval = null;
+  let holdIndicator = null;
+
+  function stopAutopan(){
+    clearTimeout(autopanTimer); autopanTimer = null;
+    clearInterval(autopanInterval); autopanInterval = null;
+    if(holdIndicator){ holdIndicator.remove(); holdIndicator = null; }
+  }
+
+  function render(){
+    stopAutopan();
+    const url = imageList[current];
+    const total = imageList.length;
+    const meta = state.galleryMeta[url];
+    const isVid = meta && meta.video;
+    const fillWidth = Math.max(100 / total, 4);
+    const fillLeft = total > 1 ? (current / (total - 1)) * (100 - fillWidth) : 0;
+    const showCarousel = total > 1;
+    const mediaHtml = isVid
+      ? `<video src="${url}" class="lightbox-img" autoplay loop muted playsinline></video>`
+      : `<img src="${url}" class="lightbox-img">`;
+    overlay.innerHTML = `
+      <div class="lightbox-topbar">
+        <span style="font-size:11px;color:var(--text-dim);font-family:var(--font-mono)">${current+1} / ${total}</span>
+        <span class="lightbox-close">✕</span>
+      </div>
+      ${showCarousel ? `<div class="lightbox-carousel"><div class="lightbox-carousel-fill" style="width:${fillWidth}%;left:${fillLeft}%"></div></div>` : ''}
+      ${mediaHtml}
+      <div class="lightbox-bottombar">
+        <button class="lightbox-iterate" title="Iterate">∞</button>
+        <button class="lightbox-dl" title="Download">↓</button>
+      </div>
+    `;
+    overlay.querySelector('.lightbox-close').addEventListener('click', close);
+    overlay.querySelector('.lightbox-dl').addEventListener('click', ()=> downloadGalleryImage(url));
+    overlay.querySelector('.lightbox-iterate').addEventListener('click', ()=>{
+      markImageSeen(url);
+      close();
+      loadWorkflowFromGalleryImage(url);
+    });
+
+    // Block browser long-press context menu on the image
+    const img = overlay.querySelector('.lightbox-img');
+    img.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Touch: swipe + continuous-zone long-press auto-pan
+    let touchStartX = 0, touchStartY = 0, touchStartTime = 0, swiping = false;
+    let currentZone = 0; // -1=left, 0=middle, 1=right
+    let zoneEnteredAt = 0;
+    let autopanDir = 0;
+
+    function getZone(x){
+      const rect = img.getBoundingClientRect();
+      const rel = (x - rect.left) / rect.width;
+      return rel < 0.3 ? -1 : rel > 0.7 ? 1 : 0;
+    }
+
+    function updatePartial(){
+      const carouselFill = overlay.querySelector('.lightbox-carousel-fill');
+      if(carouselFill){
+        const fw = Math.max(100/total, 4);
+        const fl = total > 1 ? (current/(total-1))*(100-fw) : 0;
+        carouselFill.style.width = fw+'%';
+        carouselFill.style.left = fl+'%';
+      }
+      const curUrl = imageList[current];
+      const curMeta = state.galleryMeta[curUrl];
+      const curIsVid = curMeta && curMeta.video;
+      const mediaEl = overlay.querySelector('.lightbox-img');
+      if(mediaEl){
+        if(curIsVid && mediaEl.tagName === 'IMG'){
+          const vid = document.createElement('video');
+          vid.src = curUrl; vid.className = 'lightbox-img';
+          vid.autoplay = true; vid.loop = true; vid.muted = true; vid.playsInline = true;
+          mediaEl.replaceWith(vid);
+        } else if(!curIsVid && mediaEl.tagName === 'VIDEO'){
+          const img = document.createElement('img');
+          img.src = curUrl; img.className = 'lightbox-img';
+          mediaEl.replaceWith(img);
+        } else {
+          mediaEl.src = curUrl;
+        }
+      }
+      const counter = overlay.querySelector('.lightbox-topbar span');
+      if(counter) counter.textContent = `${current+1} / ${total}`;
+    }
+
+    function enterZone(dir){
+      currentZone = dir;
+      zoneEnteredAt = Date.now();
+      autopanDir = 0;
+      clearInterval(autopanInterval); autopanInterval = null;
+
+      if(dir === 0 || total <= 1){
+        // Middle zone or single image — remove indicator
+        if(holdIndicator){ holdIndicator.remove(); holdIndicator = null; }
+        return;
+      }
+      // Show pulsating chevron
+      if(holdIndicator) holdIndicator.remove();
+      holdIndicator = document.createElement('div');
+      holdIndicator.className = `autopan-indicator ${dir < 0 ? 'left' : 'right'}`;
+      holdIndicator.textContent = dir < 0 ? '‹' : '›';
+      overlay.appendChild(holdIndicator);
+
+      // Start charge timer (700ms hold to activate)
+      clearTimeout(autopanTimer);
+      autopanTimer = setTimeout(()=>{
+        swiping = false;
+        autopanDir = dir;
+        // Flash the chevron out
+        if(holdIndicator){
+          holdIndicator.style.animation = 'autopanFlash .3s ease-out forwards';
+          setTimeout(()=>{ if(holdIndicator){holdIndicator.remove(); holdIndicator=null;} }, 300);
+        }
+        // Advance immediately
+        advanceAutopan(dir);
+        // Then keep going every 2.2s
+        autopanInterval = setInterval(()=> advanceAutopan(dir), 2200);
+      }, 700);
+    }
+
+    function advanceAutopan(dir){
+      if(dir > 0 && current < total - 1){ current++; markImageSeen(imageList[current]); updatePartial(); }
+      else if(dir < 0 && current > 0){ current--; updatePartial(); }
+      else { stopAutopan(); } // hit the end
+    }
+
+    img.addEventListener('touchstart', e => {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+      swiping = true;
+      stopAutopan();
+      enterZone(getZone(touchStartX));
+    }, {passive:true});
+
+    img.addEventListener('touchmove', e => {
+      const x = e.touches[0].clientX;
+      const newZone = getZone(x);
+      if(newZone !== currentZone){
+        // Zone changed — restart charge for new zone (or clear if middle)
+        enterZone(newZone);
+      }
+    }, {passive:true});
+
+    img.addEventListener('touchend', e => {
+      const held = Date.now() - touchStartTime;
+      const wasAutopanning = !!autopanDir;
+      stopAutopan();
+      if(wasAutopanning || !swiping) return;
+      swiping = false;
+      const endX = e.changedTouches[0].clientX;
+      const endY = e.changedTouches[0].clientY;
+      const dx = endX - touchStartX;
+      const dy = endY - touchStartY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+
+      // Quick tap in left/right 30% zone → advance one image
+      if(held < 300 && dist < 15 && total > 1){
+        const zone = getZone(touchStartX);
+        if(zone > 0 && current < total - 1){ current++; markImageSeen(imageList[current]); render(); return; }
+        if(zone < 0 && current > 0){ current--; render(); return; }
+      }
+      // Normal swipe
+      if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && held < 600){
+        if(dx < 0 && current < total - 1){ current++; markImageSeen(imageList[current]); render(); }
+        else if(dx > 0 && current > 0){ current--; render(); }
+      }
+    }, {passive:true});
+
+    overlay.addEventListener('click', (e)=>{ if(e.target === overlay) close(); });
+  }
+
+  function close(){
+    stopAutopan();
+    state._lightboxOpen = false;
+    overlay.remove();
+    if(history.state && history.state.lightbox) history.back();
+  }
+
+  document.body.appendChild(overlay);
+  render();
+}
+
+/* ====================== SETTINGS MODAL ====================== */
+document.getElementById('openSettings').addEventListener('click', ()=>{
+  document.getElementById('hostInput').value = state.host;
+  document.getElementById('portInput').value = state.port;
+  document.getElementById('settingsModal').classList.add('open');
+});
+document.getElementById('closeSettings').addEventListener('click', ()=>{
+  document.getElementById('settingsModal').classList.remove('open');
+});
+document.getElementById('saveSettings').addEventListener('click', ()=>{
+  state.host = document.getElementById('hostInput').value.trim();
+  state.port = document.getElementById('portInput').value.trim() || '8188';
+  localStorage.setItem('returncurrent_host', state.host);
+  localStorage.setItem('returncurrent_port', state.port);
+  document.getElementById('settingsModal').classList.remove('open');
+  tryConnect();
+});
+
+/* ====================== THEME SWITCHER ====================== */
+const savedTheme = localStorage.getItem('returncurrent_theme') || '';
+if(savedTheme) document.body.classList.add(savedTheme);
+function updateThemeSwatches(){
+  document.querySelectorAll('.theme-swatch').forEach(s => {
+    s.classList.toggle('active', (s.dataset.theme || '') === savedTheme);
+  });
+}
+document.getElementById('themeToggle').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  document.getElementById('themePicker').classList.toggle('hidden');
+});
+document.getElementById('themePicker').addEventListener('click', (e)=>{
+  const swatch = e.target.closest('.theme-swatch');
+  if(!swatch) return;
+  const theme = swatch.dataset.theme;
+  // Remove all theme classes
+  document.body.className = document.body.className.replace(/theme-\S+/g, '').trim();
+  if(theme) document.body.classList.add(theme);
+  localStorage.setItem('returncurrent_theme', theme);
+  // Update active state
+  document.querySelectorAll('.theme-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.theme === theme);
+  });
+  document.getElementById('themePicker').classList.add('hidden');
+});
+// Close picker when tapping elsewhere
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('.theme-btn') && !e.target.closest('.theme-picker')){
+    document.getElementById('themePicker').classList.add('hidden');
+  }
+});
+updateThemeSwatches();
+
+/* ====================== TAB NAV ====================== */
+document.querySelectorAll('nav.tabs button').forEach(btn=>{
+  btn.addEventListener('click', ()=>renderTab(btn.dataset.tab));
+});
+
+/* ====================== INIT ====================== */
+window.addEventListener('popstate', ()=>{
+  // Close lightbox
+  if(state._lightboxOpen){
+    state._lightboxOpen = false;
+    const lb = document.querySelector('.lightbox-overlay');
+    if(lb) lb.remove();
+    return;
+  }
+  // Collapse gallery group
+  if(state.galleryExpandedGroup){
+    state.galleryExpandedGroup = null;
+    if(state.currentTab === 'gallery') renderGallery();
+    return;
+  }
+  // Back from workflow editor to list
+  if(state.currentTab === 'workflows' && state.currentWorkflow){
+    state.currentWorkflow = null;
+    renderWorkflowList();
+    return;
+  }
+});
+renderTab('workflows');
+tryConnect();
+setInterval(()=>{ if(state.connected && state.currentTab==='queue') renderQueue(); }, 4000);
+// Fallback: poll for gallery updates every 2s in case WS/async update failed
+setInterval(()=>{
+  if(state.galleryDirty && state.currentTab === 'gallery'){
+    try{ renderGallery(); }catch(e){}
+  }
+}, 2000);
+</script>
+</body>
+</html>
