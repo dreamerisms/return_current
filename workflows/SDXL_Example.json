@@ -1,0 +1,374 @@
+{
+  "last_node_id": 7,
+  "last_link_id": 9,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        40,
+        200
+      ],
+      "size": [
+        340,
+        100
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            2,
+            3
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            8
+          ],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "sd_xl_base_1.0.safetensors"
+      ]
+    },
+    {
+      "id": 2,
+      "type": "CLIPTextEncode",
+      "pos": [
+        440,
+        60
+      ],
+      "size": [
+        420,
+        220
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "title": "Positive Prompt",
+      "widgets_values": [
+        "{\n  \"canvas_configuration\": {\n    \"aspect_ratio\": \"9:16\",\n    \"art_style\": \"Surrealist Botanical Art / High-Fashion Editorial\",\n    \"color_palette\": [\n      \"Monochrome Slate & Charcoal (Foliage)\",\n      \"Electric Hibiscus Orange\",\n      \"Deep Plum\",\n      \"Vibrant Neon Flora Accents\",\n      \"Translucent Crystal/Glass\"\n    ]\n  },\n  \"visual_landscape\": {\n    \"atmosphere\": \"A cinematic, high-contrast tropical sanctuary. The mood is sophisticated and ultra-premium.\",\n    \"core_imagery\": \"A surrealist dreamscape featuring hyper-vibrant Hibiscus flowers and multi-colored Coleus leaves set against a monochrome botanical framework.\",\n    \"compositional_details\": [\n      \"Monochrome, grayscale-scale greenery (ferns, vines, and palm fronds) providing a textured, matte backdrop.\",\n      \"High-saturation, glowing-hue tropical blooms that pop intensely against the gray foliage.\",\n      \"Canna Lilies with waxy textures and large Bird of Paradise flowers displaying architectural elegance.\",\n      \"Micro-droplets of water rendered as sparkling crystalline jewels on petals.\"\n    ]\n  },\n  \"branding_integration\": {\n    \"concept\": \"The 'Tropical Leaf' Emblem\",\n    \"description\": \"A stunning, 3D-rendered centerpiece logo made of holographic glass material.\",\n    \"logo_visuals\": \"A large, stylized Tropical leaf emblem. The material is a pristine, translucent holographic glass with internal refractive properties. It should emit a soft and colorful internal emissive subsurface scattering glow. Some transmissive light warp optical distortion.\",\n    \"integration_method\": \"The emblem is positioned in the center, appearing as a heavy, physical sculpture made of glass embedded within the garden.\"\n  },\n  \"spatial_layout\": {\n    \"compositional_grid\": \"Centered Hero Layout\",\n    \"center_focus\": {\n      \"content\": \"Primary Logo & Branding\",\n      \"description\": \"The translucent glass word 'SDXL' framed by a crown of vibrant, high-saturation Hibiscus flowers.\",\n      \"visual_balance\": \"Symmetrical composition to convey stability and premium service.\"\n    },\n    \"background_framing\": {\n      \"outer_frame\": \"A dense, monochrome (black/white/gray) border of various tropical leaves providing a stark contrast to the colored flower blooms.\",\n      \"depth_of_field\": \"Shallow focus; the outer monochrome foliage fades into a soft-focus blur while the center logo and colorful flowers are in sharp, high-definition focus.\"\n    }\n  },\n  \"technical_rendering\": {\n    \"texture_definition\": \"High-contrast texture play: Matte, dusty surfaces of gray foliage versus polished, reflective glass and velvet flowers.\",\n    \"lighting\": \"Complex lighting including 'caustic' reflections (some optical distortion and raytraced light passing through the glass logo complete with subsurface scattered light refractions) and soft 'canopy' light filtering from above and casts light refraction onto nearby foliage.\",\n    \"graphic_execution\": \"Purely visual aesthetic. The core brand identity is conveyed entirely through the sophisticated interplay of color, material, and form of the title.\"\n  }\n}"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "CLIPTextEncode",
+      "pos": [
+        440,
+        330
+      ],
+      "size": [
+        420,
+        120
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            5
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "title": "Negative Prompt",
+      "widgets_values": [
+        "blurry, lowres, bad anatomy, deformed, watermark, jpeg artifacts, oversaturated"
+      ]
+    },
+    {
+      "id": 4,
+      "type": "EmptyLatentImage",
+      "pos": [
+        440,
+        500
+      ],
+      "size": [
+        300,
+        110
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        768,
+        1344,
+        1
+      ]
+    },
+    {
+      "id": 5,
+      "type": "KSampler",
+      "pos": [
+        920,
+        200
+      ],
+      "size": [
+        300,
+        262
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 1
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 4
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 5
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 6
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            7
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        156680208700286,
+        "randomize",
+        28,
+        6.5,
+        "dpmpp_2m",
+        "karras",
+        1.0
+      ]
+    },
+    {
+      "id": 6,
+      "type": "VAEDecode",
+      "pos": [
+        1270,
+        200
+      ],
+      "size": [
+        200,
+        60
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 7
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            9
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      },
+      "widgets_values": []
+    },
+    {
+      "id": 7,
+      "type": "SaveImage",
+      "pos": [
+        1520,
+        200
+      ],
+      "size": [
+        320,
+        300
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 9
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "ReturnCurrent/SDXL"
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      1,
+      0,
+      5,
+      0,
+      "MODEL"
+    ],
+    [
+      2,
+      1,
+      1,
+      2,
+      0,
+      "CLIP"
+    ],
+    [
+      3,
+      1,
+      1,
+      3,
+      0,
+      "CLIP"
+    ],
+    [
+      4,
+      2,
+      0,
+      5,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      5,
+      3,
+      0,
+      5,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      6,
+      4,
+      0,
+      5,
+      3,
+      "LATENT"
+    ],
+    [
+      7,
+      5,
+      0,
+      6,
+      0,
+      "LATENT"
+    ],
+    [
+      8,
+      1,
+      2,
+      6,
+      1,
+      "VAE"
+    ],
+    [
+      9,
+      6,
+      0,
+      7,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
