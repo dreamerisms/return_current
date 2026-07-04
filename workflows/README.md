@@ -10,7 +10,7 @@ The most feature-rich workflow in the set. Leverages the IdeogramStudio node for
 
 - JSON-formatted prompt with style, composition, and scene description fields
 - Aspect ratio grid (8 presets) with resolution override
-- Quality presets: 🐇 Turbo (8 steps) · 🦅 Default (20) · 🐢 Quality (35)
+- Quality presets: 🐇 Turbo (12 steps) · 🦅 Default (20) · 🐢 Quality (28)
 - Color palette picker — define up to 12 hex colors that influence the output
 - Width/height fine-tuning below aspect ratio
 - Power Lora Loader with trigger keyword tracking
