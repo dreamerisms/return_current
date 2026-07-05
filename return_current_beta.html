@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current</title>
+<title>Return Current β1.2</title>
 <style>
   :root{
     --bg: #0a0908;
@@ -825,7 +825,7 @@
     <div class="brand">
       <div class="dot" id="connDot"></div>
       <div>
-        <h1>RETURN <span class="title-sep">//</span> CURRENT</h1>
+        <h1>RETURN <span class="title-sep">//</span> CURRENT <span style="font-size:11px;font-weight:400;font-style:normal;color:var(--text-dim);vertical-align:super;">β1.2</span></h1>
         <div class="status-text" id="statusText">Disconnected</div>
       </div>
     </div>
@@ -871,7 +871,7 @@
       <span class="close-x" id="closeSettings">✕</span>
       <h2>Server</h2>
       <div class="field">
-        <label>Host or IP (Tailscale address)</label>
+        <label>ComfyUI Host / IP</label>
         <input type="text" id="hostInput" placeholder="100.x.x.x">
       </div>
       <div class="field">
@@ -991,7 +991,6 @@ async function syncMissedHistory(){
   // Find promptIds we submitted but haven't processed yet
   const missed = pending.filter(pid => !state.processedPrompts.has(pid));
   if(!missed.length) return;
-  console.log('Syncing missed generations:', missed);
   for(const pid of missed){
     await onGenerationComplete(pid);
   }
@@ -1594,8 +1593,8 @@ function buildEditableFields(apiGraph, titleMap){
       // Steps may be a link or direct value; detect current step count
       const stepsVal = Array.isArray(node.inputs.steps) ? 20 : (node.inputs.steps || 20);
       let preset = 'default';
-      if(stepsVal <= 10) preset = 'turbo';
-      else if(stepsVal >= 30) preset = 'quality';
+      if(stepsVal <= 14) preset = 'turbo';
+      else if(stepsVal >= 26) preset = 'quality';
       groups.push({
         nodeId, key: 'steps', kind: 'quality_preset',
         label: `Quality — ${title}`,
@@ -1954,11 +1953,57 @@ async function convertUiToApi(ui){
     else if(l && l.id !== undefined) linkMap[l.id] = [String(l.origin_id), l.origin_slot];
   });
   const CTRL_VALUES = ['fixed','increment','decrement','randomize'];
+  const VIRTUAL_TYPES = ['Note','MarkdownNote','Reroute','PrimitiveNode'];
+
+  const nodeById = {};
+  (ui.nodes || []).forEach(n => { nodeById[String(n.id)] = n; });
+
+  // Resolve a [nodeId, slot] source through bypassed (mode 4/2) and Reroute nodes.
+  // ComfyUI bypass rule: the Nth output of a given type passes through from the Nth input of that type.
+  function resolveSource(src, depth){
+    if(!src || depth > 20) return src;
+    const node = nodeById[src[0]];
+    if(!node) return src;
+    const isBypassed = node.mode === 4 || node.mode === 2;
+    const isReroute = node.type === 'Reroute';
+    if(!isBypassed && !isReroute) return src;
+    const outputs = node.outputs || [];
+    const outType = (outputs[src[1]] && outputs[src[1]].type) || '*';
+    // Ordinal of this output among outputs of the same type
+    let ordinal = 0;
+    for(let i = 0; i < src[1]; i++){
+      if(outputs[i] && outputs[i].type === outType) ordinal++;
+    }
+    // Find the (ordinal+1)-th input of matching type that has a link
+    let seen = 0, through = null;
+    for(const inp of (node.inputs || [])){
+      const typeMatch = !outType || outType === '*' || !inp.type || inp.type === '*' || inp.type === outType;
+      if(!typeMatch) continue;
+      if(seen === ordinal){
+        if(inp.link != null) through = linkMap[inp.link];
+        break;
+      }
+      seen++;
+    }
+    if(!through){
+      // Fallback: first linked input of matching type, then any linked input
+      for(const inp of (node.inputs || [])){
+        if(inp.link == null) continue;
+        if(outType && outType !== '*' && inp.type && inp.type !== '*' && inp.type !== outType) continue;
+        through = linkMap[inp.link]; break;
+      }
+      if(!through){
+        for(const inp of (node.inputs || [])){
+          if(inp.link != null){ through = linkMap[inp.link]; break; }
+        }
+      }
+    }
+    return through ? resolveSource(through, depth + 1) : null;
+  }
 
   for(const n of (ui.nodes || [])){
-    if(n.mode === 2 || n.mode === 4) continue; // muted or bypassed
-    // Skip pure UI nodes
-    if(['Note','MarkdownNote','Reroute','PrimitiveNode'].includes(n.type)) continue;
+    if(n.mode === 2 || n.mode === 4) continue; // muted or bypassed (links resolved through them)
+    if(VIRTUAL_TYPES.includes(n.type)) continue;
     const def = objectInfo[n.type];
     if(!def) throw new Error(`Unknown node type "${n.type}" — is the custom node installed on the server?`);
 
@@ -1966,32 +2011,43 @@ async function convertUiToApi(ui){
     const linkedNames = new Set();
     (n.inputs || []).forEach(inp => {
       if(inp.link != null && linkMap[inp.link]){
-        inputs[inp.name] = linkMap[inp.link];
-        linkedNames.add(inp.name);
+        const resolved = resolveSource(linkMap[inp.link], 0);
+        if(resolved){
+          inputs[inp.name] = resolved;
+          linkedNames.add(inp.name);
+        }
       }
     });
 
-    // Determine widget input names in definition order
+    // Determine widget input names in definition order (arrays, primitives, and COMBO specs)
     const widgetNames = [];
     const allDefs = {...(def.input?.required || {}), ...(def.input?.optional || {})};
     for(const [name, spec] of Object.entries(allDefs)){
       const t = Array.isArray(spec) ? spec[0] : spec;
-      if(Array.isArray(t) || ['INT','FLOAT','STRING','BOOLEAN'].includes(t)){
+      if(Array.isArray(t) || ['INT','FLOAT','STRING','BOOLEAN','COMBO'].includes(t)){
         widgetNames.push(name);
       }
     }
 
-    let wv = Array.isArray(n.widgets_values) ? n.widgets_values : [];
-    let wi = 0;
-    for(const name of widgetNames){
-      if(linkedNames.has(name)) continue; // converted-to-input widgets don't consume a slot in modern ComfyUI
-      if(wi >= wv.length) break;
-      inputs[name] = wv[wi];
-      wi++;
-      // Skip the control_after_generate widget slot after seeds
-      if((name === 'seed' || name === 'noise_seed') && wi < wv.length &&
-         typeof wv[wi] === 'string' && CTRL_VALUES.includes(wv[wi])){
+    if(Array.isArray(n.widgets_values)){
+      let wv = n.widgets_values;
+      let wi = 0;
+      for(const name of widgetNames){
+        if(linkedNames.has(name)) continue; // converted-to-input widgets don't consume a slot
+        if(wi >= wv.length) break;
+        inputs[name] = wv[wi];
         wi++;
+        // Skip the control_after_generate widget slot after seeds
+        if((name === 'seed' || name === 'noise_seed') && wi < wv.length &&
+           typeof wv[wi] === 'string' && CTRL_VALUES.includes(wv[wi])){
+          wi++;
+        }
+      }
+    } else if(n.widgets_values && typeof n.widgets_values === 'object'){
+      // Dict-form widgets (VHS_VideoCombine and similar): copy values by name
+      for(const [k, v] of Object.entries(n.widgets_values)){
+        if(k === 'videopreview' || linkedNames.has(k)) continue;
+        if(v !== null && v !== undefined) inputs[k] = v;
       }
     }
     api[String(n.id)] = {class_type: n.type, inputs};
@@ -2591,7 +2647,7 @@ function renderEditor(){
             btn.classList.add('active');
             const preset = btn.dataset.qp;
             f.value = preset;
-            const stepMap = {turbo: 8, default: 20, quality: 35};
+            const stepMap = {turbo: 12, default: 20, quality: 28};
             f.steps = stepMap[preset];
             // Update steps field if visible
             const stepsField = fields.find(ff => ff.key === 'steps' && ff.kind === 'number');
@@ -3181,7 +3237,6 @@ async function loadWorkflowFromGalleryImage(url){
         const pngName = decoded.replace(/\.[^.]+$/, '.png');
         return 'filename=' + encodeURIComponent(pngName);
       });
-      console.log('Video iterate: swapped to', fetchUrl);
     }
     const res = await fetch(fetchUrl);
     const blob = await res.blob();
@@ -3395,7 +3450,6 @@ async function fetchToolsNodeInfo(){
     text: textRes ? textRes[textName] : null,
     img: imgRes ? imgRes[imgName] : null
   };
-  console.log('Tools node info:', state.toolsNodeInfo);
   return state.toolsNodeInfo;
 }
 
@@ -3456,7 +3510,6 @@ async function runToolsGenerate(){
     const req = info.text.input.required || {};
     const opt = info.text.input.optional || {};
     const allInputNames = [...Object.keys(req), ...Object.keys(opt)];
-    console.log('Text Gen node inputs:', allInputNames);
     statusEl.textContent = 'Inputs: ' + allInputNames.join(', ');
 
     const overrides = {};
@@ -3472,7 +3525,6 @@ async function runToolsGenerate(){
       else if(kl.includes('timeout')) overrides[key] = 300;
     }
     const nodeInputs = buildNodeInputs(info.text, overrides);
-    console.log('Built inputs:', nodeInputs);
     graph = {
       "1": { "class_type": "Expo Lmstudio Text Generation", "inputs": nodeInputs },
       "2": { "class_type": "ShowText|pysssss", "inputs": {"text": ["1", 0]} }
@@ -3506,7 +3558,6 @@ async function runToolsGenerate(){
     const req = info.img.input.required || {};
     const opt = info.img.input.optional || {};
     const allInputNames = [...Object.keys(req), ...Object.keys(opt)];
-    console.log('Unified node inputs:', allInputNames);
 
     const overrides = {};
     for(const key of allInputNames){
@@ -3521,7 +3572,6 @@ async function runToolsGenerate(){
       else if(kl.includes('timeout')) overrides[key] = 300;
     }
     const nodeInputs = buildNodeInputs(info.img, overrides);
-    console.log('Built inputs:', nodeInputs);
     graph = {
       "1": { "class_type": "LoadImage", "inputs": {"image": uploadedName} },
       "2": { "class_type": "Expo Lmstudio Unified", "inputs": nodeInputs },
@@ -3530,7 +3580,6 @@ async function runToolsGenerate(){
   }
 
   statusEl.textContent = 'Submitting to LM Studio…';
-  console.log('Tools graph:', JSON.stringify(graph, null, 2));
 
   try{
     const res = await fetch(baseUrl() + '/prompt', {
