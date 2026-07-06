@@ -1,4 +1,4 @@
-# Return Current β1.2 — Setup Guide
+# Return Current β1.3 — Setup Guide
 
 **Control ComfyUI from your phone.** Generate images and video, manage workflows, swap models and LoRAs, all from a single HTML file on your mobile browser.
 
