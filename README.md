@@ -1,176 +1,96 @@
-# Return Current β1.3 — Setup Guide
+# RETURN // CURRENT <sup>β</sup>
 
-**Control ComfyUI from your phone.** Generate images and video, manage workflows, swap models and LoRAs, all from a single HTML file on your mobile browser.
+**Mobile controller for ComfyUI. One HTML file, zero dependencies.**
 
----
+Your PC renders. The current returns.
 
-## What You Need
-
-- A PC running **ComfyUI** (portable or standard install)
-- A phone/tablet with a modern browser (Chrome, Safari, Firefox)
-- Both devices on the **same network** (local Wi-Fi, Tailscale, ZeroTier, etc.)
+**[Try it →](https://dreamerisms.github.io/return_current/return_current_beta.html)** · **[Case study →](https://dreamerisms.github.io/return_current/)**
 
 ---
 
-## Quick Start (5 minutes)
+## Changelog
 
-### Step 1: Enable ComfyUI's Network Access
+### β1.3 — July 6, 2026
+- **LoRA info panel** — tap 💡 on any LoRA to pull its CivitAI page: trigger words as tappable glowing bubbles (tap to add/remove from your keyword set), example images with full generation metadata (prompt, sampler, steps, CFG, seed, model)
+- **One-tap prompt harvesting** — Copy button on any LoRA example prompt sends it to your clipboard *and* your Recent Prompts history
+- **Recent Prompts source labels** — history entries now tagged *Text*, *Image*, or *LoRA* so you know where each prompt came from
+- **Multi-image Image ➔ JSON** — add up to 4 images as thumbnail tiles; each is analyzed individually, then blended into one cohesive prompt
+- **Multi-prompt Text ➔ JSON** — blend up to 4 separate concepts into a single scene
+- **Editable blend instructions** — tune how the LLM fuses your images/prompts; your edits persist
+- Version number moved to settings panel; header now carries a glowing β
 
-By default, ComfyUI only listens on `localhost`. You need to open it to your network.
+### β1.2 — July 5, 2026
+- **JSON workflow import** — both standard ComfyUI exports and API-format files, converted on import (handles bypassed nodes, Reroutes, dict-style widgets, and modern COMBO specs)
+- **Stale-import detection** — workflows imported under an older converter warn you to re-import after fixes
+- **Advanced section** — unrecognized custom nodes expose their editable parameters in a collapsed section instead of disappearing
+- **Seed lock** 🔒 — freeze the seed for A/B comparisons across models, LoRAs, and prompt edits
+- **Ideogram color palette** — chip-based hex color picker, up to 12 colors
+- **LoRA trigger keywords** — per-LoRA persistent keyword memory with aggregate Copy bar
+- **Editable LoRA strength** — type exact values beyond the slider range
+- Ideogram 4 quality presets corrected to 12 / 20 / 28 steps
+- VRAM cleanup runs silently on every video generation (no more allocator crashes on repeat runs)
 
-**Find your ComfyUI launch script** — usually `run_nvidia_gpu.bat` or similar in your ComfyUI folder.
+### β1.0 — July 5, 2026
+- Initial public release: workflow import from PNG, auto-detected editor fields with smart sorting, gallery with prompt grouping and video autoplay, lightbox with swipe/auto-pan, ∞ iterate, 7 glow themes, queue with live progress and ETA, Tools pane (Text ➔ JSON / Image ➔ JSON via LM Studio)
 
-**Edit it** and add `--listen 0.0.0.0 --enable-cors-header` to the command line:
+---
+
+## What is this?
+
+A single HTML file that turns your phone into a remote for your ComfyUI rig. Import any workflow, edit every meaningful field with a thumb-friendly UI, queue generations, and watch images and video land in a live gallery — from the couch, the yard, or anywhere your network reaches.
+
+No app store. No install. No subscription. No cloud middleman. Your PC does the work.
+
+## Quick Start
+
+**Requirements:** ComfyUI on your PC, [Tailscale](https://tailscale.com/) on PC + phone (or same LAN), and for full features: [rgthree-comfy](https://github.com/rgthree/rgthree-comfy), [VHS](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite), and LM Studio nodes.
+
+**1. Add two flags to your ComfyUI launch .bat:**
 
 ```
-python main.py --listen 0.0.0.0 --enable-cors-header
+--listen 0.0.0.0 --enable-cors-header
 ```
 
-Restart ComfyUI. You should see it say `Starting server on 0.0.0.0:8188`.
+`--listen` opens ComfyUI to your network. `--enable-cors-header` lets the app talk to ComfyUI's API from a different port. Restart ComfyUI.
 
-`--listen` opens ComfyUI to your network. `--enable-cors-header` lets Return Current (served on a different port) talk to ComfyUI's API — without it, generations will fail silently.
+**2. Serve the app from your PC.** Drop `return_current_beta.html` in a folder (rename to `index.html` for a clean URL). Create `serve.bat` next to it:
 
-### Step 2: Find Your PC's IP Address
+```
+cd /d "%~dp0"
+python -m http.server 8000
+```
 
-**On Windows:** Open Command Prompt, type `ipconfig`. Look for your IPv4 address (usually `192.168.x.x` on Wi-Fi).
-
-**Using Tailscale (recommended for remote access):** Install Tailscale on both your PC and phone. Your PC gets a stable IP like `100.x.x.x` that works from anywhere — home, coffee shop, anywhere with internet.
-
-### Step 3: Serve Return Current from your PC
-
-The app is one HTML file, but your phone needs to load it **over HTTP** (opening it as a downloaded file breaks the connection to ComfyUI). The easiest way: serve it from the same PC that runs ComfyUI.
-
-1. Create a folder anywhere (e.g., `C:\ReturnCurrent`) and put `return-current-beta.html` inside it. Optionally rename it to `index.html` for a cleaner URL.
-2. Create a file next to it called `serve.bat` containing (adjust the path to your ComfyUI portable install):
+No system Python? Use ComfyUI portable's embedded one:
 
 ```
 cd /d "%~dp0"
 ..\ComfyUI_windows_portable\python_embeded\python.exe -m http.server 8000
 ```
 
-If Python is installed system-wide, the .bat can simply be: `python -m http.server 8000`
+Double-click it. Leave it running.
 
-3. Double-click `serve.bat`. Leave the window open — it's now serving the app on port 8000.
-4. On your phone, browse to `http://YOUR-PC-IP:8000/return-current-beta.html` (or just `http://YOUR-PC-IP:8000` if you renamed it to index.html). Use your Tailscale IP for access from anywhere.
-5. **Add it to your home screen** via your browser's share/menu button — it opens full-screen like a native app from then on.
+**3. Get your IP.** Right-click the Tailscale tray icon — your IP is right there under your device name. LAN IP works too for home-only use.
 
-### Step 4: Connect
+**4. Open on your phone.** Browse to `http://YOUR-IP:8000`. Add to Home Screen for the full-screen app experience.
 
-1. Tap the **⚙ gear** icon in the top-right
-2. Enter your PC's IP address — the **same IP** you used in the browser address bar (e.g., `192.168.1.50` or your Tailscale IP)
-3. Enter ComfyUI's port (default: `8188` — not the 8000 the app is served from)
-4. Tap **Save**
+**5. Connect.** Tap ⚙ → enter your IP and ComfyUI's port (`8188`) → Save. Dot turns green.
 
-The dot next to "Return Current" turns **green** and shows "Connected" when it's working.
+## Example Workflows
 
----
-
-## Loading Your First Workflow
-
-1. Go to the **Workflows** tab
-2. Tap **Import workflow (PNG / JSON)**
-3. Select any PNG generated by ComfyUI (workflow is embedded in the metadata), a workflow `.json`, or an API-format `.json` export
-4. The workflow appears in your list with its model name highlighted
-
-Tap the workflow to open the editor. You'll see all the editable fields auto-detected from the workflow, sorted in a logical order:
-
-- **Model** — dropdown with all your installed checkpoints/UNETs
-- **Seed** — auto-randomizes on each generation
-- **Prompt** — full-size textarea for editing
-- **Negative Prompt** — compact textarea
-- **Sampler / Scheduler** — dropdowns with your server's options
-- **Steps / CFG / Denoise** — compact side-by-side row
-- **LoRAs** — Power Lora Loader with add/remove, strength sliders, and trigger keyword tracking
-
-Hit **Generate** to queue it on your ComfyUI server. Watch the progress bar with ETA.
-
----
-
-## Features
-
-### Gallery
-- Images appear automatically when generation completes
-- **Swipe** left/right in full-view to browse
-- **Long-press** edges for auto-pan slideshow
-- Same-prompt images are **grouped** with a stacked card indicator
-- **Videos** auto-play as you scroll, loop in full view
-- **∞ button** loads the image's workflow back into the editor for iteration
-- **↓ button** downloads with model-named folder structure
-
-### Themes
-Tap the **✦ sparkle** button to choose from 7 color themes:
-- Return Current (red), Volt (lime), Plum (purple), Rosé (pink), Holo (cyan), Terminal (green), Legendary (holographic rainbow)
-
-### LoRA Trigger Keywords
-Each LoRA has a keyword input field. Type the trigger word once — it's saved permanently. The Keywords bar shows all active triggers with a Copy button.
-
-### Tools (requires LM Studio nodes)
-- **Text → JSON**: Convert natural language descriptions to structured Ideogram prompts
-- **Image → JSON**: Reverse-engineer prompts from reference images
-- Prompt history persists between sessions
-
-### Video Workflows
-- Wan 2.1/2.2 IMG2VID supported
-- RIFE interpolation toggle (on/off)
-- Videos play inline in the gallery and full-screen
-
----
-
-## Supported Node Types
-
-Return Current auto-detects fields from these nodes:
-
-| Node | What's Detected |
-|------|----------------|
-| KSampler / KSamplerAdvanced | seed, steps, cfg, sampler, scheduler, denoise |
-| CLIPTextEncode | prompt text |
-| CheckpointLoaderSimple | model dropdown |
-| UNETLoader / UnetLoaderGGUF | model dropdown |
-| Power Lora Loader (rgthree) | full LoRA management |
-| IdeogramStudio | caption, aspect ratio, dimensions, quality presets |
-| Ideogram4Scheduler | turbo/default/quality presets |
-| ResolutionSelector | aspect ratio, megapixels |
-| UpscaleModelLoader | upscale model dropdown |
-| RIFE VFI | interpolation toggle |
-| VHS_VideoCombine | video output detection |
-| EmptyLatentImage | width, height |
-| LoadImage | image upload |
-
-Workflows with nodes not listed here will still load — those fields just won't be editable from the app. The image will generate with the workflow's default values.
-
----
-
-## Tips
-
-- **Seed is auto-randomized** on every Generate tap. Tap the 🔓 lock next to the seed to freeze it — perfect for A/B comparisons across models, LoRAs, and prompt tweaks with an identical seed.
-- **∞ iterate** preserves the exact seed from the original image — perfect for testing prompt tweaks.
-- **Multiple quick generates** all queue up. The gallery shows them as they complete, even if you background the app.
-- **Page refresh** recovers any images that finished while you were away.
-- The app is a **single HTML file** with zero dependencies. No install, no server, no build step. Back it up by copying the file.
-
----
+The [`workflows/`](workflows/) folder has tested examples for **SDXL, Anima, Ideogram 4, Krea 2, and Wan 2.2 video** — all open cleanly in ComfyUI *and* import into the app. The four image workflows share a surrealist botanical prompt, and the Wan 2.2 workflow's default prompt animates their outputs: an end-to-end demo chain out of the box. Full prerequisite download tables in the folder README.
 
 ## Troubleshooting
 
-**"Disconnected"** — Check that ComfyUI is running with `--listen 0.0.0.0 --enable-cors-header` and that your IP/port in settings point to ComfyUI (port 8188), not the app server (port 8000).
+**"Disconnected"** — Confirm ComfyUI is running with both flags above. Settings should point to ComfyUI's port (`8188`), not the app server (`8000`).
 
-**Workflow loads but fields are missing** — The workflow may use custom nodes that Return Current doesn't recognize yet. The image will still generate with default values.
+**Missing fields** — The workflow uses custom nodes the app doesn't recognize yet. They still generate with defaults; check the Advanced section.
 
-**Gallery images not appearing** — Try switching to another tab and back. If they appear after a page refresh, the WebSocket connection may have briefly dropped.
+**Editor error / import error** — The toast names the failing node. Open an [issue](../../issues) with the message and the workflow file; that's everything needed to add support.
 
-**"Editor error: ..."** — Please report the exact error message. This helps fix compatibility with new node types.
+**App looks stale after an update** — Hard-refresh (pull down / Ctrl+Shift+R). Browsers cache aggressively.
 
----
+## License
 
-## Requirements
+GPL-3.0 · free and open source · built by [dreamerisms](https://github.com/dreamerisms) in conversation with Claude
 
-- ComfyUI (any recent version)
-- `--listen 0.0.0.0` flag on ComfyUI
-- Network access between phone and PC
-- For LoRA management: [rgthree-comfy](https://github.com/rgthree/rgthree-comfy) nodes installed
-- For Tools pane: LM Studio nodes installed in ComfyUI
-- For video: VHS (Video Helper Suite) nodes installed
-
----
-
-*Return Current is free and open source. If you find it useful, consider supporting me in my continued development.*
+*If Return Current saves you trips to your desk, consider supporting development.*
