@@ -670,6 +670,79 @@
   }
   .lora-keywords-input::placeholder{color:var(--text-dim); font-style:italic;}
   .lora-keywords-input:focus{outline:none; border-color:var(--safelight-dim);}
+  /* LoRA Info Panel (CivitAI) */
+  .lora-panel-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,.85); z-index:900;
+    display:flex; flex-direction:column; overflow-y:auto;
+    -webkit-overflow-scrolling:touch; padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
+  }
+  .lora-panel{
+    width:100%; max-width:480px; margin:0 auto; padding:20px 16px 40px;
+  }
+  .lora-panel-header{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;
+  }
+  .lora-panel-header h3{
+    font-family:var(--font-body); font-size:15px; font-weight:700; font-style:italic;
+    color:var(--safelight); text-shadow:0 0 10px var(--safelight-glow);
+    margin:0; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .lora-panel-header .lp-close{
+    background:none; border:none; color:var(--text-dim); font-size:22px; cursor:pointer; padding:4px 8px;
+  }
+  .lora-panel-sub{
+    font-family:var(--font-mono); font-size:10px; color:var(--text-dim);
+    letter-spacing:.06em; margin-bottom:16px;
+  }
+  /* Trigger word bubbles */
+  .lp-words{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;}
+  .lp-word{
+    padding:7px 14px; border-radius:20px; border:1px solid var(--line);
+    background:var(--bg-card); color:var(--text-dim); font-size:12px;
+    font-family:var(--font-mono); cursor:pointer; transition:all .15s;
+    user-select:none; -webkit-user-select:none;
+  }
+  .lp-word.active{
+    border-color:var(--safelight); color:var(--safelight);
+    background:var(--safelight-dim);
+    text-shadow:0 0 8px var(--safelight-glow);
+    box-shadow:0 0 10px var(--safelight-glow);
+  }
+  .lp-words-label{
+    font-family:var(--font-mono); font-size:9px; color:var(--text-dim);
+    text-transform:uppercase; letter-spacing:.12em; margin-bottom:8px;
+  }
+  /* Example images grid */
+  .lp-images-label{
+    font-family:var(--font-mono); font-size:9px; color:var(--text-dim);
+    text-transform:uppercase; letter-spacing:.12em; margin:18px 0 8px;
+  }
+  .lp-images{display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;}
+  .lp-img-tile{
+    position:relative; border-radius:10px; overflow:hidden;
+    border:1px solid var(--line); cursor:pointer; aspect-ratio:1;
+  }
+  .lp-img-tile img{width:100%; height:100%; object-fit:cover; display:block;}
+  .lp-img-tile .lp-img-info{
+    position:absolute; bottom:4px; right:4px;
+    color:#fff; font-size:16px; pointer-events:none;
+    text-shadow:0 0 8px var(--safelight-glow), 0 1px 3px rgba(0,0,0,.9);
+    filter:drop-shadow(0 0 3px rgba(0,0,0,.7));
+  }
+  /* Expanded image metadata */
+  .lp-meta{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:12px;
+    padding:14px; margin-top:10px; font-family:var(--font-mono); font-size:11px;
+    color:var(--text-dim); line-height:1.6; display:none;
+  }
+  .lp-meta.open{display:block;}
+  .lp-meta-prompt{
+    color:var(--text); font-size:12px; margin-bottom:10px; line-height:1.5;
+    max-height:120px; overflow-y:auto; word-break:break-word;
+  }
+  .lp-meta-row{display:flex; gap:12px; flex-wrap:wrap;}
+  .lp-meta-row .mk{color:var(--safelight); font-size:9px; text-transform:uppercase; letter-spacing:.1em;}
+  .lp-meta-row .mv{color:var(--text); margin-bottom:6px;}
   .lora-add-btn{
     background:var(--bg-card); border:1px dashed var(--line); border-radius:8px;
     color:var(--text-dim); padding:10px; font-size:12px; font-family:var(--font-mono);
@@ -824,6 +897,19 @@
     cursor:pointer; padding:0 2px; flex:0 0 auto;
   }
   .tools-history-item .th-delete:active{color:var(--safelight);}
+  .tools-history-item .th-src{
+    font-family:var(--font-body); font-size:13px; font-weight:700; font-style:italic;
+    color:var(--safelight); text-shadow:0 0 8px var(--safelight-glow);
+    flex:0 0 auto; letter-spacing:.02em;
+  }
+  .lp-meta-prompt-wrap{position:relative;}
+  .lp-copy{
+    position:absolute; top:0; right:0;
+    background:var(--bg); border:1px solid var(--line); border-radius:6px;
+    color:var(--text-dim); font-size:10px; font-family:var(--font-mono);
+    padding:4px 10px; cursor:pointer; z-index:2;
+  }
+  .lp-copy:active{color:var(--safelight); border-color:var(--safelight-dim);}
   /* Multi-image tiles */
   .tools-img-tiles{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:4px;}
   .tools-img-tile{
@@ -2288,37 +2374,230 @@ function setLoraKeyword(loraPath, keywords){
   else delete map[loraPath];
   localStorage.setItem('returncurrent_lora_keywords', JSON.stringify(map));
 }
-/** Fetch LoRA trigger words from CivitAI by filename */
-async function fetchCivitaiTriggers(loraPath){
+/** Fetch example images (with generation meta) for a model version.
+ *  withMeta=true is required for the API to include generation data.
+ *  Falls back through nsfw-widened and plain queries. */
+async function fetchVersionImages(verId){
+  const attempts = ['&withMeta=true', '&withMeta=true&nsfw=X', ''];
+  for(const suffix of attempts){
+    try{
+      const res = await fetch(`https://civitai.com/api/v1/images?modelVersionId=${verId}&limit=9${suffix}`);
+      if(!res.ok) continue;
+      const data = await res.json();
+      if(data.items && data.items.length) return data.items.slice(0, 9);
+    }catch(e){}
+  }
+  return [];
+}
+
+/** Look up a LoRA on CivitAI by filename.
+ *  Returns {found:true, words, images, name, modelName}
+ *  or {found:false, candidates:[{modelName, name, verId, words}]}
+ *  or null on network failure. */
+async function fetchCivitaiInfo(loraPath){
   const fileName = loraPath.replace(/\\/g,'/').split('/').pop();
   const baseName = fileName.replace(/\.(safetensors|pth|ckpt|bin|pt)$/i, '');
-  // Clean up common suffixes that hurt search
   const searchName = baseName.replace(/[-_](fp\d+|bf16|fp16|fp32|q\d[^_]*|scaled|v\d+)$/gi, '').replace(/[-_]+/g, ' ').trim();
   try{
-    const res = await fetch(`https://civitai.com/api/v1/models?query=${encodeURIComponent(searchName)}&types=LORA&limit=5`);
+    const res = await fetch(`https://civitai.com/api/v1/models?query=${encodeURIComponent(searchName)}&types=LORA&limit=8`);
     if(!res.ok) return null;
     const data = await res.json();
+    const candidates = [];
     for(const model of (data.items || [])){
       for(const ver of (model.modelVersions || [])){
-        // Check if any file in this version matches our filename
         const files = ver.files || [];
-        const match = files.some(f => f.name && f.name.toLowerCase() === fileName.toLowerCase());
-        if(match && ver.trainedWords && ver.trainedWords.length){
-          return ver.trainedWords;
+        const exact = files.some(f => f.name && f.name.toLowerCase() === fileName.toLowerCase());
+        if(exact){
+          const images = await fetchVersionImages(ver.id);
+          return {
+            found: true,
+            words: ver.trainedWords || [],
+            images: images.length ? images : (ver.images || []).slice(0, 9),
+            name: ver.name || '',
+            modelName: model.name || baseName
+          };
         }
       }
-    }
-    // Fallback: if no exact file match, try first result's trainedWords
-    if(data.items && data.items[0]){
-      const firstVer = data.items[0].modelVersions && data.items[0].modelVersions[0];
-      if(firstVer && firstVer.trainedWords && firstVer.trainedWords.length){
-        return firstVer.trainedWords;
+      // Collect as candidate (first version per model)
+      const v0 = model.modelVersions && model.modelVersions[0];
+      if(v0 && candidates.length < 6){
+        candidates.push({modelName: model.name, name: v0.name || '', verId: v0.id, words: v0.trainedWords || []});
       }
     }
-    return null;
+    return {found: false, candidates};
   }catch(e){
     return null;
   }
+}
+
+/** Open the LoRA info panel */
+function openLoraPanel(loraEntry, fieldRef, updateTriggersFn){
+  const overlay = document.createElement('div');
+  overlay.className = 'lora-panel-overlay';
+
+  const loraPath = loraEntry.lora;
+  const fileName = loraPath.replace(/\\/g,'/').split('/').pop().replace(/\.(safetensors|pth|ckpt|bin|pt)$/i,'');
+
+  overlay.innerHTML = `
+    <div class="lora-panel">
+      <div class="lora-panel-header">
+        <h3>${escapeHtml(fileName)}</h3>
+        <button class="lp-close">✕</button>
+      </div>
+      <div class="lora-panel-sub">Loading from CivitAI…</div>
+      <div id="lpContent"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  history.pushState({loraPanelOpen:true}, '');
+
+  // ✕ and outside-tap just trigger history.back() — the global popstate
+  // handler finds the overlay, removes it, and stops (never touches the editor)
+  overlay.querySelector('.lp-close').addEventListener('click', ()=> history.back());
+  overlay.addEventListener('click', e=>{ if(e.target === overlay) history.back(); });
+
+  /** Render a full info view (words + images) into the panel */
+  function renderInfo(info){
+    const content = document.getElementById('lpContent');
+    if(!content) return;
+    overlay.querySelector('.lora-panel-sub').textContent =
+      info.modelName + (info.name ? ' · ' + info.name : '');
+
+    const currentKw = getLoraKeyword(loraPath);
+    const selected = new Set(currentKw ? currentKw.split(',').map(s=>s.trim()).filter(Boolean) : []);
+
+    let html = '';
+    if(info.words.length){
+      html += `<div class="lp-words-label">Trigger Words (tap to select)</div><div class="lp-words">`;
+      info.words.forEach(w => {
+        const active = selected.has(w) ? 'active' : '';
+        html += `<div class="lp-word ${active}" data-lp-word="${escapeHtml(w)}">${escapeHtml(w)}</div>`;
+      });
+      html += `</div>`;
+    } else {
+      html += `<div class="lp-words-label">No trigger words listed</div>`;
+    }
+
+    if(info.images.length){
+      html += `<div class="lp-images-label">Example Images (${info.images.length})</div>`;
+      html += `<div class="lp-images">`;
+      info.images.forEach((img, ii) => {
+        html += `
+          <div class="lp-img-tile" data-lp-img="${ii}">
+            <img src="${escapeHtml(img.url)}" loading="lazy">
+            <span class="lp-img-info">∞</span>
+          </div>`;
+      });
+      html += `</div>`;
+      info.images.forEach((img, ii) => {
+        const meta = img.meta || {};
+        const prompt = meta.prompt || meta.Prompt || '';
+        html += `<div class="lp-meta" id="lpMeta${ii}">`;
+        if(prompt) html += `
+          <div class="lp-meta-prompt-wrap">
+            <button class="lp-copy" data-lp-copy="${ii}">Copy</button>
+            <div class="lp-meta-prompt" style="padding-right:58px;">${escapeHtml(String(prompt).slice(0, 600))}${String(prompt).length > 600 ? '…' : ''}</div>
+          </div>`;
+        html += `<div class="lp-meta-row">`;
+        const fields = [
+          ['Sampler', meta.sampler || meta.Sampler],
+          ['Steps', meta.steps || meta.Steps],
+          ['CFG', meta.cfgScale || meta.cfg || meta['Cfg scale']],
+          ['Seed', meta.seed || meta.Seed],
+          ['Model', meta.Model || meta.model],
+          ['Size', meta.Size || (meta.width && meta.height ? meta.width+'×'+meta.height : '') || (img.width && img.height ? img.width+'×'+img.height : '')]
+        ];
+        const hasReal = prompt || fields.slice(0, 5).some(([k,v]) => v);
+        if(!hasReal){
+          html += `<div style="color:var(--text-dim); font-size:11px; font-style:italic;">No generation data on this upload</div>`;
+        } else {
+          fields.forEach(([k, v]) => {
+            if(v) html += `<div><div class="mk">${k}</div><div class="mv">${escapeHtml(String(v))}</div></div>`;
+          });
+        }
+        html += `</div></div>`;
+      });
+    }
+
+    content.innerHTML = html;
+
+    content.querySelectorAll('[data-lp-word]').forEach(el => {
+      el.addEventListener('click', ()=>{
+        const word = el.dataset.lpWord;
+        if(selected.has(word)){ selected.delete(word); el.classList.remove('active'); }
+        else { selected.add(word); el.classList.add('active'); }
+        const joined = [...selected].join(', ');
+        setLoraKeyword(loraPath, joined);
+        if(fieldRef !== undefined && updateTriggersFn){
+          const kwInput = document.querySelector(`[data-lora-kw="${fieldRef}"]`);
+          if(kwInput) kwInput.value = joined;
+          updateTriggersFn();
+        }
+      });
+    });
+
+    // Copy buttons on metadata prompts: clipboard + Recent Prompts history
+    content.querySelectorAll('[data-lp-copy]').forEach(btn => {
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const ii = parseInt(btn.dataset.lpCopy);
+        const meta = (info.images[ii] && info.images[ii].meta) || {};
+        const fullPrompt = String(meta.prompt || meta.Prompt || '');
+        if(!fullPrompt) return;
+        copyToClipboard(fullPrompt);
+        saveToolsHistory(fullPrompt, 'LoRA');
+        btn.textContent = '✓';
+        setTimeout(()=>{ btn.textContent = 'Copy'; }, 1200);
+      });
+    });
+
+    let openMeta = null;
+    content.querySelectorAll('[data-lp-img]').forEach(tile => {
+      tile.addEventListener('click', ()=>{
+        const metaEl = document.getElementById('lpMeta' + tile.dataset.lpImg);
+        if(!metaEl) return;
+        if(openMeta && openMeta !== metaEl) openMeta.classList.remove('open');
+        metaEl.classList.toggle('open');
+        openMeta = metaEl.classList.contains('open') ? metaEl : null;
+        if(openMeta) metaEl.scrollIntoView({behavior:'smooth', block:'nearest'});
+      });
+    });
+  }
+
+  fetchCivitaiInfo(loraPath).then(async info => {
+    const content = document.getElementById('lpContent');
+    if(!content) return;
+    if(!info){
+      overlay.querySelector('.lora-panel-sub').textContent = '⚠ CivitAI lookup failed (network)';
+      return;
+    }
+    if(info.found){
+      renderInfo(info);
+      return;
+    }
+    // No exact filename match — never show wrong data; offer candidates instead
+    overlay.querySelector('.lora-panel-sub').textContent = '⚠ No exact match for this filename';
+    if(!info.candidates.length){
+      content.innerHTML = `<div style="color:var(--text-dim); font-size:12px;">Nothing similar found on CivitAI. Type trigger words manually in the editor.</div>`;
+      return;
+    }
+    let html = `<div class="lp-words-label">Possible matches — tap the right one</div>`;
+    info.candidates.forEach((cand, ci) => {
+      html += `
+        <div class="tools-history-item" data-lp-cand="${ci}" style="cursor:pointer;">
+          <div class="th-preview">${escapeHtml(cand.modelName)}${cand.name ? ' · ' + escapeHtml(cand.name) : ''}</div>
+        </div>`;
+    });
+    content.innerHTML = html;
+    content.querySelectorAll('[data-lp-cand]').forEach(el => {
+      el.addEventListener('click', async ()=>{
+        const cand = info.candidates[parseInt(el.dataset.lpCand)];
+        overlay.querySelector('.lora-panel-sub').textContent = 'Loading ' + cand.modelName + '…';
+        const images = await fetchVersionImages(cand.verId);
+        renderInfo({words: cand.words, images, name: cand.name, modelName: cand.modelName});
+      });
+    });
+  });
 }
 
 function getLoraKeyword(loraPath){
@@ -2888,29 +3167,11 @@ function renderEditor(){
             updateTriggers();
           });
         });
-        // CivitAI fetch buttons
+        // CivitAI info panel buttons
         stackEl.querySelectorAll('[data-civitai-fetch]').forEach(btn => {
-          btn.addEventListener('click', async () => {
+          btn.addEventListener('click', () => {
             const li = parseInt(btn.dataset.civitaiFetch);
-            const statusEl = stackEl.querySelector(`[data-civitai-status="${li}"]`);
-            const kwInput = stackEl.querySelector(`[data-lora-kw="${li}"]`);
-            btn.disabled = true;
-            btn.textContent = '⏳';
-            statusEl.textContent = '';
-            const words = await fetchCivitaiTriggers(f.value[li].lora);
-            if(words && words.length){
-              const joined = words.join(', ');
-              kwInput.value = joined;
-              setLoraKeyword(f.value[li].lora, joined);
-              updateTriggers();
-              statusEl.textContent = `✓ ${words.length} trigger${words.length > 1 ? 's' : ''}`;
-              statusEl.style.color = 'var(--safelight)';
-            } else {
-              statusEl.textContent = '⚠ not found';
-              statusEl.style.color = '#c43d2e';
-            }
-            btn.textContent = '💡';
-            btn.disabled = false;
+            openLoraPanel(f.value[li], li, updateTriggers);
           });
         });
         // Strength slider ↔ number input two-way sync
@@ -3464,6 +3725,7 @@ function renderTools(){
       return `<div class="tools-history-title">Recent Prompts</div>` +
         history.map((h, i) => `
           <div class="tools-history-item" data-th-idx="${i}">
+            ${h.src ? `<span class="th-src">${escapeHtml(h.src)}</span>` : ''}
             <div class="th-preview">${escapeHtml(h.text.slice(0,60))}</div>
             <div class="th-date">${new Date(h.ts).toLocaleDateString()}</div>
             <button class="th-delete" data-th-delete="${i}">✕</button>
@@ -3573,9 +3835,9 @@ function renderTools(){
 function getToolsHistory(){
   try{ return JSON.parse(localStorage.getItem('returncurrent_tools_history') || '[]'); }catch(e){ return []; }
 }
-function saveToolsHistory(text){
+function saveToolsHistory(text, src){
   const history = getToolsHistory();
-  history.unshift({text, ts: Date.now()});
+  history.unshift({text, ts: Date.now(), src: src || ''});
   localStorage.setItem('returncurrent_tools_history', JSON.stringify(history.slice(0, 50)));
 }
 
@@ -3908,7 +4170,7 @@ async function runToolsGenerate(){
             if(out.text){
               const rawText = Array.isArray(out.text) ? out.text.join('') : String(out.text);
               state.toolsResult = extractJsonPrompt(rawText);
-              saveToolsHistory(state.toolsResult);
+              saveToolsHistory(state.toolsResult, mode === 'text2json' ? 'Text' : 'Image');
               genBtn.disabled = false;
               statusEl.textContent = 'Done — JSON prompt extracted';
               renderTools();
@@ -4186,6 +4448,12 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
 
 /* ====================== INIT ====================== */
 window.addEventListener('popstate', ()=>{
+  // Close lora info panel (handled by its own listener, just prevent further navigation)
+  const loraPanel = document.querySelector('.lora-panel-overlay');
+  if(loraPanel){
+    loraPanel.remove();
+    return;
+  }
   // Close lightbox
   if(state._lightboxOpen){
     state._lightboxOpen = false;
