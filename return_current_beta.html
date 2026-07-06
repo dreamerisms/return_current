@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β1.2</title>
+<title>Return Current β1.3</title>
 <style>
   :root{
     --bg: #0a0908;
@@ -132,6 +132,16 @@
     font-style:normal; font-weight:400; color:var(--safelight);
     text-shadow:0 0 8px var(--safelight-glow);
   }
+  .beta-glyph{
+    font-style:normal; font-weight:400; font-size:12px; vertical-align:super;
+    color:var(--safelight); text-shadow:0 0 10px var(--safelight-glow), 0 0 4px var(--safelight-glow);
+  }
+  .settings-version{
+    margin-top:14px; padding-top:12px; border-top:1px solid var(--line);
+    font-family:var(--font-mono); font-size:10px; color:var(--text-dim);
+    letter-spacing:.08em; text-align:center;
+  }
+  .settings-version .v-num{color:var(--safelight); text-shadow:0 0 6px var(--safelight-glow);}
   header .status-text{font-family:var(--font-mono); font-size:10px; color:var(--text-dim); letter-spacing:0.05em;}
   header button.settings-btn{
     background:none; border:1px solid var(--line); color:var(--text-dim);
@@ -814,6 +824,56 @@
     cursor:pointer; padding:0 2px; flex:0 0 auto;
   }
   .tools-history-item .th-delete:active{color:var(--safelight);}
+  /* Multi-image tiles */
+  .tools-img-tiles{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:4px;}
+  .tools-img-tile{
+    width:72px; height:72px; border-radius:10px; border:1px solid var(--line);
+    position:relative; flex:0 0 72px; overflow:visible;
+  }
+  .tools-img-tile img{width:100%; height:100%; object-fit:cover; border-radius:10px; display:block;}
+  .tools-img-tile .tile-remove{
+    position:absolute; top:-7px; right:-7px; width:20px; height:20px;
+    border-radius:50%; background:var(--bg); border:1px solid var(--line);
+    color:var(--text-dim); font-size:10px; line-height:18px; text-align:center;
+    cursor:pointer; padding:0; z-index:2;
+  }
+  .tools-img-tile .tile-remove:active{color:var(--safelight); border-color:var(--safelight-dim);}
+  .tools-img-add{
+    width:72px; height:72px; border-radius:10px; border:1px dashed var(--line);
+    background:none; color:var(--text-dim); font-size:24px; cursor:pointer;
+    flex:0 0 72px; position:relative;
+  }
+  .tools-img-add:active{border-color:var(--safelight-dim); color:var(--safelight);}
+  .tools-img-add input{position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;}
+  /* Multi-prompt rows */
+  .tools-prompt-row{position:relative; margin-bottom:10px;}
+  .tools-prompt-row textarea{margin-bottom:0;}
+  .tools-prompt-row .prompt-remove{
+    position:absolute; top:-7px; right:-7px; width:20px; height:20px;
+    border-radius:50%; background:var(--bg); border:1px solid var(--line);
+    color:var(--text-dim); font-size:10px; line-height:18px; text-align:center;
+    cursor:pointer; padding:0; z-index:2;
+  }
+  .tools-prompt-row .prompt-remove:active{color:var(--safelight);}
+  .tools-add-prompt{
+    width:100%; padding:9px; border-radius:8px; border:1px dashed var(--line);
+    background:none; color:var(--text-dim); font-size:12px; cursor:pointer;
+    font-family:var(--font-mono); margin-bottom:10px;
+  }
+  .tools-add-prompt:active{border-color:var(--safelight-dim); color:var(--safelight);}
+  /* Blend instructions */
+  .blend-instructions{margin-bottom:10px;}
+  .blend-instructions .bi-label{
+    font-size:9px; font-family:var(--font-mono); color:var(--safelight);
+    text-transform:uppercase; letter-spacing:.08em; margin-bottom:5px;
+    text-shadow:0 0 6px var(--safelight-glow);
+  }
+  .blend-instructions textarea{
+    width:100%; min-height:56px; background:var(--bg); border:1px solid var(--line);
+    border-radius:8px; color:var(--text-dim); padding:8px 10px; font-size:11px;
+    font-family:var(--font-mono); resize:vertical; box-sizing:border-box; line-height:1.4;
+  }
+  .blend-instructions textarea:focus{outline:none; border-color:var(--safelight-dim); color:var(--text);}
 
   ::-webkit-scrollbar{display:none;}
 </style>
@@ -825,7 +885,7 @@
     <div class="brand">
       <div class="dot" id="connDot"></div>
       <div>
-        <h1>RETURN <span class="title-sep">//</span> CURRENT <span style="font-size:11px;font-weight:400;font-style:normal;color:var(--text-dim);vertical-align:super;">β1.2</span></h1>
+        <h1>RETURN <span class="title-sep">//</span> CURRENT <span class="beta-glyph">β</span></h1>
         <div class="status-text" id="statusText">Disconnected</div>
       </div>
     </div>
@@ -879,6 +939,7 @@
         <input type="text" id="portInput" placeholder="8188">
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β1.3</span></div>
     </div>
   </div>
 
@@ -902,6 +963,8 @@ const state = {
   newImageCount: 0, // tracks how many images are fresh for animation
   galleryExpandedGroup: null, // promptHash of expanded group, or null for main view
   galleryDirty: false, // set when new images arrive, cleared on render
+  toolsImages: [], // [{blob, name, url, w, h}] for multi-image Image→JSON
+  toolsPrompts: [''], // multi-prompt Text→JSON
   busy: false,
   activeJobs: new Map(), // {promptId: {fields, timestamp}}
   processedPrompts: new Set(JSON.parse(sessionStorage.getItem('returncurrent_processed') || '[]')),
@@ -1746,7 +1809,7 @@ function buildEditableFields(apiGraph, titleMap){
 
   // --- Universal fallback: expose remaining primitive inputs as Advanced fields ---
   const capturedKeys = new Set(groups.map(f => `${f.nodeId}:${f.key}`));
-  const SKIP_NODE_TYPES = new Set(['Power Lora Loader (rgthree)','RIFE VFI','IdeogramStudio','Ideogram4Scheduler','UpscaleModelLoader','UnetLoaderGGUF','ResolutionSelector','Note','MarkdownNote','Reroute','PrimitiveNode','VHS_VideoCombine','SaveImage','PreviewImage']);
+  const SKIP_NODE_TYPES = new Set(['Power Lora Loader (rgthree)','RIFE VFI','IdeogramStudio','Ideogram4Scheduler','UpscaleModelLoader','UnetLoaderGGUF','ResolutionSelector','Note','MarkdownNote','Reroute','PrimitiveNode','VHS_VideoCombine','SaveImage','PreviewImage','VRAMCleanup']);
   const SKIP_KEYS = new Set(['control_after_generate','filename_prefix','choose file to upload']);
   for(const nodeId in apiGraph){
     const node = apiGraph[nodeId];
@@ -1903,6 +1966,7 @@ function setupDropZone(){
 async function handleImportFile(file){
   try{
     let apiGraph, uiGraph, thumb = '';
+    let convVersion = null;
     if(/\.json$/i.test(file.name)){
       const text = await file.text();
       const parsed = JSON.parse(text);
@@ -1910,6 +1974,7 @@ async function handleImportFile(file){
         // UI workflow format — convert via server object_info
         uiGraph = parsed;
         apiGraph = await convertUiToApi(parsed);
+        convVersion = CONV_VERSION;
       } else if(Object.values(parsed).some(v => v && typeof v === 'object' && v.class_type)){
         // API format — directly usable
         apiGraph = parsed;
@@ -1926,7 +1991,7 @@ async function handleImportFile(file){
     const titleMap = getUiTitleMap(uiGraph);
     const fields = buildEditableFields(apiGraph, titleMap);
     const name = file.name.replace(/\.(png|json)$/i,'');
-    const saved = {name, apiGraph, titleMap, thumb, fieldCount: fields.length};
+    const saved = {name, apiGraph, titleMap, thumb, fieldCount: fields.length, convVersion};
     state.workflows.unshift(saved);
     safeSaveWorkflows();
     toast(`Imported "${name}" — ${fields.length} fields found`);
@@ -1938,6 +2003,9 @@ async function handleImportFile(file){
 }
 
 /** Convert ComfyUI UI-format workflow JSON to API format using server object_info */
+/** Converter version — bump whenever convertUiToApi logic changes so stale imports can be detected */
+const CONV_VERSION = 2;
+
 async function convertUiToApi(ui){
   if(!state.connected) throw new Error('Connect to your server first — JSON conversion needs node definitions');
   // Fetch full object_info (cached per session)
@@ -2123,6 +2191,9 @@ function escapeHtml(s){
 function openWorkflow(idx){
   try{
     const saved = state.workflows[idx];
+    if(saved.convVersion !== undefined && saved.convVersion !== null && saved.convVersion !== CONV_VERSION){
+      toast('⚠ Imported with an older converter — delete & re-import the JSON to apply fixes');
+    }
     const fields = buildEditableFields(saved.apiGraph, saved.titleMap || {});
     state.currentWorkflow = {saved, apiGraph: saved.apiGraph, fields};
     history.pushState({editor: true}, '');
@@ -3262,6 +3333,18 @@ const TOOLS_SYSTEM_TEXT2JSON = `Generate a detailed prompt from this text using 
 const TOOLS_SYSTEM_IMG2JSON = `You are a helpful AI assistant.  You will use https://github.com/ideogram-oss/ideogram4/blob/main/docs/prompting.md to learn how to translate images into JSON prompts for the image model Ideogram 4.  Think in the background, your only output should be the completed prompt.`;
 const TOOLS_USER_IMG = `Generate an incredibly detailed JSON prompt from this image.`;
 
+const DEFAULT_BLEND_TEXT = `Blend the following separate concepts into ONE cohesive scene. Merge their subjects, styles, palettes, moods and standout visual elements so the result reads as a single unified vision, not a list. Where concepts conflict, choose the more visually striking option.`;
+const DEFAULT_BLEND_IMG = `You are shown multiple images batched together. Study every image. Fuse their subjects, art styles, color palettes, lighting and most distinctive visual elements into ONE cohesive JSON prompt describing a single unified scene. Do not describe the images separately.`;
+
+function getBlendText(kind){
+  return localStorage.getItem('returncurrent_blend_' + kind) ||
+    (kind === 'img' ? DEFAULT_BLEND_IMG : DEFAULT_BLEND_TEXT);
+}
+function setBlendText(kind, val){
+  if(val && val.trim()) localStorage.setItem('returncurrent_blend_' + kind, val.trim());
+  else localStorage.removeItem('returncurrent_blend_' + kind);
+}
+
 function renderTools(){
   actionBar.style.display = 'none';
   const mode = state.toolsMode;
@@ -3273,12 +3356,36 @@ function renderTools(){
     </div>
     <div class="tools-input-area">
       ${mode === 'text2json' ? `
-        <textarea id="toolsTextInput" placeholder="Describe your image in natural language…">${escapeHtml(state._toolsTextDraft || '')}</textarea>
+        ${state.toolsPrompts.map((p, pi) => `
+          <div class="tools-prompt-row">
+            <textarea data-tools-prompt="${pi}" placeholder="${pi === 0 ? 'Describe your image in natural language…' : 'Another concept to blend in…'}">${escapeHtml(p)}</textarea>
+            ${pi > 0 ? `<button class="prompt-remove" data-prompt-remove="${pi}">✕</button>` : ''}
+          </div>
+        `).join('')}
+        ${state.toolsPrompts.length < 4 ? `<button class="tools-add-prompt" id="toolsAddPrompt">+ Add prompt to blend</button>` : ''}
+        ${state.toolsPrompts.length > 1 ? `
+          <div class="blend-instructions">
+            <div class="bi-label">Blend Instructions</div>
+            <textarea id="blendTextInstr">${escapeHtml(getBlendText('text'))}</textarea>
+          </div>` : ''}
       ` : `
-        <div class="tools-img-upload ${state.toolsImageBlob ? 'has-image' : ''}" id="toolsImgDrop">
-          ${state.toolsImageBlob ? `<img id="toolsImgPreview" src="">` : 'Tap to upload or drop an image'}
-          <input type="file" accept="image/*" id="toolsImgInput">
+        <div class="tools-img-tiles">
+          ${state.toolsImages.map((im, ii) => `
+            <div class="tools-img-tile">
+              <img src="${im.url}">
+              <button class="tile-remove" data-img-remove="${ii}">✕</button>
+            </div>
+          `).join('')}
+          ${state.toolsImages.length < 4 ? `
+            <button class="tools-img-add">+
+              <input type="file" accept="image/*" multiple id="toolsImgInput">
+            </button>` : ''}
         </div>
+        ${state.toolsImages.length > 1 ? `
+          <div class="blend-instructions">
+            <div class="bi-label">Blend Instructions</div>
+            <textarea id="blendImgInstr">${escapeHtml(getBlendText('img'))}</textarea>
+          </div>` : ''}
       `}
     </div>
     <div class="tools-status" id="toolsStatus"></div>
@@ -3312,29 +3419,59 @@ function renderTools(){
     });
   });
 
-  // Text draft persistence
-  const textInput = document.getElementById('toolsTextInput');
-  if(textInput) textInput.addEventListener('input', ()=> state._toolsTextDraft = textInput.value);
+  // Multi-prompt wiring
+  main.querySelectorAll('[data-tools-prompt]').forEach(ta => {
+    ta.addEventListener('input', ()=>{
+      state.toolsPrompts[parseInt(ta.dataset.toolsPrompt)] = ta.value;
+    });
+  });
+  const addPromptBtn = document.getElementById('toolsAddPrompt');
+  if(addPromptBtn){
+    addPromptBtn.addEventListener('click', ()=>{
+      state.toolsPrompts.push('');
+      renderTools();
+    });
+  }
+  main.querySelectorAll('[data-prompt-remove]').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      state.toolsPrompts.splice(parseInt(btn.dataset.promptRemove), 1);
+      renderTools();
+    });
+  });
+  const blendTextEl = document.getElementById('blendTextInstr');
+  if(blendTextEl) blendTextEl.addEventListener('input', ()=> setBlendText('text', blendTextEl.value));
+  const blendImgEl = document.getElementById('blendImgInstr');
+  if(blendImgEl) blendImgEl.addEventListener('input', ()=> setBlendText('img', blendImgEl.value));
 
-  // Image upload — store as blob immediately so it survives DOM re-renders
+  // Multi-image wiring — store blobs immediately so they survive DOM re-renders
   const imgInput = document.getElementById('toolsImgInput');
   if(imgInput){
     imgInput.addEventListener('change', async e=>{
-      if(e.target.files[0]){
-        const file = e.target.files[0];
+      const files = [...(e.target.files || [])].slice(0, 4 - state.toolsImages.length);
+      for(const file of files){
         const buf = await file.arrayBuffer();
-        state.toolsImageBlob = new Blob([buf], {type: file.type || 'image/png'});
-        state.toolsImageName = file.name || 'tools_input.png';
-        state.toolsImageUrl = URL.createObjectURL(state.toolsImageBlob);
-        renderTools();
+        const blob = new Blob([buf], {type: file.type || 'image/png'});
+        const url = URL.createObjectURL(blob);
+        // Read natural dimensions for batch scaling
+        const dims = await new Promise(res => {
+          const im = new Image();
+          im.onload = ()=> res({w: im.naturalWidth, h: im.naturalHeight});
+          im.onerror = ()=> res({w: 0, h: 0});
+          im.src = url;
+        });
+        state.toolsImages.push({blob, name: file.name || 'tools_input.png', url, w: dims.w, h: dims.h});
       }
+      renderTools();
     });
   }
-  // Show existing preview
-  if(state.toolsImageUrl){
-    const preview = document.getElementById('toolsImgPreview');
-    if(preview) preview.src = state.toolsImageUrl;
-  }
+  main.querySelectorAll('[data-img-remove]').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      const ii = parseInt(btn.dataset.imgRemove);
+      try{ URL.revokeObjectURL(state.toolsImages[ii].url); }catch(e){}
+      state.toolsImages.splice(ii, 1);
+      renderTools();
+    });
+  });
 
   // Generate button
   document.getElementById('toolsGenBtn').addEventListener('click', ()=> runToolsGenerate());
@@ -3500,8 +3637,11 @@ async function runToolsGenerate(){
   let graph;
 
   if(mode === 'text2json'){
-    const inputText = (state._toolsTextDraft || '').trim();
-    if(!inputText){ toast('Enter some text first'); genBtn.disabled = false; statusEl.textContent=''; return; }
+    const prompts = state.toolsPrompts.map(p => (p || '').trim()).filter(Boolean);
+    if(!prompts.length){ toast('Enter some text first'); genBtn.disabled = false; statusEl.textContent=''; return; }
+    const inputText = prompts.length === 1 ? prompts[0] :
+      getBlendText('text') + '\n\n' +
+      prompts.map((p, i) => `=== CONCEPT ${i + 1} ===\n${p}`).join('\n\n');
     if(!info.text){
       statusEl.textContent = 'Expo Lmstudio Text Generation not found on server';
       genBtn.disabled = false;
@@ -3530,53 +3670,150 @@ async function runToolsGenerate(){
       "2": { "class_type": "ShowText|pysssss", "inputs": {"text": ["1", 0]} }
     };
   } else {
-    if(!state.toolsImageBlob){ toast('Upload an image first'); genBtn.disabled = false; statusEl.textContent=''; return; }
+    if(!state.toolsImages.length){ toast('Add at least one image'); genBtn.disabled = false; statusEl.textContent=''; return; }
     if(!info.img){
       statusEl.textContent = 'Expo Lmstudio Unified not found on server';
       genBtn.disabled = false;
       return;
     }
-    statusEl.textContent = 'Uploading image…';
-    let uploadedName;
-    try{
-      const formData = new FormData();
-      formData.append('image', state.toolsImageBlob, state.toolsImageName);
-      const upRes = await fetch(baseUrl() + '/upload/image', {method:'POST', body:formData});
-      if(!upRes.ok){
-        const errBody = await upRes.text().catch(()=>'');
-        throw new Error('HTTP ' + upRes.status + ' ' + errBody.slice(0,100));
-      }
-      const upJson = await upRes.json();
-      uploadedName = upJson.name;
-      if(!uploadedName) throw new Error('No filename in response');
-    }catch(e){
-      statusEl.textContent = 'Upload failed: ' + e.message;
-      console.error('Upload error:', e);
-      genBtn.disabled = false;
-      return;
-    }
-    const req = info.img.input.required || {};
-    const opt = info.img.input.optional || {};
-    const allInputNames = [...Object.keys(req), ...Object.keys(opt)];
 
-    const overrides = {};
-    for(const key of allInputNames){
-      const kl = key.toLowerCase();
-      if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = TOOLS_USER_IMG;
-      else if(kl.includes('system')) overrides[key] = TOOLS_SYSTEM_IMG2JSON;
-      else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
-      else if(kl === 'image') overrides[key] = ["1", 0];
-      else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
-      else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 3000;
-      else if(kl === 'temperature') overrides[key] = 0.7;
-      else if(kl.includes('timeout')) overrides[key] = 300;
+    if(state.toolsImages.length === 1){
+      // Single image — direct call, same as before
+      statusEl.textContent = 'Uploading image\u2026';
+      let uploadedName;
+      try{
+        const formData = new FormData();
+        formData.append('image', state.toolsImages[0].blob, state.toolsImages[0].name);
+        const upRes = await fetch(baseUrl() + '/upload/image', {method:'POST', body:formData});
+        if(!upRes.ok) throw new Error('HTTP ' + upRes.status);
+        const upJson = await upRes.json();
+        uploadedName = upJson.name;
+        if(!uploadedName) throw new Error('No filename in response');
+      }catch(e){
+        statusEl.textContent = 'Upload failed: ' + e.message;
+        genBtn.disabled = false; return;
+      }
+      const req = info.img.input.required || {};
+      const opt = info.img.input.optional || {};
+      const allInputNames = [...Object.keys(req), ...Object.keys(opt)];
+      const overrides = {};
+      for(const key of allInputNames){
+        const kl = key.toLowerCase();
+        if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = TOOLS_USER_IMG;
+        else if(kl.includes('system')) overrides[key] = TOOLS_SYSTEM_IMG2JSON;
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+        else if(kl === 'image') overrides[key] = ["1", 0];
+        else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
+        else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 3000;
+        else if(kl === 'temperature') overrides[key] = 0.7;
+        else if(kl.includes('timeout')) overrides[key] = 300;
+      }
+      graph = {
+        "1": { "class_type": "LoadImage", "inputs": {"image": uploadedName} },
+        "2": { "class_type": "Expo Lmstudio Unified", "inputs": buildNodeInputs(info.img, overrides) },
+        "3": { "class_type": "ShowText|pysssss", "inputs": {"text": ["2", 0]} }
+      };
+    } else {
+      // Multi-image: per-image LLM passes, then a text synthesis pass
+      const descriptions = [];
+      for(let ii = 0; ii < state.toolsImages.length; ii++){
+        statusEl.textContent = `Analyzing image ${ii + 1} of ${state.toolsImages.length}\u2026`;
+        // Upload this image
+        let uploadedName;
+        try{
+          const formData = new FormData();
+          formData.append('image', state.toolsImages[ii].blob, state.toolsImages[ii].name);
+          const upRes = await fetch(baseUrl() + '/upload/image', {method:'POST', body:formData});
+          if(!upRes.ok) throw new Error('HTTP ' + upRes.status);
+          uploadedName = (await upRes.json()).name;
+          if(!uploadedName) throw new Error('No filename');
+        }catch(e){
+          statusEl.textContent = 'Upload failed: ' + e.message;
+          genBtn.disabled = false; return;
+        }
+        // Build a per-image graph
+        const req = info.img.input.required || {};
+        const opt = info.img.input.optional || {};
+        const allInputNames = [...Object.keys(req), ...Object.keys(opt)];
+        const overrides = {};
+        for(const key of allInputNames){
+          const kl = key.toLowerCase();
+          if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = 'Describe every visual detail of this image: subject, art style, color palette, lighting, composition, textures, and mood.';
+          else if(kl.includes('system')) overrides[key] = 'You are an expert visual analyst. Describe the image comprehensively in one paragraph.';
+          else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+          else if(kl === 'image') overrides[key] = ["1", 0];
+          else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
+          else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 1500;
+          else if(kl === 'temperature') overrides[key] = 0.7;
+          else if(kl.includes('timeout')) overrides[key] = 300;
+        }
+        const imgGraph = {
+          "1": { "class_type": "LoadImage", "inputs": {"image": uploadedName} },
+          "2": { "class_type": "Expo Lmstudio Unified", "inputs": buildNodeInputs(info.img, overrides) },
+          "3": { "class_type": "ShowText|pysssss", "inputs": {"text": ["2", 0]} }
+        };
+        // Submit and wait for result
+        try{
+          const res = await fetch(baseUrl() + '/prompt', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({prompt: imgGraph, client_id: state.clientId})
+          });
+          const json = await res.json();
+          if(json.error) throw new Error('Rejected');
+          const pid = json.prompt_id;
+          for(let attempt = 0; attempt < 120; attempt++){
+            await new Promise(r => setTimeout(r, 2000));
+            try{
+              const hRes = await fetch(baseUrl() + '/history/' + pid);
+              const hist = await hRes.json();
+              const entry = hist[pid];
+              if(entry && entry.outputs){
+                for(const nid in entry.outputs){
+                  if(entry.outputs[nid].text){
+                    const raw = Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text);
+                    descriptions.push(raw);
+                    break;
+                  }
+                }
+                break;
+              }
+            }catch(e){}
+            statusEl.textContent = `Analyzing image ${ii + 1} of ${state.toolsImages.length}\u2026 ${(attempt+1)*2}s`;
+          }
+        }catch(e){
+          statusEl.textContent = 'Analysis failed for image ' + (ii + 1);
+          genBtn.disabled = false; return;
+        }
+      }
+      // Synthesis pass: blend all descriptions into one JSON prompt using text-only node
+      if(!info.text){
+        statusEl.textContent = 'Text Generation node not found (needed for synthesis)';
+        genBtn.disabled = false; return;
+      }
+      statusEl.textContent = 'Blending descriptions into final prompt\u2026';
+      const blendInstr = getBlendText('img');
+      const synthPrompt = blendInstr + '\n\n' +
+        descriptions.map((d, i) => `=== IMAGE ${i + 1} DESCRIPTION ===\n${d}`).join('\n\n');
+      const req2 = info.text.input.required || {};
+      const opt2 = info.text.input.optional || {};
+      const allNames2 = [...Object.keys(req2), ...Object.keys(opt2)];
+      const overrides2 = {};
+      for(const key of allNames2){
+        const kl = key.toLowerCase();
+        if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text')
+          overrides2[key] = synthPrompt;
+        else if(kl.includes('system')) overrides2[key] = TOOLS_SYSTEM_IMG2JSON;
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides2[key] = 'google/gemma-4-12b';
+        else if(kl === 'seed') overrides2[key] = Math.floor(Math.random()*1e15);
+        else if(kl.includes('max_token') || kl.includes('max_length')) overrides2[key] = 3000;
+        else if(kl === 'temperature') overrides2[key] = 0.7;
+        else if(kl.includes('timeout')) overrides2[key] = 300;
+      }
+      graph = {
+        "1": { "class_type": "Expo Lmstudio Text Generation", "inputs": buildNodeInputs(info.text, overrides2) },
+        "2": { "class_type": "ShowText|pysssss", "inputs": {"text": ["1", 0]} }
+      };
     }
-    const nodeInputs = buildNodeInputs(info.img, overrides);
-    graph = {
-      "1": { "class_type": "LoadImage", "inputs": {"image": uploadedName} },
-      "2": { "class_type": "Expo Lmstudio Unified", "inputs": nodeInputs },
-      "3": { "class_type": "ShowText|pysssss", "inputs": {"text": ["2", 0]} }
-    };
   }
 
   statusEl.textContent = 'Submitting to LM Studio…';
