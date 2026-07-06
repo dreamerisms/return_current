@@ -2288,6 +2288,39 @@ function setLoraKeyword(loraPath, keywords){
   else delete map[loraPath];
   localStorage.setItem('returncurrent_lora_keywords', JSON.stringify(map));
 }
+/** Fetch LoRA trigger words from CivitAI by filename */
+async function fetchCivitaiTriggers(loraPath){
+  const fileName = loraPath.replace(/\\/g,'/').split('/').pop();
+  const baseName = fileName.replace(/\.(safetensors|pth|ckpt|bin|pt)$/i, '');
+  // Clean up common suffixes that hurt search
+  const searchName = baseName.replace(/[-_](fp\d+|bf16|fp16|fp32|q\d[^_]*|scaled|v\d+)$/gi, '').replace(/[-_]+/g, ' ').trim();
+  try{
+    const res = await fetch(`https://civitai.com/api/v1/models?query=${encodeURIComponent(searchName)}&types=LORA&limit=5`);
+    if(!res.ok) return null;
+    const data = await res.json();
+    for(const model of (data.items || [])){
+      for(const ver of (model.modelVersions || [])){
+        // Check if any file in this version matches our filename
+        const files = ver.files || [];
+        const match = files.some(f => f.name && f.name.toLowerCase() === fileName.toLowerCase());
+        if(match && ver.trainedWords && ver.trainedWords.length){
+          return ver.trainedWords;
+        }
+      }
+    }
+    // Fallback: if no exact file match, try first result's trainedWords
+    if(data.items && data.items[0]){
+      const firstVer = data.items[0].modelVersions && data.items[0].modelVersions[0];
+      if(firstVer && firstVer.trainedWords && firstVer.trainedWords.length){
+        return firstVer.trainedWords;
+      }
+    }
+    return null;
+  }catch(e){
+    return null;
+  }
+}
+
 function getLoraKeyword(loraPath){
   return getLoraKeywordMap()[loraPath] || '';
 }
@@ -2588,6 +2621,10 @@ function renderEditor(){
                   <input type="number" step="any" class="str-val" data-lora-str-display="${li}" value="${entry.strength}">
                 </div>
                 <input class="lora-keywords-input" data-lora-kw="${li}" placeholder="trigger words" value="${escapeHtml(getLoraKeyword(entry.lora))}">
+                <div style="display:flex; gap:6px; align-items:center; margin-top:2px;">
+                  <button class="civitai-fetch" data-civitai-fetch="${li}" title="Fetch trigger words from CivitAI" style="background:none; border:1px solid var(--line); border-radius:6px; padding:3px 8px; font-size:13px; cursor:pointer; color:var(--text-dim);">💡</button>
+                  <span class="civitai-status" data-civitai-status="${li}" style="font-size:11px; font-family:var(--font-mono); color:var(--text-dim);"></span>
+                </div>
               </div>
             `).join('')}
             <div class="lora-triggers" data-triggers-field="${i}">
@@ -2849,6 +2886,31 @@ function renderEditor(){
             const li = parseInt(input.dataset.loraKw);
             setLoraKeyword(f.value[li].lora, input.value);
             updateTriggers();
+          });
+        });
+        // CivitAI fetch buttons
+        stackEl.querySelectorAll('[data-civitai-fetch]').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const li = parseInt(btn.dataset.civitaiFetch);
+            const statusEl = stackEl.querySelector(`[data-civitai-status="${li}"]`);
+            const kwInput = stackEl.querySelector(`[data-lora-kw="${li}"]`);
+            btn.disabled = true;
+            btn.textContent = '⏳';
+            statusEl.textContent = '';
+            const words = await fetchCivitaiTriggers(f.value[li].lora);
+            if(words && words.length){
+              const joined = words.join(', ');
+              kwInput.value = joined;
+              setLoraKeyword(f.value[li].lora, joined);
+              updateTriggers();
+              statusEl.textContent = `✓ ${words.length} trigger${words.length > 1 ? 's' : ''}`;
+              statusEl.style.color = 'var(--safelight)';
+            } else {
+              statusEl.textContent = '⚠ not found';
+              statusEl.style.color = '#c43d2e';
+            }
+            btn.textContent = '💡';
+            btn.disabled = false;
           });
         });
         // Strength slider ↔ number input two-way sync
