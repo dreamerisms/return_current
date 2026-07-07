@@ -1,5 +1,5 @@
 # RETURN // CURRENT <sup>β</sup>
-![Return Current](media/hero-banner.png)
+![Return Current](media/rc_herobanner.jpg)
 **Mobile controller for ComfyUI. One HTML file, zero dependencies.**
 
 Your GPU, in your pocket.
