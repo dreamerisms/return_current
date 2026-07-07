@@ -1,4 +1,3 @@
-# RETURN // CURRENT <sup>β</sup>
 ![Return Current](media/rc_herobanner.jpg)
 **Mobile controller for ComfyUI. One HTML file, zero dependencies.**
 
