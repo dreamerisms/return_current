@@ -902,6 +902,30 @@
     color:var(--safelight); text-shadow:0 0 8px var(--safelight-glow);
     flex:0 0 auto; letter-spacing:.02em;
   }
+  .tools-history-item .th-src.emo{
+    font-size:14px; font-style:normal; text-shadow:none;
+  }
+  .tools-history-item .th-src.inf{
+    font-size:18px; font-style:normal; line-height:1;
+    color:var(--safelight);
+    text-shadow:0 0 10px var(--safelight-glow), 0 0 4px var(--safelight-glow);
+  }
+  .tools-history-item.blended{
+    border-color:var(--safelight-dim);
+    box-shadow:0 0 10px var(--safelight-glow);
+  }
+  body.theme-legendary .tools-history-item.blended{
+    border:1px solid transparent;
+    background:
+      linear-gradient(var(--bg-card), var(--bg-card)) padding-box,
+      linear-gradient(90deg, #ff2d7b, #ff8c00, #ffe600, #00e87b, #00bfff, #a855ff) border-box;
+    box-shadow:0 0 12px rgba(168,85,255,.35);
+  }
+  body.theme-legendary .tools-history-item.blended .th-src.inf{
+    background:linear-gradient(90deg, #ff2d7b, #ffe600, #00bfff, #a855ff);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:none;
+  }
   .lp-meta-prompt-wrap{position:relative;}
   .lp-copy{
     position:absolute; top:0; right:0;
@@ -3724,8 +3748,14 @@ function renderTools(){
       if(!history.length) return '';
       return `<div class="tools-history-title">Recent Prompts</div>` +
         history.map((h, i) => `
-          <div class="tools-history-item" data-th-idx="${i}">
-            ${h.src ? `<span class="th-src">${escapeHtml(h.src)}</span>` : ''}
+          <div class="tools-history-item ${h.src === '∞' ? 'blended' : ''}" data-th-idx="${i}">
+            ${(()=>{
+              if(!h.src) return '';
+              if(h.src === '∞') return `<span class="th-src inf">∞</span>`;
+              if(h.src === 'Text') return `<span class="th-src emo">📝</span>`;
+              if(h.src === 'Image') return `<span class="th-src emo">🖼️</span>`;
+              return `<span class="th-src">${escapeHtml(h.src)}</span>`;
+            })()}
             <div class="th-preview">${escapeHtml(h.text.slice(0,60))}</div>
             <div class="th-date">${new Date(h.ts).toLocaleDateString()}</div>
             <button class="th-delete" data-th-delete="${i}">✕</button>
@@ -3960,9 +3990,11 @@ async function runToolsGenerate(){
   const mode = state.toolsMode;
   let graph;
 
+  let histSrc = mode === 'text2json' ? 'Text' : 'Image';
   if(mode === 'text2json'){
     const prompts = state.toolsPrompts.map(p => (p || '').trim()).filter(Boolean);
     if(!prompts.length){ toast('Enter some text first'); genBtn.disabled = false; statusEl.textContent=''; return; }
+    if(prompts.length > 1) histSrc = '∞';
     const inputText = prompts.length === 1 ? prompts[0] :
       getBlendText('text') + '\n\n' +
       prompts.map((p, i) => `=== CONCEPT ${i + 1} ===\n${p}`).join('\n\n');
@@ -4039,6 +4071,7 @@ async function runToolsGenerate(){
       };
     } else {
       // Multi-image: per-image LLM passes, then a text synthesis pass
+      histSrc = '∞';
       const descriptions = [];
       for(let ii = 0; ii < state.toolsImages.length; ii++){
         statusEl.textContent = `Analyzing image ${ii + 1} of ${state.toolsImages.length}\u2026`;
@@ -4170,7 +4203,7 @@ async function runToolsGenerate(){
             if(out.text){
               const rawText = Array.isArray(out.text) ? out.text.join('') : String(out.text);
               state.toolsResult = extractJsonPrompt(rawText);
-              saveToolsHistory(state.toolsResult, mode === 'text2json' ? 'Text' : 'Image');
+              saveToolsHistory(state.toolsResult, histSrc);
               genBtn.disabled = false;
               statusEl.textContent = 'Done — JSON prompt extracted';
               renderTools();
