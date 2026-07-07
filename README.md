@@ -1,4 +1,4 @@
-# RETURN // CURRENT <sup>β</sup>
+# RETURN ∞ CURRENT <sup>β</sup>
 
 **Mobile controller for ComfyUI. One HTML file, zero dependencies.**
 
