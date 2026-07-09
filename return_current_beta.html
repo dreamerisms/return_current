@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β1.3</title>
+<title>Return Current β1.4.3</title>
 <style>
   :root{
     --bg: #0a0908;
@@ -903,7 +903,15 @@
     flex:0 0 auto; letter-spacing:.02em;
   }
   .tools-history-item .th-src.emo{
-    font-size:14px; font-style:normal; text-shadow:none;
+    font-size:15px; font-style:normal; font-weight:400;
+    color:var(--text-dim); text-shadow:none; font-family:var(--font-mono);
+  }
+  .mode-glyph{
+    font-style:normal; font-weight:400; font-size:14px;
+    font-family:var(--font-mono); margin-right:2px;
+  }
+  .tools-mode-toggle button.active .mode-glyph{
+    color:var(--safelight); text-shadow:0 0 8px var(--safelight-glow);
   }
   .tools-history-item .th-src.inf{
     font-size:18px; font-style:normal; line-height:1;
@@ -984,6 +992,101 @@
     font-family:var(--font-mono); resize:vertical; box-sizing:border-box; line-height:1.4;
   }
   .blend-instructions textarea:focus{outline:none; border-color:var(--safelight-dim); color:var(--text);}
+  /* Chat */
+  .chat-messages{
+    display:flex; flex-direction:column; gap:10px; margin-bottom:12px;
+    max-height:50vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    padding:4px 0;
+  }
+  .chat-empty{
+    color:var(--text-dim); font-size:12px; font-family:var(--font-mono);
+    text-align:center; padding:24px 12px; line-height:1.6;
+  }
+  .chat-bubble{
+    max-width:82%; padding:10px 13px; border-radius:14px; position:relative;
+    font-size:13.5px; line-height:1.5; word-break:break-word;
+  }
+  .chat-bubble .cb-text{white-space:pre-wrap;}
+  .chat-bubble.user{
+    align-self:flex-end; background:var(--safelight-dim);
+    border:1px solid var(--safelight); color:var(--text);
+    border-bottom-right-radius:4px;
+  }
+  .chat-bubble.assistant{
+    align-self:flex-start; background:var(--bg-card);
+    border:1px solid var(--line); color:var(--text);
+    border-bottom-left-radius:4px;
+  }
+  .chat-bubble .cb-img{
+    max-width:160px; border-radius:8px; display:block; margin-bottom:6px;
+  }
+  .chat-bubble .cb-copy{
+    background:none; border:none; color:var(--text-dim); font-size:10px;
+    font-family:var(--font-mono); cursor:pointer; padding:4px 0 0; display:block;
+  }
+  .cb-waiting .cb-dots{
+    color:var(--safelight); letter-spacing:3px; font-size:10px;
+    text-shadow:0 0 8px var(--safelight-glow);
+    animation:cbPulse 1.2s ease-in-out infinite;
+  }
+  @keyframes cbPulse{0%,100%{opacity:.3;} 50%{opacity:1;}}
+  .chat-attach-chip{
+    display:inline-flex; align-items:center; gap:6px; margin-bottom:8px;
+    background:var(--bg-card); border:1px solid var(--safelight-dim);
+    border-radius:10px; padding:4px;
+  }
+  .chat-attach-chip img{width:40px; height:40px; object-fit:cover; border-radius:7px;}
+  .chat-attach-chip button{
+    background:none; border:none; color:var(--text-dim); cursor:pointer; font-size:12px; padding:0 6px;
+  }
+  .chat-input-row{display:flex; gap:8px; align-items:flex-end;}
+  .chat-input-row textarea{
+    flex:1; background:var(--bg-card); border:1px solid var(--line); border-radius:12px;
+    color:var(--text); padding:10px 12px; font-size:14px; resize:none;
+    min-height:42px; max-height:120px; box-sizing:border-box; font-family:inherit;
+  }
+  .chat-input-row textarea:focus{outline:none; border-color:var(--safelight-dim);}
+  .chat-attach-btn{
+    position:relative; background:var(--bg-card); border:1px solid var(--line);
+    border-radius:12px; width:42px; height:42px; font-size:16px; cursor:pointer;
+    flex:0 0 42px; color:var(--text-dim);
+  }
+  .chat-attach-btn input{position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;}
+  .chat-send{
+    background:var(--safelight-dim); border:1px solid var(--safelight);
+    border-radius:12px; width:42px; height:42px; font-size:15px; cursor:pointer;
+    flex:0 0 42px; color:var(--safelight);
+    text-shadow:0 0 8px var(--safelight-glow);
+  }
+  .chat-send:disabled{opacity:.4;}
+  /* Character creator */
+  .char-form{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;}
+  .char-field{display:flex; flex-direction:column; gap:4px;}
+  .char-field:has(textarea){grid-column:1 / -1;}
+  .char-field label{
+    font-size:9px; font-family:var(--font-mono); color:var(--text-dim);
+    text-transform:uppercase; letter-spacing:.1em;
+  }
+  .char-field input, .char-field textarea{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:8px;
+    color:var(--text); padding:8px 10px; font-size:13px; box-sizing:border-box;
+    font-family:inherit; resize:vertical;
+  }
+  .char-field input:focus, .char-field textarea:focus{outline:none; border-color:var(--safelight-dim);}
+  .char-format-row{display:flex; gap:8px; align-items:center; margin-bottom:4px;}
+  .fmt-pill{
+    padding:8px 16px; border-radius:20px; border:1px solid var(--line);
+    background:var(--bg-card); color:var(--text-dim); font-size:12px;
+    font-family:var(--font-mono); cursor:pointer; transition:all .15s;
+  }
+  .fmt-pill.active{
+    border-color:var(--safelight); color:var(--safelight);
+    background:var(--safelight-dim);
+    text-shadow:0 0 8px var(--safelight-glow);
+    box-shadow:0 0 10px var(--safelight-glow);
+  }
+  /* 4-pill mode toggle sizing */
+  .tools-mode-toggle button{font-size:11px; padding:9px 4px;}
 
   ::-webkit-scrollbar{display:none;}
 </style>
@@ -1049,7 +1152,7 @@
         <input type="text" id="portInput" placeholder="8188">
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β1.3</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β1.4.3</span></div>
     </div>
   </div>
 
@@ -1075,6 +1178,12 @@ const state = {
   galleryDirty: false, // set when new images arrive, cleared on render
   toolsImages: [], // [{blob, name, url, w, h}] for multi-image Image→JSON
   toolsPrompts: [''], // multi-prompt Text→JSON
+  chatMessages: [], // [{role:'user'|'assistant', text, img?}] session chat
+  chatPendingImg: null, // {blob, name, url} attached to next message
+  _chatDraft: '',
+  _chatWaiting: false,
+  charFields: {}, // character creator field values
+  charFormat: 'json', // 'json' | 'natural'
   busy: false,
   activeJobs: new Map(), // {promptId: {fields, timestamp}}
   processedPrompts: new Set(JSON.parse(sessionStorage.getItem('returncurrent_processed') || '[]')),
@@ -1206,6 +1315,17 @@ async function fetchAvailableLoras(){
       }
     }catch(e2){}
   }
+  // Normalize a combo input spec to its options array.
+  // Handles classic [[options], {...}] and the newer ["COMBO", {options:[...]}] form.
+  function comboOptions(spec){
+    if(!spec) return [];
+    const t = spec[0];
+    if(Array.isArray(t)) return t;
+    if(t === 'COMBO' && spec[1]){
+      return spec[1].options || spec[1].choices || spec[1].values || [];
+    }
+    return [];
+  }
   // Fetch samplers, schedulers, checkpoints from KSampler node info
   try{
     const res = await fetch(`${baseUrl()}/object_info/KSampler`);
@@ -1213,8 +1333,8 @@ async function fetchAvailableLoras(){
     const ks = info['KSampler'];
     if(ks && ks.input && ks.input.required){
       const r = ks.input.required;
-      if(r.sampler_name) state.serverOptions.samplers = r.sampler_name[0] || [];
-      if(r.scheduler) state.serverOptions.schedulers = r.scheduler[0] || [];
+      if(r.sampler_name) state.serverOptions.samplers = comboOptions(r.sampler_name);
+      if(r.scheduler) state.serverOptions.schedulers = comboOptions(r.scheduler);
     }
   }catch(e){}
   try{
@@ -1222,7 +1342,7 @@ async function fetchAvailableLoras(){
     const info = await res.json();
     const cl = info['CheckpointLoaderSimple'];
     if(cl && cl.input && cl.input.required && cl.input.required.ckpt_name){
-      state.serverOptions.checkpoints = cl.input.required.ckpt_name[0] || [];
+      state.serverOptions.checkpoints = comboOptions(cl.input.required.ckpt_name);
     }
   }catch(e){}
   try{
@@ -1230,15 +1350,20 @@ async function fetchAvailableLoras(){
     const info = await res.json();
     const ul = info['UNETLoader'];
     if(ul && ul.input && ul.input.required && ul.input.required.unet_name){
-      state.serverOptions.unets = ul.input.required.unet_name[0] || [];
+      state.serverOptions.unets = comboOptions(ul.input.required.unet_name);
     }
   }catch(e){}
   try{
     const res = await fetch(`${baseUrl()}/object_info/${encodeURIComponent('UnetLoaderGGUF')}`);
     const info = await res.json();
     const n = info['UnetLoaderGGUF'];
-    if(n && n.input && n.input.required && n.input.required.unet_name){
-      state.serverOptions.unet_gguf = n.input.required.unet_name[0] || [];
+    if(n && n.input){
+      const spec = (n.input.required && n.input.required.unet_name) ||
+                   (n.input.optional && n.input.optional.unet_name);
+      state.serverOptions.unet_gguf = comboOptions(spec);
+    }
+    if(!state.serverOptions.unet_gguf.length){
+      console.error('ReturnCurrent: UnetLoaderGGUF options came back empty — node missing or unexpected spec shape');
     }
   }catch(e){}
   try{
@@ -1246,7 +1371,7 @@ async function fetchAvailableLoras(){
     const info = await res.json();
     const n = info['UpscaleModelLoader'];
     if(n && n.input && n.input.required && n.input.required.model_name){
-      state.serverOptions.upscale_models = n.input.required.model_name[0] || [];
+      state.serverOptions.upscale_models = comboOptions(n.input.required.model_name);
     }
   }catch(e){}
   try{
@@ -2925,7 +3050,7 @@ function renderEditor(){
                 </div>
                 <input class="lora-keywords-input" data-lora-kw="${li}" placeholder="trigger words" value="${escapeHtml(getLoraKeyword(entry.lora))}">
                 <div style="display:flex; gap:6px; align-items:center; margin-top:2px;">
-                  <button class="civitai-fetch" data-civitai-fetch="${li}" title="Fetch trigger words from CivitAI" style="background:none; border:1px solid var(--line); border-radius:6px; padding:3px 8px; font-size:13px; cursor:pointer; color:var(--text-dim);">💡</button>
+                  <button class="civitai-fetch" data-civitai-fetch="${li}" title="LoRA info from CivitAI" style="background:none; border:1px solid var(--line); border-radius:6px; padding:3px 8px; font-size:14px; cursor:pointer; color:var(--text-dim);">⌬</button>
                   <span class="civitai-status" data-civitai-status="${li}" style="font-size:11px; font-family:var(--font-mono); color:var(--text-dim);"></span>
                 </div>
               </div>
@@ -3683,6 +3808,31 @@ const TOOLS_USER_IMG = `Generate an incredibly detailed JSON prompt from this im
 const DEFAULT_BLEND_TEXT = `Blend the following separate concepts into ONE cohesive scene. Merge their subjects, styles, palettes, moods and standout visual elements so the result reads as a single unified vision, not a list. Where concepts conflict, choose the more visually striking option.`;
 const DEFAULT_BLEND_IMG = `You are shown multiple images batched together. Study every image. Fuse their subjects, art styles, color palettes, lighting and most distinctive visual elements into ONE cohesive JSON prompt describing a single unified scene. Do not describe the images separately.`;
 
+const CHAT_SYSTEM = 'You are a helpful, knowledgeable assistant. Answer naturally and conversationally.';
+
+const CHAR_FIELDS = [
+  {k:'name', label:'Name'},
+  {k:'age', label:'Age'},
+  {k:'type', label:'Gender / Type'},
+  {k:'origin', label:'Ethnicity / Origin'},
+  {k:'build', label:'Body Build'},
+  {k:'height', label:'Height'},
+  {k:'skin', label:'Skin'},
+  {k:'hair', label:'Hair (style & color)'},
+  {k:'eyes', label:'Eyes'},
+  {k:'face', label:'Face Details'},
+  {k:'features', label:'Distinguishing Features', long:true},
+  {k:'outfit', label:'Outfit / Clothing', long:true},
+  {k:'accessories', label:'Accessories'},
+  {k:'expression', label:'Pose / Expression'},
+  {k:'personality', label:'Personality / Vibe', long:true},
+  {k:'aesthetic', label:'Aesthetic / Style Keywords'},
+  {k:'setting', label:'Setting / Background'},
+  {k:'extra', label:'Extra Notes', long:true}
+];
+
+const CHAR_SYSTEM = 'You are an expert character designer for image generation prompts. Given structured character attributes, compose ONE cohesive, richly detailed natural-language character description suitable as an image generation prompt. Flow the attributes together naturally. Output ONLY the description, no preamble, no headers, no markdown.';
+
 function getBlendText(kind){
   return localStorage.getItem('returncurrent_blend_' + kind) ||
     (kind === 'img' ? DEFAULT_BLEND_IMG : DEFAULT_BLEND_TEXT);
@@ -3698,8 +3848,10 @@ function renderTools(){
   const hasResult = !!state.toolsResult;
   main.innerHTML = `
     <div class="tools-mode-toggle">
-      <button class="${mode==='text2json'?'active':''}" data-tools-mode="text2json">Text ➔ JSON</button>
-      <button class="${mode==='image2json'?'active':''}" data-tools-mode="image2json">Image ➔ JSON</button>
+      <button class="${mode==='text2json'?'active':''}" data-tools-mode="text2json"><span class="mode-glyph">≡</span> Text</button>
+      <button class="${mode==='image2json'?'active':''}" data-tools-mode="image2json"><span class="mode-glyph">▣</span> Image</button>
+      <button class="${mode==='chat'?'active':''}" data-tools-mode="chat"><span class="mode-glyph">⇄</span> Chat</button>
+      <button class="${mode==='character'?'active':''}" data-tools-mode="character"><span class="mode-glyph">ᛗ</span> Character</button>
     </div>
     <div class="tools-input-area">
       ${mode === 'text2json' ? `
@@ -3734,9 +3886,50 @@ function renderTools(){
             <textarea id="blendImgInstr">${escapeHtml(getBlendText('img'))}</textarea>
           </div>` : ''}
       `}
+      ${mode === 'chat' ? `
+        <div class="chat-messages" id="chatMessages">
+          ${state.chatMessages.length ? '' : `<div class="chat-empty">Talk directly to the model running in LM Studio. Attach an image with ⊕ to ask about it.</div>`}
+          ${state.chatMessages.map((m, mi) => `
+            <div class="chat-bubble ${m.role}">
+              ${m.img ? `<img class="cb-img" src="${m.img}">` : ''}
+              <div class="cb-text">${escapeHtml(m.text)}</div>
+              ${m.role === 'assistant' ? `<button class="cb-copy" data-cb-copy="${mi}">Copy</button>` : ''}
+            </div>
+          `).join('')}
+          ${state._chatWaiting ? `<div class="chat-bubble assistant cb-waiting"><span class="cb-dots">●●●</span></div>` : ''}
+        </div>
+        ${state.chatPendingImg ? `
+          <div class="chat-attach-chip">
+            <img src="${state.chatPendingImg.url}">
+            <button id="chatAttachRemove">✕</button>
+          </div>` : ''}
+        <div class="chat-input-row">
+          <button class="chat-attach-btn">⊕<input type="file" accept="image/*" id="chatImgInput"></button>
+          <textarea id="chatInput" placeholder="Message the model…" rows="1">${escapeHtml(state._chatDraft || '')}</textarea>
+          <button class="chat-send" id="chatSend" ${state._chatWaiting ? 'disabled' : ''}>⌁</button>
+        </div>
+        ${state.chatMessages.length ? `<button class="tools-add-prompt" id="chatClear" style="margin-top:10px;">Clear conversation</button>` : ''}
+      ` : ''}
+      ${mode === 'character' ? `
+        <div class="char-form">
+          ${CHAR_FIELDS.map(f => `
+            <div class="char-field">
+              <label>${f.label}</label>
+              ${f.long
+                ? `<textarea data-char-field="${f.k}" rows="2">${escapeHtml(state.charFields[f.k] || '')}</textarea>`
+                : `<input type="text" data-char-field="${f.k}" value="${escapeHtml(state.charFields[f.k] || '')}">`}
+            </div>
+          `).join('')}
+        </div>
+        <div class="char-format-row">
+          <span class="bi-label" style="margin:0;">Output</span>
+          <button class="fmt-pill ${state.charFormat==='json'?'active':''}" data-char-fmt="json">JSON</button>
+          <button class="fmt-pill ${state.charFormat==='natural'?'active':''}" data-char-fmt="natural">Natural Language</button>
+        </div>
+      ` : ''}
     </div>
     <div class="tools-status" id="toolsStatus"></div>
-    <button class="tools-generate-btn" id="toolsGenBtn">Generate JSON Prompt</button>
+    ${mode !== 'chat' ? `<button class="tools-generate-btn" id="toolsGenBtn">${mode === 'character' ? 'Create Character' : 'Generate JSON Prompt'}</button>` : ''}
     ${hasResult ? `
       <div class="tools-result">
         <button class="copy-btn" id="toolsCopyBtn">Copy</button>
@@ -3752,8 +3945,9 @@ function renderTools(){
             ${(()=>{
               if(!h.src) return '';
               if(h.src === '∞') return `<span class="th-src inf">∞</span>`;
-              if(h.src === 'Text') return `<span class="th-src emo">📝</span>`;
-              if(h.src === 'Image') return `<span class="th-src emo">🖼️</span>`;
+              if(h.src === 'Text') return `<span class="th-src emo">≡</span>`;
+              if(h.src === 'Image') return `<span class="th-src emo">▣</span>`;
+              if(h.src === '👤') return `<span class="th-src emo">ᛗ</span>`;
               return `<span class="th-src">${escapeHtml(h.src)}</span>`;
             })()}
             <div class="th-preview">${escapeHtml(h.text.slice(0,60))}</div>
@@ -3770,6 +3964,65 @@ function renderTools(){
       state.toolsMode = btn.dataset.toolsMode;
       state.toolsResult = '';
       renderTools();
+    });
+  });
+
+  // ---- Chat wiring ----
+  const chatInput = document.getElementById('chatInput');
+  if(chatInput){
+    chatInput.addEventListener('input', ()=>{ state._chatDraft = chatInput.value; });
+    // scroll messages to bottom
+    const cm = document.getElementById('chatMessages');
+    if(cm) cm.scrollTop = cm.scrollHeight;
+  }
+  const chatSendBtn = document.getElementById('chatSend');
+  if(chatSendBtn) chatSendBtn.addEventListener('click', ()=> sendChatMessage());
+  const chatImgInput = document.getElementById('chatImgInput');
+  if(chatImgInput){
+    chatImgInput.addEventListener('change', async e=>{
+      if(e.target.files[0]){
+        const file = e.target.files[0];
+        const buf = await file.arrayBuffer();
+        const blob = new Blob([buf], {type: file.type || 'image/png'});
+        state.chatPendingImg = {blob, name: file.name || 'chat_img.png', url: URL.createObjectURL(blob)};
+        renderTools();
+      }
+    });
+  }
+  const chatAttachRemove = document.getElementById('chatAttachRemove');
+  if(chatAttachRemove){
+    chatAttachRemove.addEventListener('click', ()=>{
+      try{ URL.revokeObjectURL(state.chatPendingImg.url); }catch(e){}
+      state.chatPendingImg = null;
+      renderTools();
+    });
+  }
+  const chatClear = document.getElementById('chatClear');
+  if(chatClear){
+    chatClear.addEventListener('click', ()=>{
+      state.chatMessages = [];
+      renderTools();
+    });
+  }
+  main.querySelectorAll('[data-cb-copy]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const m = state.chatMessages[parseInt(btn.dataset.cbCopy)];
+      if(m) copyToClipboard(m.text);
+      btn.textContent = '✓';
+      setTimeout(()=>{ btn.textContent = 'Copy'; }, 1200);
+    });
+  });
+
+  // ---- Character creator wiring ----
+  main.querySelectorAll('[data-char-field]').forEach(input=>{
+    input.addEventListener('input', ()=>{
+      state.charFields[input.dataset.charField] = input.value;
+    });
+  });
+  main.querySelectorAll('[data-char-fmt]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.charFormat = btn.dataset.charFmt;
+      main.querySelectorAll('[data-char-fmt]').forEach(b=>b.classList.toggle('active', b === btn));
     });
   });
 
@@ -3827,8 +4080,9 @@ function renderTools(){
     });
   });
 
-  // Generate button
-  document.getElementById('toolsGenBtn').addEventListener('click', ()=> runToolsGenerate());
+  // Generate button (not rendered in chat mode)
+  const toolsGenBtnEl = document.getElementById('toolsGenBtn');
+  if(toolsGenBtnEl) toolsGenBtnEl.addEventListener('click', ()=> runToolsGenerate());
 
   // Copy button
   const copyBtn = document.getElementById('toolsCopyBtn');
@@ -3970,6 +4224,168 @@ function buildNodeInputs(nodeInfo, overrides){
   return inputs;
 }
 
+/** Send a chat message through the LM Studio nodes, with optional image attachment */
+async function sendChatMessage(){
+  const draft = (state._chatDraft || '').trim();
+  if(!draft && !state.chatPendingImg) return;
+  if(state._chatWaiting) return;
+  if(!state.connected){ toast('Connect to your server first'); return; }
+
+  const pendingImg = state.chatPendingImg;
+
+  // Push user message
+  state.chatMessages.push({role:'user', text: draft || '(image)', img: pendingImg ? pendingImg.url : null});
+  state._chatDraft = '';
+  state.chatPendingImg = null;
+  state._chatWaiting = true;
+  renderTools();
+
+  console.error('[chat] send started, draft length:', draft.length, 'image:', !!pendingImg);
+  let info;
+  try{
+    const infoCtl = new AbortController();
+    const infoTimer = setTimeout(()=> infoCtl.abort(), 15000);
+    info = state.toolsNodeInfo || await fetchToolsNodeInfo();
+    clearTimeout(infoTimer);
+    console.error('[chat] node info ok — text node:', !!info.text, 'img node:', !!info.img);
+  }catch(e){
+    console.error('[chat] node info FAILED:', e);
+    state.chatMessages.push({role:'assistant', text: '⚠ Could not reach the server for node info'});
+    state._chatWaiting = false;
+    renderTools();
+    return;
+  }
+
+  // Compose transcript
+  const transcript = state.chatMessages
+    .map(m => (m.role === 'user' ? 'User: ' : 'Assistant: ') + m.text)
+    .join('\n\n') + '\n\nAssistant:';
+
+  let graph;
+  try{
+    if(pendingImg){
+      if(!info.img) throw new Error('Image node unavailable');
+      // Upload the image
+      const formData = new FormData();
+      formData.append('image', pendingImg.blob, pendingImg.name);
+      const upRes = await fetch(baseUrl() + '/upload/image', {method:'POST', body:formData});
+      if(!upRes.ok) throw new Error('Upload failed');
+      const uploadedName = (await upRes.json()).name;
+      const req = info.img.input.required || {};
+      const opt = info.img.input.optional || {};
+      const overrides = {};
+      for(const key of [...Object.keys(req), ...Object.keys(opt)]){
+        const kl = key.toLowerCase();
+        if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = transcript;
+        else if(kl.includes('system')) overrides[key] = CHAT_SYSTEM;
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+        else if(kl === 'image') overrides[key] = ["1", 0];
+        else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
+        else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 2000;
+        else if(kl === 'temperature') overrides[key] = 0.7;
+        else if(kl.includes('timeout')) overrides[key] = 300;
+      }
+      graph = {
+        "1": { "class_type": "LoadImage", "inputs": {"image": uploadedName} },
+        "2": { "class_type": "Expo Lmstudio Unified", "inputs": buildNodeInputs(info.img, overrides) },
+        "3": { "class_type": "ShowText|pysssss", "inputs": {"text": ["2", 0]} }
+      };
+    } else {
+      if(!info.text) throw new Error('Text Generation node unavailable');
+      const req = info.text.input.required || {};
+      const opt = info.text.input.optional || {};
+      const overrides = {};
+      for(const key of [...Object.keys(req), ...Object.keys(opt)]){
+        const kl = key.toLowerCase();
+        if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides[key] = transcript;
+        else if(kl.includes('system')) overrides[key] = CHAT_SYSTEM;
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+        else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
+        else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 2000;
+        else if(kl === 'temperature') overrides[key] = 0.7;
+        else if(kl.includes('timeout')) overrides[key] = 300;
+      }
+      graph = {
+        "1": { "class_type": "Expo Lmstudio Text Generation", "inputs": buildNodeInputs(info.text, overrides) },
+        "2": { "class_type": "ShowText|pysssss", "inputs": {"text": ["1", 0]} }
+      };
+    }
+
+    console.error('[chat] submitting graph, nodes:', Object.keys(graph).length);
+    const subCtl = new AbortController();
+    const subTimer = setTimeout(()=> subCtl.abort(), 20000);
+    const res = await fetch(baseUrl() + '/prompt', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({prompt: graph, client_id: state.clientId}),
+      signal: subCtl.signal
+    });
+    clearTimeout(subTimer);
+    const json = await res.json();
+    if(json.error){
+      console.error('[chat] server REJECTED:', JSON.stringify(json).slice(0, 500));
+      throw new Error('Server rejected: ' + (json.error.message || json.error.type || 'validation failed'));
+    }
+    const pid = json.prompt_id;
+    console.error('[chat] queued, prompt_id:', pid);
+
+    let reply = null;
+    let failReason = null;
+    for(let attempt = 0; attempt < 90; attempt++){
+      await new Promise(r => setTimeout(r, 2000));
+      // Live elapsed feedback on the waiting bubble (no full re-render)
+      const dotsEl = document.querySelector('.cb-waiting .cb-dots');
+      if(dotsEl) dotsEl.textContent = `●●● ${(attempt + 1) * 2}s`;
+      if(attempt % 5 === 0) console.error('[chat] polling, elapsed:', (attempt + 1) * 2 + 's');
+      let historyHasEntry = false;
+      try{
+        const hRes = await fetch(baseUrl() + '/history/' + pid);
+        const hist = await hRes.json();
+        const entry = hist[pid];
+        if(entry){
+          historyHasEntry = true;
+          if(entry.outputs && Object.keys(entry.outputs).length){
+            for(const nid in entry.outputs){
+              if(entry.outputs[nid].text){
+                reply = Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text);
+                break;
+              }
+            }
+            if(!reply) failReason = 'Job finished but produced no text output';
+            break;
+          }
+          // Entry exists with empty outputs: check completion status
+          if(entry.status && entry.status.completed === false && entry.status.status_str === 'error'){
+            failReason = 'Execution error on the server — check the ComfyUI console';
+            break;
+          }
+        }
+      }catch(e){}
+      // Fast-fail: if it's not in history yet AND not in the queue, it silently died
+      if(!historyHasEntry && attempt > 2 && attempt % 5 === 0){
+        try{
+          const qRes = await fetch(baseUrl() + '/queue');
+          const q = await qRes.json();
+          const inQueue = [...(q.queue_running || []), ...(q.queue_pending || [])]
+            .some(item => item[1] === pid);
+          if(!inQueue){
+            failReason = 'Job left the queue without a result — is LM Studio running with the model loaded?';
+            break;
+          }
+        }catch(e){}
+      }
+    }
+    if(!reply && !failReason) failReason = 'Timed out after 3 minutes — check LM Studio and the ComfyUI console';
+    console.error('[chat] outcome — reply:', reply ? reply.length + ' chars' : 'none', 'fail:', failReason || 'none');
+    state.chatMessages.push({role:'assistant', text: reply || ('⚠ ' + failReason)});
+  }catch(e){
+    state.chatMessages.push({role:'assistant', text: '⚠ ' + (e.message || 'Something went wrong')});
+    console.error('Chat error:', e);
+  }finally{
+    state._chatWaiting = false;
+    if(state.currentTab === 'tools') renderTools();
+  }
+}
+
 async function runToolsGenerate(){
   if(!state.connected){ toast('Not connected to server'); return; }
 
@@ -3991,7 +4407,46 @@ async function runToolsGenerate(){
   let graph;
 
   let histSrc = mode === 'text2json' ? 'Text' : 'Image';
-  if(mode === 'text2json'){
+  if(mode === 'character'){
+    const filled = CHAR_FIELDS.filter(f => (state.charFields[f.k] || '').trim());
+    if(!filled.length){ toast('Fill in at least one field'); genBtn.disabled = false; statusEl.textContent=''; return; }
+    histSrc = '👤';
+    if(state.charFormat === 'json'){
+      // Assemble locally — no server round-trip needed
+      const obj = {};
+      filled.forEach(f => { obj[f.k] = state.charFields[f.k].trim(); });
+      state.toolsResult = JSON.stringify({character: obj}, null, 2);
+      saveToolsHistory(state.toolsResult, '👤');
+      genBtn.disabled = false;
+      statusEl.textContent = 'Character assembled';
+      renderTools();
+      return;
+    }
+    // Natural language — compose via the LLM
+    if(!info.text){
+      statusEl.textContent = 'Expo Lmstudio Text Generation not found on server';
+      genBtn.disabled = false;
+      return;
+    }
+    const fieldText = filled.map(f => `${f.label}: ${state.charFields[f.k].trim()}`).join('\n');
+    const req = info.text.input.required || {};
+    const opt = info.text.input.optional || {};
+    const overrides = {};
+    for(const key of [...Object.keys(req), ...Object.keys(opt)]){
+      const kl = key.toLowerCase();
+      if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides[key] = fieldText;
+      else if(kl.includes('system')) overrides[key] = CHAR_SYSTEM;
+      else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+      else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
+      else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 2000;
+      else if(kl === 'temperature') overrides[key] = 0.8;
+      else if(kl.includes('timeout')) overrides[key] = 300;
+    }
+    graph = {
+      "1": { "class_type": "Expo Lmstudio Text Generation", "inputs": buildNodeInputs(info.text, overrides) },
+      "2": { "class_type": "ShowText|pysssss", "inputs": {"text": ["1", 0]} }
+    };
+  } else if(mode === 'text2json'){
     const prompts = state.toolsPrompts.map(p => (p || '').trim()).filter(Boolean);
     if(!prompts.length){ toast('Enter some text first'); genBtn.disabled = false; statusEl.textContent=''; return; }
     if(prompts.length > 1) histSrc = '∞';
