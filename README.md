@@ -4,7 +4,7 @@
 
 **Mobile controller for ComfyUI.**
 
-Your GPU in your pocket.
+Your GPU, in your pocket.
 
 **[Try it →](https://dreamerisms.github.io/return_current/return_current_beta.html)** · **[Case study →](https://dreamerisms.github.io/return_current/)**
 
