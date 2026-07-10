@@ -1,10 +1,10 @@
 # RETURN // CURRENT <sup>β</sup>
 
-![Return Current](media/hero.png)
+![Return Current](media/rc_banner.jpg)
 
-**Mobile controller for ComfyUI. One HTML file, zero dependencies.**
+**Mobile controller for ComfyUI.**
 
-Your PC renders. The current returns.
+Your GPU in your pocket.
 
 **[Try it →](https://dreamerisms.github.io/return_current/return_current_beta.html)** · **[Case study →](https://dreamerisms.github.io/return_current/)**
 
