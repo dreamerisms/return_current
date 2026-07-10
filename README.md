@@ -1,6 +1,6 @@
 # RETURN // CURRENT <sup>β</sup>
 
-![Return Current](media/rc_banner.jpg)
+![Return Current](media/rc_herobanner.jpg)
 
 **Mobile controller for ComfyUI.**
 
