@@ -4,14 +4,16 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Return Current · Case Study</title>
-<meta name="description" content="Return Current: a single-file mobile controller for ComfyUI. Your PC generates. The current returns.">
+<meta name="description" content="Return Current: a single-file mobile controller for ComfyUI. Your GPU, in your pocket.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#0a0908; --bg-raised:#131110; --card:#181512; --line:#2a2521;
+    --bg:#0a0908; --raised:#12100e; --card:#181512; --line:#2a2521;
     --text:#e8e2d8; --dim:#8a7f72;
-    --accent:#c43d2e; --accent-dim:#4a1812; --accent-glow:rgba(196,61,46,.28);
+    --accent:#c43d2e; --accent-glow:rgba(196,61,46,.30); --accent-soft:rgba(196,61,46,.10);
+    /* the glass material: iridescent, theme-independent, like the emblem */
+    --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   html{scroll-behavior:smooth;}
@@ -20,92 +22,133 @@
     font-family:'Space Grotesk', system-ui, sans-serif;
     line-height:1.6; overflow-x:hidden;
   }
-  ::selection{background:var(--accent-dim); color:var(--text);}
+  ::selection{background:var(--accent-soft); color:var(--text);}
+  .mono{font-family:'JetBrains Mono', monospace;}
+  .wrap{max-width:1060px; margin:0 auto; padding:0 26px;}
+  section{padding:100px 0; position:relative;}
 
-  .wrap{max-width:1080px; margin:0 auto; padding:0 28px;}
-  section{padding:88px 0;}
+  /* ---- film grain over everything, very quiet ---- */
+  body::after{
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:5; opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E");
+  }
 
+  /* ---- eyebrow: the app's field-label voice ---- */
   .eyebrow{
     font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:700;
     letter-spacing:.22em; text-transform:uppercase; color:var(--accent);
     text-shadow:0 0 12px var(--accent-glow);
-    display:block; margin-bottom:18px;
+    display:block; margin-bottom:18px; transition:color .4s;
   }
-
   h2{
-    font-size:clamp(28px, 4.5vw, 44px); font-weight:700; letter-spacing:-.01em;
-    line-height:1.15; margin-bottom:22px;
+    font-size:clamp(28px, 4.5vw, 46px); font-weight:700; letter-spacing:-.01em;
+    line-height:1.12; margin-bottom:22px;
   }
-  h3{font-size:19px; font-weight:700; margin-bottom:10px;}
+  h3{font-size:18px; font-weight:700; margin-bottom:8px;}
   p{color:var(--dim); max-width:640px;}
   p strong{color:var(--text); font-weight:500;}
   p + p{margin-top:14px;}
 
+  /* ================= GLASS MATERIAL =================
+     Iridescent, translucent, theme-independent. Used for structure. */
+  .glass{
+    position:relative;
+    background:linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.015));
+    backdrop-filter:blur(14px) saturate(1.25);
+    -webkit-backdrop-filter:blur(14px) saturate(1.25);
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:18px;
+  }
+  .glass::before{
+    content:''; position:absolute; top:0; left:8%; right:8%; height:1px;
+    background:linear-gradient(90deg, transparent, var(--iri-a), var(--iri-b), var(--iri-c), transparent);
+    opacity:.65;
+  }
+
   /* ================= HERO ================= */
   .hero{
-    min-height:88vh; display:flex; flex-direction:column; justify-content:center;
-    position:relative; padding:80px 0 60px;
+    min-height:96vh; display:flex; flex-direction:column; justify-content:center;
+    position:relative; padding:90px 0 70px; overflow:hidden;
   }
-  .hero-glow{
-    position:absolute; top:24%; left:50%; transform:translate(-50%,-50%);
-    width:700px; height:700px; border-radius:50%;
-    background:radial-gradient(circle, var(--accent-glow) 0%, transparent 62%);
-    pointer-events:none; transition:background .5s;
+  /* aura: theme-colored bloom behind everything */
+  .hero-aura{
+    position:absolute; top:8%; left:50%; transform:translateX(-50%);
+    width:820px; height:820px; border-radius:50%; pointer-events:none;
+    background:radial-gradient(circle, var(--accent-glow) 0%, transparent 60%);
+    transition:background .5s;
   }
+  /* the giant glass infinity: iridescent watermark, never theme-colored */
+  .hero-inf{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-54%);
+    font-size:min(58vw, 620px); line-height:1; font-weight:400; pointer-events:none;
+    background:linear-gradient(115deg, var(--iri-a) 10%, var(--iri-b) 45%, var(--iri-c) 70%, var(--iri-a) 95%);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    opacity:.10; filter:blur(1px);
+    user-select:none;
+  }
+  /* floating glyph field */
+  .glyph-field{position:absolute; inset:0; pointer-events:none; overflow:hidden;}
+  .glyph-field span{
+    position:absolute; font-family:'JetBrains Mono', monospace;
+    color:var(--dim); opacity:.14; font-size:15px;
+    animation:drift 14s ease-in-out infinite;
+  }
+  .glyph-field span:nth-child(odd){color:var(--accent); opacity:.16; transition:color .5s;}
+  @keyframes drift{
+    0%,100%{transform:translateY(0) rotate(0deg);}
+    50%{transform:translateY(-18px) rotate(4deg);}
+  }
+  .hero .wrap{position:relative; z-index:2;}
   .hero-tag{
     font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--dim);
     letter-spacing:.14em; margin-bottom:26px;
   }
-  .hero-tag b{color:var(--accent); text-shadow:0 0 10px var(--accent-glow); font-weight:700;}
+  .hero-tag b{color:var(--accent); text-shadow:0 0 10px var(--accent-glow); font-weight:700; transition:color .4s;}
   h1{
-    font-size:clamp(40px, 8.5vw, 96px); font-weight:700; font-style:italic;
-    letter-spacing:-.02em; line-height:1.02; margin-bottom:26px;
+    font-size:clamp(42px, 8.6vw, 98px); font-weight:700; font-style:italic;
+    letter-spacing:-.02em; line-height:1.0; margin-bottom:10px;
     text-transform:uppercase;
   }
-  h1 .name-sep{
-    font-style:normal; font-weight:400; color:var(--accent);
-    text-shadow:0 0 24px var(--accent-glow); transition:color .4s;
+  h1 .slashes{
+    font-style:normal; color:var(--accent);
+    text-shadow:0 0 26px var(--accent-glow), 0 0 8px var(--accent-glow);
+    transition:color .4s;
+  }
+  h1 .beta{
+    font-style:normal; font-weight:400; font-size:.32em; vertical-align:super;
+    color:var(--accent); text-shadow:0 0 14px var(--accent-glow); transition:color .4s;
   }
   h1 .tagline{
-    display:block; font-size:clamp(20px,3.2vw,34px); text-transform:none;
-    font-weight:500; color:var(--dim); letter-spacing:0; margin-top:14px;
+    display:inline-block; font-size:.44em; font-weight:700; font-style:italic;
+    text-transform:none; letter-spacing:-.01em; margin-top:10px; color:var(--text);
   }
-  .hero-sub{font-size:clamp(16px,2.2vw,20px); color:var(--dim); max-width:580px; margin-bottom:36px;}
+  .hero-sub{
+    font-size:clamp(16px,2.2vw,20px); color:var(--dim); max-width:590px; margin:18px 0 40px;
+  }
   .hero-sub b{color:var(--text); font-weight:500;}
 
-  .theme-rail{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:44px;}
+  /* theme rail */
+  .theme-rail{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
   .theme-rail-label{
     font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--dim);
     letter-spacing:.18em; text-transform:uppercase; margin-right:6px;
   }
   .swatch{
-    width:30px; height:30px; border-radius:8px; border:2px solid transparent;
-    cursor:pointer; transition:transform .15s, box-shadow .2s;
+    width:30px; height:30px; border-radius:9px; border:2px solid transparent;
+    cursor:pointer; transition:transform .15s, box-shadow .2s, border-color .2s;
   }
-  .swatch:hover{transform:scale(1.15);}
-  .swatch.active{border-color:#fff; box-shadow:0 0 16px var(--accent-glow);}
+  .swatch:hover{transform:scale(1.18);}
+  .swatch.active{border-color:#fff; box-shadow:0 0 18px var(--accent-glow);}
   .swatch.legendary{background:linear-gradient(135deg,#ff2d7b,#ff8c00,#ffe600,#00e87b,#00bfff,#a855ff);}
 
-  .links-row{display:flex; gap:14px; flex-wrap:wrap;}
-  .btn{
-    display:inline-block; padding:14px 28px; border-radius:10px;
-    font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700;
-    text-decoration:none; letter-spacing:.03em; transition:all .2s;
-  }
-  .btn.primary{
-    background:var(--accent); color:#0a0908;
-    box-shadow:0 0 22px var(--accent-glow);
-  }
-  .btn.primary:hover{transform:translateY(-2px); box-shadow:0 4px 30px var(--accent-glow);}
-  .btn.ghost{border:1px solid var(--line); color:var(--dim);}
-  .btn.ghost:hover{border-color:var(--accent); color:var(--text);}
+  /* hero image (drop media/hero.png in the repo; hides itself if absent) */
+  .hero-art{margin-top:56px;}
+  .hero-art .glass{padding:10px; overflow:hidden;}
+  .hero-art img{width:100%; display:block; border-radius:10px;}
 
   /* ================= META STRIP ================= */
-  .meta-strip{
-    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
-    padding:26px 0;
-  }
-  .meta-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr)); gap:22px;}
+  .meta-strip{border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:26px 0;}
+  .meta-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(170px,1fr)); gap:22px;}
   .meta-item .k{
     font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--dim);
     letter-spacing:.18em; text-transform:uppercase; margin-bottom:5px;
@@ -113,64 +156,65 @@
   .meta-item .v{font-size:15px; font-weight:500;}
 
   /* ================= STATS ================= */
-  .stats-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px; margin-top:44px; max-width:640px;}
-  .stat{
-    background:var(--card); border:1px solid var(--line); border-radius:14px; padding:24px 22px;
-    position:relative; overflow:hidden;
-  }
-  .stat::after{
-    content:''; position:absolute; top:0; left:0; right:0; height:2px;
-    background:linear-gradient(90deg, transparent, var(--accent), transparent);
-    opacity:.55;
-  }
+  .stats-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-top:44px;}
+  .stat{padding:26px 20px;}
   .stat .num{
-    font-family:'JetBrains Mono', monospace; font-size:32px; font-weight:700;
-    color:var(--accent); text-shadow:0 0 14px var(--accent-glow); line-height:1.1;
+    font-family:'JetBrains Mono', monospace; font-size:34px; font-weight:700;
+    color:var(--accent); text-shadow:0 0 16px var(--accent-glow); line-height:1.1;
     transition:color .4s;
   }
   .stat .lbl{font-size:12px; color:var(--dim); margin-top:6px; letter-spacing:.04em;}
 
-  .two-col{display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:start;}
-
-  /* ================= FEATURE GRID ================= */
-  .feature-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:20px; margin-top:48px;}
-  .feature{
-    background:var(--card); border:1px solid var(--line); border-radius:16px;
-    padding:26px; display:flex; flex-direction:column; gap:12px;
-  }
-  .feature .f-icon{
-    font-size:22px; color:var(--accent);
-    text-shadow:0 0 12px var(--accent-glow); transition:color .4s;
+  /* ================= FEATURES ================= */
+  .feature-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:18px; margin-top:48px;}
+  .feature{padding:26px; display:flex; flex-direction:column; gap:12px;}
+  .feature .f-glyph{
+    width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono', monospace; font-size:20px;
+    color:var(--accent); text-shadow:0 0 12px var(--accent-glow);
+    background:var(--accent-soft); border:1px solid var(--accent-glow);
+    transition:color .4s, background .4s, border-color .4s;
   }
   .feature p{font-size:14px;}
 
-  /* ================= PROCESS TIMELINE ================= */
-  .timeline{margin-top:52px; border-left:1px solid var(--line); padding-left:34px; position:relative;}
-  .t-item{position:relative; padding-bottom:44px;}
-  .t-item:last-child{padding-bottom:0;}
-  .t-item::before{
-    content:''; position:absolute; left:-39px; top:7px; width:9px; height:9px;
-    border-radius:50%; background:var(--accent);
-    box-shadow:0 0 12px var(--accent-glow); transition:background .4s;
+  /* ================= TOOLS SUITE ROW ================= */
+  .suite-row{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin-top:44px;}
+  .suite-card{padding:22px; text-align:center;}
+  .suite-card .s-glyph{
+    font-family:'JetBrains Mono', monospace; font-size:34px; line-height:1;
+    color:var(--accent); text-shadow:0 0 18px var(--accent-glow);
+    display:block; margin-bottom:12px; transition:color .4s;
   }
-  .t-item .t-phase{
-    font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--accent);
-    letter-spacing:.2em; text-transform:uppercase; margin-bottom:6px;
-    text-shadow:0 0 8px var(--accent-glow);
+  .suite-card h3{font-size:15px;}
+  .suite-card p{font-size:12.5px; margin:6px auto 0; max-width:230px;}
+
+  /* ================= GLYPH LEGEND ================= */
+  .glyph-legend{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:1px; background:var(--line); border:1px solid var(--line);
+    border-radius:16px; overflow:hidden; margin-top:44px;
   }
-  .t-item h3{margin-bottom:6px;}
-  .t-item p{font-size:14.5px;}
+  .glyph-cell{
+    background:var(--raised); padding:20px 18px; display:flex; gap:16px; align-items:center;
+  }
+  .glyph-cell .g{
+    font-family:'JetBrains Mono', monospace; font-size:24px; flex:0 0 34px; text-align:center;
+    color:var(--accent); text-shadow:0 0 12px var(--accent-glow); transition:color .4s;
+  }
+  .glyph-cell .g.iri{
+    background:linear-gradient(115deg, var(--iri-a), var(--iri-b), var(--iri-c));
+    -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:none;
+  }
+  .glyph-cell .gname{font-size:13px; font-weight:700;}
+  .glyph-cell .gdesc{font-size:11.5px; color:var(--dim); line-height:1.45;}
 
   /* ================= TYPE SPECIMEN ================= */
-  .specimen{
-    background:var(--card); border:1px solid var(--line); border-radius:16px;
-    padding:38px; margin-top:44px;
-  }
-  .specimen-row{display:flex; align-items:baseline; gap:26px; flex-wrap:wrap; padding:16px 0; border-bottom:1px solid var(--line);}
+  .specimen{padding:36px; margin-top:44px;}
+  .specimen-row{display:flex; align-items:baseline; gap:26px; flex-wrap:wrap; padding:15px 0; border-bottom:1px solid var(--line);}
   .specimen-row:last-child{border-bottom:none;}
   .spec-label{
     font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--dim);
-    letter-spacing:.16em; text-transform:uppercase; flex:0 0 170px;
+    letter-spacing:.16em; text-transform:uppercase; flex:0 0 168px;
   }
   .spec-model{
     font-size:24px; font-weight:700; font-style:italic; color:var(--accent);
@@ -178,11 +222,11 @@
   }
   .spec-field{font-family:'JetBrains Mono', monospace; font-size:14px; color:var(--text);}
   .spec-glowbtn{
-    font-size:24px; color:#fff;
+    font-size:22px; color:#fff; font-family:'JetBrains Mono', monospace;
     text-shadow:0 0 10px var(--accent-glow), 0 1px 3px rgba(0,0,0,.8);
   }
   .spec-progress{
-    flex:1; min-width:180px; height:5px; border-radius:3px; background:var(--bg-raised);
+    flex:1; min-width:180px; height:5px; border-radius:3px; background:var(--raised);
     overflow:hidden; position:relative; align-self:center;
   }
   .spec-progress i{
@@ -196,27 +240,100 @@
   }
   @keyframes sweep{0%{left:-80%;} 100%{left:140%;}}
 
+  /* ================= TWO MATERIALS EXPLAINER ================= */
+  .materials{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:40px;}
+  .material-card{padding:28px;}
+  .material-card .m-chip{
+    width:56px; height:56px; border-radius:14px; margin-bottom:16px;
+  }
+  .material-card.current .m-chip{
+    background:var(--accent); box-shadow:0 0 26px var(--accent-glow);
+    transition:background .4s, box-shadow .4s;
+  }
+  .material-card.glassm .m-chip{
+    background:linear-gradient(115deg, var(--iri-a), var(--iri-b), var(--iri-c));
+    opacity:.85;
+  }
+  .material-card h3{font-size:16px;}
+  .material-card p{font-size:13.5px;}
+
+  /* ================= TIMELINE ================= */
+  .timeline{margin-top:52px; border-left:1px solid var(--line); padding-left:34px; position:relative;}
+  .t-item{position:relative; padding-bottom:42px;}
+  .t-item:last-child{padding-bottom:0;}
+  .t-item::before{
+    content:''; position:absolute; left:-39px; top:7px; width:9px; height:9px;
+    border-radius:50%; background:var(--accent);
+    box-shadow:0 0 12px var(--accent-glow); transition:background .4s;
+  }
+  .t-item .t-phase{
+    font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--accent);
+    letter-spacing:.2em; text-transform:uppercase; margin-bottom:6px;
+    text-shadow:0 0 8px var(--accent-glow); transition:color .4s;
+  }
+  .t-item p{font-size:14px;}
+
+  /* ================= PULL QUOTE ================= */
   .pull{
     font-size:clamp(21px, 3vw, 30px); font-weight:500; font-style:italic;
     line-height:1.4; color:var(--text); max-width:820px;
-    border-left:3px solid var(--accent); padding-left:30px;
-    transition:border-color .4s;
+    border-left:3px solid var(--accent); padding-left:30px; transition:border-color .4s;
   }
   .pull b{color:var(--accent); transition:color .4s;}
 
+  /* ================= SHOWCASE STRIP (auto-hides missing images) ================= */
+  .showcase{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; margin-top:44px;}
+  .showcase .glass{padding:8px;}
+  .showcase img{width:100%; display:block; border-radius:10px;}
+
+  /* ================= LINKS / FOOTER ================= */
+  .links-row{display:flex; gap:14px; flex-wrap:wrap; margin-top:36px;}
+  .btn{
+    display:inline-block; padding:13px 26px; border-radius:10px;
+    font-family:'JetBrains Mono', monospace; font-size:13px; font-weight:700;
+    text-decoration:none; letter-spacing:.03em; transition:all .2s;
+  }
+  .btn.primary{
+    background:var(--accent); color:#0a0908; box-shadow:0 0 22px var(--accent-glow);
+  }
+  .btn.primary:hover{transform:translateY(-2px); box-shadow:0 4px 30px var(--accent-glow);}
+  .btn.ghost{border:1px solid var(--line); color:var(--dim);}
+  .btn.ghost:hover{border-color:var(--accent); color:var(--text);}
   footer{
     border-top:1px solid var(--line); padding:38px 0; margin-top:60px;
     font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--dim);
   }
-  footer .sig{color:var(--accent); text-shadow:0 0 8px var(--accent-glow);}
+  footer .sig{color:var(--accent); text-shadow:0 0 8px var(--accent-glow); transition:color .4s;}
 
+  /* ================= SCROLL REVEAL ================= */
+  .rv{opacity:0; transform:translateY(22px); transition:opacity .7s ease, transform .7s ease;}
+  .rv.in{opacity:1; transform:none;}
+
+  /* ================= LEGENDARY MODE ================= */
+  body.legendary .stat .num,
+  body.legendary h1 .slashes,
+  body.legendary .suite-card .s-glyph,
+  body.legendary .spec-model{
+    background:linear-gradient(90deg,#ff2d7b,#ff8c00,#ffe600,#00e87b,#00bfff,#a855ff);
+    background-size:300% 100%;
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:none; animation:holoShift 5s linear infinite;
+  }
+  body.legendary .spec-progress i{
+    background:linear-gradient(90deg,#ff2d7b,#ffe600,#00bfff,#a855ff);
+    background-size:300% 100%; animation:holoShift 5s linear infinite;
+  }
+  @keyframes holoShift{0%{background-position:0% 0;} 100%{background-position:300% 0;}}
+
+  /* ================= RESPONSIVE / MOTION ================= */
   @media (max-width:760px){
-    section{padding:60px 0;}
-    .two-col{grid-template-columns:1fr; gap:32px;}
+    section{padding:64px 0;}
+    .materials{grid-template-columns:1fr;}
     .spec-label{flex:0 0 100%;}
   }
   @media (prefers-reduced-motion: reduce){
     *{animation:none !important; transition:none !important;}
+    .rv{opacity:1; transform:none;}
   }
 </style>
 </head>
@@ -224,33 +341,43 @@
 
 <!-- ============ HERO ============ -->
 <header class="hero">
-  <div class="hero-glow"></div>
+  <div class="hero-aura"></div>
+  <div class="hero-inf">∞</div>
+  <div class="glyph-field" aria-hidden="true">
+    <span style="top:14%; left:8%; animation-delay:0s;">≡</span>
+    <span style="top:26%; left:88%; animation-delay:2s;">▣</span>
+    <span style="top:64%; left:6%; animation-delay:4s;">⇄</span>
+    <span style="top:78%; left:84%; animation-delay:1s;">ᛗ</span>
+    <span style="top:12%; left:72%; animation-delay:3s;">⌬</span>
+    <span style="top:84%; left:40%; animation-delay:5s;">⌁</span>
+    <span style="top:40%; left:3%; animation-delay:6s;">β</span>
+    <span style="top:8%; left:38%; animation-delay:2.5s;">//</span>
+  </div>
   <div class="wrap">
-    <div class="hero-tag">CASE STUDY <b>//</b> PRODUCT DESIGN <b>//</b> AI-ASSISTED DEVELOPMENT</div>
-    <h1>RETURN <span class="name-sep">//</span> CURRENT
-      <span class="tagline">Your GPU, in your pocket.</span>
-    </h1>
-    <p class="hero-sub">One HTML file that turns your phone into a remote for ComfyUI. Queue generations, swap models and LoRAs, and watch images and video land in a live gallery while <b>your own PC</b> does the heavy lifting.</p>
+    <div class="hero-tag">CASE STUDY <b>//</b> PRODUCT DESIGN <b>//</b> BUILT IN CONVERSATION WITH CLAUDE</div>
+    <h1>RETURN <span class="slashes">//</span> CURRENT<span class="beta">β</span><br><span class="tagline">Your GPU, in your pocket.</span></h1>
+    <p class="hero-sub">One HTML file that turns your phone into a remote for ComfyUI. <b>Queue generations, swap models and LoRAs</b>, and watch images and video land in a live gallery while <b>your own PC does the heavy lifting</b>.</p>
 
     <div class="theme-rail" role="group" aria-label="Switch accent theme">
       <span class="theme-rail-label">Live theme system →</span>
-      <button class="swatch active" data-accent="#c43d2e" data-glow="rgba(196,61,46,.28)" style="background:#c43d2e" aria-label="Return Current red"></button>
-      <button class="swatch" data-accent="#7da800" data-glow="rgba(206,255,0,.25)" style="background:#CEFF00" aria-label="Volt"></button>
-      <button class="swatch" data-accent="#c77dff" data-glow="rgba(199,125,255,.25)" style="background:#c77dff" aria-label="Plum"></button>
-      <button class="swatch" data-accent="#e8457a" data-glow="rgba(232,69,122,.25)" style="background:#e8457a" aria-label="Rosé"></button>
-      <button class="swatch" data-accent="#00c8ff" data-glow="rgba(0,200,255,.25)" style="background:#00c8ff" aria-label="Holo"></button>
+      <button class="swatch active" data-accent="#c43d2e" data-glow="rgba(196,61,46,.30)" style="background:#c43d2e" aria-label="Darkroom"></button>
+      <button class="swatch" data-accent="#a8c400" data-glow="rgba(206,255,0,.25)" style="background:#CEFF00" aria-label="Volt"></button>
+      <button class="swatch" data-accent="#c77dff" data-glow="rgba(199,125,255,.27)" style="background:#c77dff" aria-label="Plum"></button>
+      <button class="swatch" data-accent="#e8457a" data-glow="rgba(232,69,122,.27)" style="background:#e8457a" aria-label="Rosé"></button>
+      <button class="swatch" data-accent="#00c8ff" data-glow="rgba(0,200,255,.27)" style="background:#00c8ff" aria-label="Holo"></button>
       <button class="swatch" data-accent="#39ff14" data-glow="rgba(57,255,20,.22)" style="background:#39ff14" aria-label="Terminal"></button>
-      <button class="swatch legendary" data-accent="#ff2d7b" data-glow="rgba(168,85,255,.3)" aria-label="Legendary"></button>
+      <button class="swatch legendary" data-accent="#ff2d7b" data-glow="rgba(168,85,255,.32)" aria-label="Legendary"></button>
     </div>
 
-    <div class="links-row">
-      <a class="btn primary" href="return_current_beta.html">OPEN THE APP →</a>
-      <a class="btn ghost" href="https://github.com/dreamerisms/return_current">GITHUB</a>
+    <div class="hero-art rv">
+      <div class="glass">
+        <img src="media/hero.png" alt="Return Current" onerror="this.closest('.hero-art').style.display='none'">
+      </div>
     </div>
   </div>
 </header>
 
-<!-- ============ META STRIP ============ -->
+<!-- ============ META ============ -->
 <div class="meta-strip">
   <div class="wrap meta-grid">
     <div class="meta-item"><div class="k">Role</div><div class="v">Design, direction, and everything else</div></div>
@@ -260,88 +387,138 @@
   </div>
 </div>
 
-<!-- ============ THE PROBLEM ============ -->
+<!-- ============ 01 PROBLEM ============ -->
 <section>
-  <div class="wrap">
+  <div class="wrap rv">
     <span class="eyebrow">01 · The Problem</span>
     <h2>Local AI is powerful.<br>It's also chained to a desk.</h2>
-    <div class="two-col" style="margin-top:36px;">
-      <div>
-        <p>ComfyUI is the most capable open source generation tool there is, and it asks for your whole desk in return. Every tweak, every reroll, every "one more seed" means sitting in front of the node graph.</p>
-        <p>Cloud services solve mobility by renting you compute you already own. The missing piece was never more GPU. It was a remote: something personal and instant that lets the machine at home do the work while you live your life.</p>
-      </div>
-      <div>
-        <p>The remote tools that already existed took the universal approach, dumping every node parameter into raw unsorted lists. Technically complete, practically unusable with thumbs.</p>
-        <p>The design problem wasn't exposing controls. It was deciding which ones deserve your screen, in what order, and making the rest available without letting them win.</p>
-      </div>
-    </div>
+    <p>ComfyUI is the most capable open-source image and video engine there is, and it asks you to sit at your PC, staring at a node graph, for every single generation. Cloud services solved mobility by charging monthly rent for compute you already own.</p>
+    <p>The missing piece was never more GPU. It was <strong>reach</strong>: something with the immediacy of a Walkman. Personal, portable, instant. Existing remote tools dumped every node parameter into raw unsorted lists; technically universal, practically unusable on a phone.</p>
   </div>
 </section>
 
-<!-- ============ THE SOLUTION ============ -->
-<section style="background:var(--bg-raised);">
-  <div class="wrap">
+<!-- ============ 02 SOLUTION ============ -->
+<section style="background:var(--raised);">
+  <div class="wrap rv">
     <span class="eyebrow">02 · The Solution</span>
     <h2>One file. Every workflow.<br>Designed for thumbs.</h2>
-    <p>Return Current runs in any mobile browser. No app store, no install, no server-side code. Feed it a workflow PNG straight from your outputs folder, or a workflow JSON, and every editable parameter is auto-detected and sorted into an order that matches how you actually work: model, seed, prompt, sampler, then a compact row for the numbers you rarely touch. LoRAs stack at the bottom. Anything exotic folds into an Advanced drawer instead of cluttering the screen.</p>
+    <p>A complete ComfyUI companion that runs in any mobile browser. No app store, no install, no server-side code. Drop a workflow PNG or JSON on it and every meaningful parameter is auto-detected, intelligently sorted, and styled for one-handed use. Anything unrecognized lands in a collapsed Advanced section instead of disappearing.</p>
 
     <div class="stats-grid">
-      <div class="stat"><div class="num">1</div><div class="lbl">HTML file. That's the whole app.</div></div>
-      <div class="stat"><div class="num">0</div><div class="lbl">dependencies, installs, build steps</div></div>
-      <div class="stat"><div class="num">~5</div><div class="lbl">minutes from download to first generation</div></div>
+      <div class="stat glass"><div class="num">1</div><div class="lbl">HTML file. The entire app</div></div>
+      <div class="stat glass"><div class="num">0</div><div class="lbl">dependencies or installs</div></div>
+      <div class="stat glass"><div class="num">4</div><div class="lbl">tools in the LLM suite</div></div>
+      <div class="stat glass"><div class="num">7</div><div class="lbl">glow themes</div></div>
+      <div class="stat glass"><div class="num">~5</div><div class="lbl">minutes to first generation</div></div>
     </div>
   </div>
 </section>
 
-<!-- ============ FEATURES ============ -->
+<!-- ============ 03 FEATURES ============ -->
 <section>
-  <div class="wrap">
+  <div class="wrap rv">
     <span class="eyebrow">03 · What It Does</span>
     <h2>Built for thumbs, not menus.</h2>
 
     <div class="feature-grid">
-      <div class="feature">
-        <div class="f-icon">▤</div>
+      <div class="feature glass">
+        <div class="f-glyph">▤</div>
         <h3>Smart workflow editor</h3>
-        <p>Import a PNG or JSON and the fields sort themselves. Seed comes with a lock toggle for A/B testing. Custom nodes the app has never seen still show up, tucked under Advanced with full parameter access.</p>
+        <p>Fields sort into a consistent hierarchy: model, seed with a 🔒 lock for A/B testing, prompt, sampler, compact parameter rows. Checkpoints, UNETs, and GGUFs all populate their dropdowns, organized by folder.</p>
       </div>
-      <div class="feature">
-        <div class="f-icon">▣</div>
+      <div class="feature glass">
+        <div class="f-glyph">▣</div>
         <h3>Living gallery</h3>
-        <p>Results stream in and slide into place, grouped by date. Same-prompt runs stack into albums you can fan open. Videos preview themselves as they pass the center of your screen.</p>
+        <p>Generations stream in with slide animations. Same-prompt runs stack into fanned-card albums. Videos auto-play as they cross the center of the screen and loop in the lightbox.</p>
       </div>
-      <div class="feature">
-        <div class="f-icon">∞</div>
-        <h3>Iterate from anywhere</h3>
-        <p>Every output carries its full workflow in the metadata. The ∞ button reloads it with the seed preserved, so comparing a LoRA swap or a prompt tweak takes two taps, not a trip to your desk.</p>
+      <div class="feature glass">
+        <div class="f-glyph">⌬</div>
+        <h3>LoRA intelligence</h3>
+        <p>Tap ⌬ on any LoRA and its CivitAI page comes to you: trigger words as tappable glowing bubbles, example images with full generation metadata, one-tap prompt harvesting into your history.</p>
       </div>
-      <div class="feature">
-        <div class="f-icon">✦</div>
-        <h3>Seven themes, one glow</h3>
-        <p>A single accent cascades through every surface: progress shimmer, carousel indicator, queue pulse, overlay glyphs. The Legendary theme runs an animated holographic foil gradient, the kind of thing that makes you want to generate one more just to watch it.</p>
+      <div class="feature glass">
+        <div class="f-glyph">∞</div>
+        <h3>Iterate from anything</h3>
+        <p>Every output carries its workflow in embedded metadata. The ∞ button reloads it, seed preserved. Blended prompts wear the same mark in your history, glowing in your theme.</p>
       </div>
-      <div class="feature">
-        <div class="f-icon">◈</div>
-        <h3>LoRA command center</h3>
-        <p>Toggles, strength you can type past the slider's range, dropdowns organized by folder with your current model's family on top, and trigger words you enter once and keep forever. One tap copies the active set.</p>
+      <div class="feature glass">
+        <div class="f-glyph">⌁</div>
+        <h3>Video-native</h3>
+        <p>Wan 2.2 image-to-video with the Lightning setup ready in the example workflows. Frame interpolation for smoother motion is one toggle; the app rewires the graph on submit.</p>
       </div>
-      <div class="feature">
-        <div class="f-icon">▶</div>
-        <h3>Video native</h3>
-        <p>Wan 2.2 image-to-video with the Lightning setup ready in the example workflow. Frame interpolation for smoother motion is one toggle, and the app rewires the graph for you on submit. Outputs loop in the lightbox; hold an edge to auto-pan a set.</p>
+      <div class="feature glass">
+        <div class="f-glyph">β</div>
+        <h3>Uncensored by design</h3>
+        <p>The app adds zero content filtering of its own. Every built-in prompt defers entirely to the model you chose to run on your own hardware. Your rig, your rules.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ DESIGN SYSTEM ============ -->
-<section style="background:var(--bg-raised);">
-  <div class="wrap">
-    <span class="eyebrow">04 · Design Language</span>
-    <h2>Darkroom chassis, safelight glow.</h2>
-    <p>The visual system borrows from a photographic darkroom: near-black surfaces with one luminous accent doing all the talking. Two typefaces play against each other. A <strong>bold italic display voice</strong> handles identity moments like model names, gallery dates, and the running job. A <strong>utilitarian mono</strong> handles every technical field. The contrast tells you instantly what's information and what's control.</p>
+<!-- ============ 04 THE SUITE ============ -->
+<section style="background:var(--raised);">
+  <div class="wrap rv">
+    <span class="eyebrow">04 · The Tools Suite</span>
+    <h2>Four tools, one local model.</h2>
+    <p>The Tools pane drives the LLM running in LM Studio on your own PC, through ComfyUI. No API keys, no cloud, no per-token bill.</p>
 
-    <div class="specimen">
+    <div class="suite-row">
+      <div class="suite-card glass">
+        <span class="s-glyph">≡</span>
+        <h3>Text</h3>
+        <p>Natural language in, structured JSON prompt out. Add up to four concepts and blend them into one scene.</p>
+      </div>
+      <div class="suite-card glass">
+        <span class="s-glyph">▣</span>
+        <h3>Image</h3>
+        <p>Reverse-engineer prompts from reference images. Multiple images get analyzed individually, then fused.</p>
+      </div>
+      <div class="suite-card glass">
+        <span class="s-glyph">⇄</span>
+        <h3>Chat</h3>
+        <p>Talk directly to your model, from your phone. Full conversation memory, image attachments, no middleman.</p>
+      </div>
+      <div class="suite-card glass">
+        <span class="s-glyph">ᛗ</span>
+        <h3>Character</h3>
+        <p>An 18-field character builder. Output instant JSON or LLM-composed prose; your roster saves to history.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 05 DESIGN LANGUAGE ============ -->
+<section>
+  <div class="wrap rv">
+    <span class="eyebrow">05 · Design Language</span>
+    <h2>Two materials. One rule.</h2>
+    <p>The system borrows from a photographic darkroom and a holographic trading card at the same time, and keeps them strictly separated:</p>
+
+    <div class="materials">
+      <div class="material-card glass current">
+        <div class="m-chip"></div>
+        <h3>The Current</h3>
+        <p>The theme accent. It marks everything <strong>live</strong>: progress shimmer, active states, glowing glyphs, the running job. Seven themes recolor it; this entire page obeys the same rule. Try the swatches.</p>
+      </div>
+      <div class="material-card glass glassm">
+        <div class="m-chip"></div>
+        <h3>The Glass</h3>
+        <p>Iridescent translucency. It marks <strong>structure</strong>: card surfaces, frames, the ∞ emblem. It never changes with the theme, like a holographic foil that reads the same under any light.</p>
+      </div>
+    </div>
+
+    <div class="glyph-legend">
+      <div class="glyph-cell"><span class="g iri">∞</span><div><div class="gname">Infinity</div><div class="gdesc">Iterate from any output. Marks blended prompts in history, the rare pull.</div></div></div>
+      <div class="glyph-cell"><span class="g">≡</span><div><div class="gname">Text</div><div class="gdesc">Lines of language. The text-to-JSON tool and its history entries.</div></div></div>
+      <div class="glyph-cell"><span class="g">▣</span><div><div class="gname">Image</div><div class="gdesc">A framed picture. Image analysis and everything visual.</div></div></div>
+      <div class="glyph-cell"><span class="g">⇄</span><div><div class="gname">Chat</div><div class="gdesc">The back-and-forth, literally drawn.</div></div></div>
+      <div class="glyph-cell"><span class="g">ᛗ</span><div><div class="gname">Mannaz</div><div class="gdesc">The rune meaning "human." The character creator wears it.</div></div></div>
+      <div class="glyph-cell"><span class="g">⌬</span><div><div class="gname">Hex</div><div class="gdesc">CivitAI's own mark is a hexagon. LoRA intelligence lives behind it.</div></div></div>
+      <div class="glyph-cell"><span class="g">⌁</span><div><div class="gname">Current</div><div class="gdesc">Electric flow. The send button; the name of the whole thing.</div></div></div>
+      <div class="glyph-cell"><span class="g">β</span><div><div class="gname">Beta</div><div class="gdesc">Glowing in the header like an indicator LED. Honest about what this is.</div></div></div>
+    </div>
+
+    <div class="specimen glass">
       <div class="specimen-row">
         <span class="spec-label">Model identity</span>
         <span class="spec-model">Illustrious</span>
@@ -362,68 +539,73 @@
   </div>
 </section>
 
-<!-- ============ PROCESS ============ -->
-<section>
-  <div class="wrap">
-    <span class="eyebrow">05 · Process</span>
+<!-- ============ 06 PROCESS ============ -->
+<section style="background:var(--raised);">
+  <div class="wrap rv">
+    <span class="eyebrow">06 · Process</span>
     <h2>Built in conversation.<br>Shipped in iterations.</h2>
-    <p>The entire app came together through rapid sessions with Claude: describe a behavior, test it on a real phone against a live ComfyUI server, report what broke or felt wrong, refine. Over sixty archived builds document the evolution. Every animation timing, glow intensity, and touch target was tuned against real fingers on real hardware.</p>
+    <p>Developed through rapid sessions with Claude: describe a behavior, test it on a real phone against a live ComfyUI server, report what broke, refine. Over sixty archived builds document the evolution. Every design call, from animation timing to touch targets, was tuned against real fingers on real hardware.</p>
 
     <div class="timeline">
       <div class="t-item">
         <div class="t-phase">Phase · Foundation</div>
-        <h3>Connection and workflow engine</h3>
+        <h3>Connection & workflow engine</h3>
         <p>WebSocket link to ComfyUI, PNG metadata extraction, and the auto-detection system that turns any workflow graph into an editable mobile form.</p>
       </div>
       <div class="t-item">
         <div class="t-phase">Phase · Reliability</div>
         <h3>Bulletproofing the pipeline</h3>
-        <p>Mobile browsers kill background connections. Missed-generation sync, auto-reconnect, and persistent state tracking made the gallery trustworthy. Lock your phone mid-render, come back, everything's there.</p>
+        <p>Mobile browsers kill background connections. Missed-generation sync, auto-reconnect, and persistent state made the gallery trustworthy: lock your phone mid-render, come back, everything's there.</p>
+      </div>
+      <div class="t-item">
+        <div class="t-phase">Phase · Universality</div>
+        <h3>Any workflow, any nodes</h3>
+        <p>JSON import with a full UI-to-API converter, resolution of bypassed and rerouted nodes, GGUF loaders, and an Advanced section so unknown custom nodes expose their parameters instead of vanishing.</p>
       </div>
       <div class="t-item">
         <div class="t-phase">Phase · Delight</div>
         <h3>Making it feel good to use</h3>
-        <p>Shimmer progress with live ETA, slide-in gallery animations, long-press auto-pan with a pulsing charge indicator, seven glowing themes. Speed stayed sacred; every effect got tested for snappiness and cut if it slowed a tap.</p>
+        <p>Shimmer progress with live ETA, slide-in gallery animations, long-press auto-pan, seven glowing themes. Speed stayed sacred; every effect got tested for snappiness and cut if it slowed a tap.</p>
       </div>
       <div class="t-item">
-        <div class="t-phase">Phase · Depth</div>
-        <h3>Power features</h3>
-        <p>Video pipelines with one-tap frame interpolation, Ideogram color palettes with native hex pickers, seed locking, LoRA trigger memory, JSON import with full graph conversion, and the universal Advanced section.</p>
+        <div class="t-phase">Phase · The Suite</div>
+        <h3>A local LLM in your pocket</h3>
+        <p>Text and image prompt generation grew into a four-tool suite: multi-concept blending, a full chat client, a character creator, and CivitAI LoRA intelligence, all riding the model on your own machine.</p>
       </div>
       <div class="t-item">
         <div class="t-phase">Phase · Release</div>
         <h3>Beta hardening</h3>
-        <p>Errors that name the failing node so a fix takes one report, example workflows for five model families, and setup docs written for people who already know their way around ComfyUI.</p>
+        <p>Errors that name the failing node so a fix takes one report, example workflows for five model families forming an end-to-end demo chain, and docs written for people who already know their way around ComfyUI.</p>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ============ PHILOSOPHY ============ -->
-<section style="background:var(--bg-raised);">
-  <div class="wrap">
-    <span class="eyebrow">06 · Point of View</span>
-    <p class="pull">No subscription, no upload queue, no waiting on someone else's servers. Your PC renders. <b>The current returns.</b></p>
+<!-- ============ 07 POINT OF VIEW ============ -->
+<section>
+  <div class="wrap rv">
+    <span class="eyebrow">07 · Point of View</span>
+    <p class="pull">No subscription, no upload queue, no one else's servers. The most capable image engine you can run is the one you already own. <b>Your GPU, in your pocket.</b></p>
   </div>
 </section>
 
-<!-- ============ TRY IT ============ -->
-<section>
-  <div class="wrap">
-    <span class="eyebrow">07 · Try It</span>
+<!-- ============ 08 OUTCOMES ============ -->
+<section style="background:var(--raised);">
+  <div class="wrap rv">
+    <span class="eyebrow">08 · Outcomes</span>
     <h2>Free. Open. Yours.</h2>
-    <div class="two-col">
-      <div>
-        <p>Return Current is free, open source, and one file you can read top to bottom. Development continues in public, with beta testers surfacing new node types and workflows to support.</p>
-        <p><strong>Supported by donations,</strong> not subscriptions. The tool answers to its users, not a pricing page.</p>
-      </div>
-      <div>
-        <p>The repo includes five example workflows (SDXL, Anima, Ideogram 4, Krea 2, and Wan 2.2 video) that share a demo chain: the image workflows each render their model name as a glass emblem in a surrealist garden, and the video workflow's default prompt animates whatever they produce.</p>
-        <div class="links-row" style="margin-top:24px;">
-          <a class="btn primary" href="return_current_beta.html">OPEN THE APP →</a>
-          <a class="btn ghost" href="https://github.com/dreamerisms/return_current">GITHUB</a>
-        </div>
-      </div>
+    <p>Released as free, open-source software for the ComfyUI community. One file you can read top to bottom. Development continues in public, with beta testers surfacing new node types and workflows to support. <strong>Supported by donations,</strong> not subscriptions.</p>
+
+    <div class="showcase">
+      <div class="glass"><img src="media/showcase-1.png" alt="" onerror="this.closest('.glass').style.display='none'"></div>
+      <div class="glass"><img src="media/showcase-2.png" alt="" onerror="this.closest('.glass').style.display='none'"></div>
+      <div class="glass"><img src="media/showcase-3.png" alt="" onerror="this.closest('.glass').style.display='none'"></div>
+    </div>
+
+    <div class="links-row">
+      <a class="btn primary" href="return_current_beta.html">OPEN THE APP →</a>
+      <a class="btn ghost" href="https://github.com/dreamerisms/return_current">VIEW ON GITHUB</a>
+      <a class="btn ghost" href="#">SUPPORT THE PROJECT ♥</a>
     </div>
   </div>
 </section>
@@ -431,14 +613,14 @@
 <footer>
   <div class="wrap" style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;">
     <span>designed &amp; directed by <span class="sig">dreamerisms</span></span>
-    <span>built in collaboration with Claude · <span id="year"></span></span>
+    <span>built in conversation with Claude · <span id="year"></span></span>
   </div>
 </footer>
 
 <script>
 document.getElementById('year').textContent = new Date().getFullYear();
 
-/* live theme rail */
+/* ---- live theme rail: recolors the current, never the glass ---- */
 const root = document.documentElement;
 document.querySelectorAll('.swatch').forEach(sw => {
   sw.addEventListener('click', () => {
@@ -446,9 +628,16 @@ document.querySelectorAll('.swatch').forEach(sw => {
     sw.classList.add('active');
     root.style.setProperty('--accent', sw.dataset.accent);
     root.style.setProperty('--accent-glow', sw.dataset.glow);
-    root.style.setProperty('--accent-dim', sw.dataset.accent + '33');
+    root.style.setProperty('--accent-soft', sw.dataset.accent + '1a');
+    document.body.classList.toggle('legendary', sw.classList.contains('legendary'));
   });
 });
+
+/* ---- scroll reveal ---- */
+const io = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); } });
+}, {threshold: .12});
+document.querySelectorAll('.rv').forEach(el => io.observe(el));
 </script>
 </body>
 </html>
