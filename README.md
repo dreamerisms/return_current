@@ -1,6 +1,6 @@
 # RETURN // CURRENT <sup>β</sup>
 
-![Return Current](media/rc_herobanner.jpg)
+![Return Current](media/hero.png)
 
 **Mobile controller for ComfyUI. One HTML file, zero dependencies.**
 
@@ -12,6 +12,22 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+### β1.8 — July 11, 2026
+- **ᛗ / ᛋ prompt injection** — saved Characters and Styles drop into any prompt at your cursor with one tap. Pills sit above the prompt box; no LLM, no clipboard, no retyping
+- **Folder-tree pickers** — every LoRA and model dropdown is replaced by a navigable directory browser with breadcrumbs and live search. It opens inside your current file's folder, so swapping is two taps instead of scrolling past your entire collection. No more native dropdowns anywhere
+- Editor and settings labels now share the same typographic language
+
+### β1.7 — July 10, 2026
+- **ᛗ Character from image** — extract a subject from up to 4 reference images straight into the 18 character fields. The LLM ignores style completely and returns schema-locked JSON, so the character arrives pre-filled and immediately editable
+- **Character round-trip** — tap any saved ᛗ entry to reload it into the creator, tweak a few fields, and generate a variant
+
+### β1.6 — July 9, 2026
+- **ᛋ Style tool** — build a style library out of plain text you own, not opaque reference codes. Write a style, elaborate it with the LLM, or **extract one from up to 4 images** (subject ignored entirely, style only). Name it, save it, edit it, copy it as natural language or JSON
+- Editable extraction instructions for both Style and Character, persisted between sessions
+
+### β1.5 — July 8, 2026
+- **Consolidated outputs** — optional override sends every generation to `output/<your folder>/<model>/` with dated filenames, so app renders stop scattering across the paths baked into each workflow. Name the folder whatever you like, or switch it off to respect your workflows' own save paths
+
 ### β1.4 — July 7, 2026
 - **Tools is now a suite** — four tools behind glyph pills: ≡ Text, ▣ Image, ⇄ Chat, ᛗ Character
 - **⇄ Chat** — talk directly to the model running in LM Studio, from your phone. Full conversation memory, one image attachment per message, live elapsed indicator, and fail-fast errors that name what went wrong
@@ -20,9 +36,10 @@ Your GPU, in your pocket.
 - **GGUF everywhere** — GGUF models now populate loader dropdowns correctly (plus a fix for ComfyUI's newer COMBO spec across all model lists)
 - **Glyph design language** — emoji replaced with typographic marks throughout the tools: ≡ ▣ ⇄ ᛗ ⌬ ⌁, with ∞ remaining the glowing blend marker (Legendary theme gives blended history entries a holographic border)
 - **Prompt provenance** — Recent Prompts entries are tagged by source: ≡ ▣ ᛗ LoRA ∞
+- Fixed: Chat hanging forever on send; image tiles bleeding into the Chat and Character panes; GGUF dropdowns coming back empty
 
 ### β1.3 — July 6, 2026
-- **LoRA info panel** — tap 💡 on any LoRA to pull its CivitAI page: trigger words as tappable glowing bubbles (tap to add/remove from your keyword set), example images with full generation metadata (prompt, sampler, steps, CFG, seed, model)
+- **LoRA info panel** — tap ⌬ on any LoRA to pull its CivitAI page: trigger words as tappable glowing bubbles (tap to add/remove from your keyword set), example images with full generation metadata (prompt, sampler, steps, CFG, seed, model)
 - **One-tap prompt harvesting** — Copy button on any LoRA example prompt sends it to your clipboard *and* your Recent Prompts history
 - **Recent Prompts source labels** — history entries now tagged *Text*, *Image*, or *LoRA* so you know where each prompt came from
 - **Multi-image Image ➔ JSON** — add up to 4 images as thumbnail tiles; each is analyzed individually, then blended into one cohesive prompt
@@ -105,7 +122,7 @@ The [`workflows/`](workflows/) folder has tested examples for **SDXL, Anima, Ide
 Return Current is a thin layer over an enormous amount of other people's work. It connects things; these people built the things:
 
 - **[comfyanonymous & Comfy Org](https://github.com/comfyanonymous/ComfyUI)** — ComfyUI itself, the engine this entire app exists to reach. None of this means anything without it.
-- **[rgthree](https://github.com/rgthree/rgthree-comfy)** — the Power Lora Loader that anchors the app's LoRA system, and an info-panel concept this app's 💡 button openly borrows from.
+- **[rgthree](https://github.com/rgthree/rgthree-comfy)** — the Power Lora Loader that anchors the app's LoRA system, and an info-panel concept this app's ⌬ button openly borrows from.
 - **[Kosinkadink](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite)** — Video Helper Suite, the reason video output works at all.
 - **[Fannovel16](https://github.com/Fannovel16/ComfyUI-Frame-Interpolation)** — frame interpolation that makes 16fps generations feel like film.
 - **[city96](https://github.com/city96/ComfyUI-GGUF)** — GGUF loaders that let big video models fit on real people's GPUs.
