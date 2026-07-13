@@ -1093,6 +1093,14 @@
   .picker-item.file .ppath{font-family:var(--font-mono); font-size:9.5px; color:var(--text-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:40%;}
   .picker-item.selected{background:var(--safelight-dim);}
   .picker-item.selected .pname{color:var(--safelight);}
+  .model-pick-btn, .lora-pick-btn{
+    width:100%; text-align:left; background:var(--bg); border:1px solid var(--line);
+    border-radius:8px; color:var(--text); font-family:var(--font-mono); font-size:12.5px;
+    padding:10px 12px; cursor:pointer;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .model-pick-btn:active, .lora-pick-btn:active{border-color:var(--safelight-dim);}
+  .model-pick-btn::after{content:' ▾'; color:var(--text-dim);}
   /* Chat */
   .chat-messages{
     display:flex; flex-direction:column; gap:10px; margin-bottom:12px;
@@ -3123,15 +3131,30 @@ function renderEditor(){
           const display = String(opt).replace(/\\/g,'/').split('/').pop();
           return `<option value="${escapeHtml(String(opt))}" ${opt === f.value ? 'selected' : ''}>${escapeHtml(display)}</option>`;
         }).join(''));
-      html += `
-        <div class="field-group">
-          <div class="node-label">${escapeHtml(f.label)}</div>
-          <div class="field">
-            <select data-field-idx="${i}">
-              ${optionsHtml}
-            </select>
-          </div>
-        </div>`;
+      // Always use the tree picker when the server gave us a list. Native selects are ugly
+      // and unusable at scale; they only remain as a fallback when there is nothing to pick from.
+      const usePicker = options.length > 0;
+      if(usePicker){
+        const cur = String(f.value ?? '');
+        const curBase = cur ? cur.replace(/\\/g,'/').split('/').pop() : 'Choose…';
+        html += `
+          <div class="field-group">
+            <div class="node-label">${escapeHtml(f.label)}</div>
+            <div class="field">
+              <button class="model-pick-btn" data-model-pick="${i}" data-options-key="${escapeHtml(f.optionsKey)}">${escapeHtml(curBase)}</button>
+            </div>
+          </div>`;
+      } else {
+        html += `
+          <div class="field-group">
+            <div class="node-label">${escapeHtml(f.label)}</div>
+            <div class="field">
+              <select data-field-idx="${i}">
+                ${optionsHtml}
+              </select>
+            </div>
+          </div>`;
+      }
     } else if(f.kind === 'ideo_aspect'){
       const ratios = ['1:1','3:2','4:3','16:9','21:9','2:3','3:4','9:16'];
       // Determine current resolution tier
@@ -3248,6 +3271,20 @@ function renderEditor(){
     if(el.tagName === 'SELECT') el.addEventListener('change', onFieldChange);
     if(el.tagName === 'TEXTAREA') el.addEventListener('focus', ()=>{ el.dataset.touched = '1'; });
   });
+  // Model / checkpoint / GGUF tree pickers
+  main.querySelectorAll('[data-model-pick]').forEach(btn => {
+    btn.addEventListener('click', ()=>{
+      const idx = parseInt(btn.dataset.modelPick);
+      const f = fields[idx];
+      const list = state.serverOptions[btn.dataset.optionsKey] || [];
+      const label = (f.label || 'Model').replace(/[:]/g, '');
+      openFilePicker(list, String(f.value ?? ''), (picked)=>{
+        f.value = picked;
+        btn.textContent = picked.replace(/\\/g,'/').split('/').pop();
+      }, 'Select ' + label);
+    });
+  });
+
   // ᛗ/ᛋ insert menus
   main.querySelectorAll('[data-insert-kind]').forEach(btn => {
     btn.addEventListener('click', (e)=>{
@@ -3501,13 +3538,13 @@ function renderEditor(){
         stackEl.querySelectorAll('[data-lora-pick]').forEach(btn => {
           btn.addEventListener('click', () => {
             const li = parseInt(btn.dataset.loraPick);
-            openLoraPicker(f.value[li].lora, (picked) => {
+            openFilePicker(state.availableLoras, f.value[li].lora, (picked) => {
               f.value[li].lora = picked;
               btn.textContent = picked.replace(/\\/g,'/').split('/').pop();
               const kwInput = stackEl.querySelector(`[data-lora-kw="${li}"]`);
               if(kwInput) kwInput.value = getLoraKeyword(picked);
               updateTriggers();
-            });
+            }, 'Select LoRA');
           });
         });
         // Keyword inputs
@@ -4096,20 +4133,21 @@ function insertAtCursor(ta, text){
   ta.dispatchEvent(new Event('input', {bubbles:true}));
 }
 
-/** Folder-tree LoRA picker: navigate real directories instead of one endless list */
-function openLoraPicker(currentValue, onPick){
-  const all = state.availableLoras.map(l => l); // full paths as the server gives them
-  if(!all.length){ toast('No LoRA list from server yet'); return; }
+/** Folder-tree file picker: navigate real directories instead of one endless flat list.
+ *  Used for LoRAs, checkpoints, UNETs, GGUFs, upscale models. */
+function openFilePicker(list, currentValue, onPick, title){
+  const all = (list || []).map(String);
+  if(!all.length){ toast('No list from server yet'); return; }
 
   const overlay = document.createElement('div');
   overlay.className = 'picker-overlay';
   overlay.innerHTML = `
     <div class="picker-sheet">
       <div class="picker-head">
-        <h3>Select LoRA</h3>
+        <h3>${escapeHtml(title || 'Select')}</h3>
         <button class="pk-close">✕</button>
       </div>
-      <input class="picker-search" type="text" placeholder="Search all LoRAs…">
+      <input class="picker-search" type="text" placeholder="Search all…">
       <div class="picker-crumb"></div>
       <div class="picker-list"></div>
     </div>`;
@@ -4149,7 +4187,7 @@ function openLoraPicker(currentValue, onPick){
     }
     // Breadcrumb
     const segs = curPath ? curPath.split('/') : [];
-    let crumb = `<b data-crumb="">loras</b>`;
+    let crumb = `<b data-crumb="">${escapeHtml((title || 'all').toLowerCase().replace(/^select /,''))}</b>`;
     let acc = '';
     segs.forEach(s => {
       acc = acc ? acc + '/' + s : s;
@@ -4202,6 +4240,13 @@ function openLoraPicker(currentValue, onPick){
         history.back();
       });
     });
+  }
+
+  // Flat, short lists (samplers, schedulers, ratios) don't need search or breadcrumbs
+  const isFlat = !all.some(l => norm(l).includes('/'));
+  if(isFlat){
+    crumbEl.style.display = 'none';
+    if(all.length < 12) searchEl.style.display = 'none';
   }
 
   searchEl.addEventListener('input', render);
