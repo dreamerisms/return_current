@@ -12,6 +12,12 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+### β2.0 — July 13, 2026
+- **Errors reach your pocket** — when a generation fails, the app now shows you *why*, on your phone: the failing node, the exception, and the full traceback behind a toggle. One tap copies the whole thing for a bug report. No more walking to the PC to read a console
+- **Rejected workflows name names** — validation failures list exactly which node and which input ComfyUI refused
+- **Any model, any format** — model pickers list your safetensors and GGUF files together. Pick either one and the app swaps the loader node to match on submit, keeping every link in the graph intact
+- Model dropdowns now read their options from the live server for the exact node in your workflow, so no loader variant can be handed the wrong list
+
 ### β1.8 — July 11, 2026
 - **ᛗ / ᛋ prompt injection** — saved Characters and Styles drop into any prompt at your cursor with one tap. Pills sit above the prompt box; no LLM, no clipboard, no retyping
 - **Folder-tree pickers** — every LoRA and model dropdown is replaced by a navigable directory browser with breadcrumbs and live search. It opens inside your current file's folder, so swapping is two taps instead of scrolling past your entire collection. No more native dropdowns anywhere

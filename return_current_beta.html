@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β1.8</title>
+<title>Return Current β2.0</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1101,6 +1101,30 @@
   }
   .model-pick-btn:active, .lora-pick-btn:active{border-color:var(--safelight-dim);}
   .model-pick-btn::after{content:' ▾'; color:var(--text-dim);}
+  /* Error sheet */
+  .err-overlay .picker-head h3{color:#e8574a; text-shadow:0 0 10px rgba(232,87,74,.4);}
+  .err-node{
+    font-family:var(--font-mono); font-size:11px; color:var(--safelight);
+    text-shadow:0 0 8px var(--safelight-glow);
+    letter-spacing:.05em; margin-bottom:8px;
+  }
+  .err-msg{
+    background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    padding:12px 14px; font-size:13px; line-height:1.5; color:var(--text);
+    word-break:break-word; max-height:34vh; overflow-y:auto; margin-bottom:10px;
+  }
+  .err-toggle{
+    background:none; border:none; color:var(--text-dim); cursor:pointer;
+    font-family:var(--font-mono); font-size:11px; padding:4px 0; margin-bottom:6px;
+  }
+  .err-detail{
+    display:none; background:var(--bg); border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; font-family:var(--font-mono); font-size:10px; line-height:1.5;
+    color:var(--text-dim); white-space:pre-wrap; word-break:break-word;
+    max-height:30vh; overflow-y:auto; margin-bottom:10px;
+  }
+  .err-detail.open{display:block;}
+  .err-actions{display:flex; gap:8px;}
   /* Chat */
   .chat-messages{
     display:flex; flex-direction:column; gap:10px; margin-bottom:12px;
@@ -1270,7 +1294,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β1.8</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β2.0</span></div>
     </div>
   </div>
 
@@ -1438,19 +1462,14 @@ async function fetchAvailableLoras(){
       }
     }catch(e2){}
   }
-  // Normalize a combo input spec to its options array.
-  // Handles classic [[options], {...}] and the newer ["COMBO", {options:[...]}] form.
-  function comboOptions(spec){
-    if(!spec) return [];
-    const t = spec[0];
-    if(Array.isArray(t)) return t;
-    if(t === 'COMBO' && spec[1]){
-      return spec[1].options || spec[1].choices || spec[1].values || [];
-    }
-    return [];
-  }
   // Fetch samplers, schedulers, checkpoints from KSampler node info
   try{
+    // Full object_info: the source of truth for every node's dropdown options
+    try{
+      const oiRes = await fetch(`${baseUrl()}/object_info`);
+      if(oiRes.ok) state._fullObjectInfo = await oiRes.json();
+    }catch(e){}
+
     const res = await fetch(`${baseUrl()}/object_info/KSampler`);
     const info = await res.json();
     const ks = info['KSampler'];
@@ -1538,14 +1557,33 @@ function handleWsMessage(msg){
       onGenerationComplete(promptId);
     }
   } else if(msg.type === 'execution_error'){
-    const promptId = msg.data.prompt_id;
-    state.activeJobs.delete(promptId);
+    const d = msg.data || {};
+    state.activeJobs.delete(d.prompt_id);
     if(state.activeJobs.size === 0){
       state.busy = false;
       setConnDot('connected');
       document.getElementById('progressContainer').style.display = 'none';
     }
-    toast('Generation failed — check ComfyUI console');
+    // ComfyUI hands us the whole failure over the socket. Show it instead of burying it.
+    const tb = Array.isArray(d.traceback) ? d.traceback.join('') : (d.traceback || '');
+    showErrorSheet({
+      title: 'Generation failed',
+      nodeType: d.node_type,
+      nodeId: d.node_id,
+      message: (d.exception_type ? d.exception_type + ': ' : '') + (d.exception_message || 'Unknown error'),
+      detail: tb
+    });
+    updateQueueButton();
+  } else if(msg.type === 'execution_interrupted'){
+    const d = msg.data || {};
+    state.activeJobs.delete(d.prompt_id);
+    if(state.activeJobs.size === 0){
+      state.busy = false;
+      setConnDot('connected');
+      document.getElementById('progressContainer').style.display = 'none';
+    }
+    toast('Generation interrupted');
+    updateQueueButton();
   }
 }
 
@@ -1956,6 +1994,155 @@ const KNOWN_KEYS = {
   scheduler:       {label:'Scheduler', kind:'select', optionsKey:'schedulers'},
 };
 
+/** Surface a ComfyUI failure in the app, with the actual reason.
+ *  Accepts either a WS execution_error payload or a /prompt validation rejection. */
+function showErrorSheet(opts){
+  const title = opts.title || 'Generation failed';
+  const nodeLine = opts.nodeType
+    ? `${opts.nodeType}${opts.nodeId ? ' (node ' + opts.nodeId + ')' : ''}`
+    : (opts.nodeId ? 'node ' + opts.nodeId : '');
+  const message = opts.message || 'No details returned by the server.';
+  const detail = opts.detail || '';
+
+  document.querySelectorAll('.err-overlay').forEach(el => el.remove());
+  const overlay = document.createElement('div');
+  overlay.className = 'picker-overlay err-overlay';
+  overlay.innerHTML = `
+    <div class="picker-sheet">
+      <div class="picker-head">
+        <h3>⚠ ${escapeHtml(title)}</h3>
+        <button class="pk-close">✕</button>
+      </div>
+      ${nodeLine ? `<div class="err-node">${escapeHtml(nodeLine)}</div>` : ''}
+      <div class="err-msg">${escapeHtml(message)}</div>
+      ${detail ? `
+        <button class="err-toggle" id="errToggle">Show details ▾</button>
+        <pre class="err-detail" id="errDetail">${escapeHtml(detail)}</pre>` : ''}
+      <div class="err-actions">
+        <button class="tools-add-prompt" id="errCopy" style="margin:0; flex:1;">Copy error</button>
+        <button class="tools-add-prompt" id="errDismiss" style="margin:0; flex:1; border-style:solid; border-color:var(--safelight-dim); color:var(--safelight);">Dismiss</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  history.pushState({errOpen:true}, '');
+
+  const close = ()=> history.back();
+  overlay.querySelector('.pk-close').addEventListener('click', close);
+  overlay.querySelector('#errDismiss').addEventListener('click', close);
+  overlay.addEventListener('click', e => { if(e.target === overlay) close(); });
+
+  const tog = overlay.querySelector('#errToggle');
+  if(tog){
+    const det = overlay.querySelector('#errDetail');
+    tog.addEventListener('click', ()=>{
+      const open = det.classList.toggle('open');
+      tog.textContent = open ? 'Hide details ▴' : 'Show details ▾';
+    });
+  }
+  overlay.querySelector('#errCopy').addEventListener('click', ()=>{
+    const full = [title, nodeLine, message, detail].filter(Boolean).join('\n\n');
+    copyToClipboard(full);
+    toast('Error copied — paste it into a GitHub issue');
+  });
+}
+
+/** Normalize a combo input spec to its options array.
+ *  Handles classic [[options], {...}] and the newer ["COMBO", {options:[...]}] form.
+ *  TOP-LEVEL on purpose: the option resolver and loader swapper both depend on it. */
+function comboOptions(spec){
+  if(!spec) return [];
+  const t = spec[0];
+  if(Array.isArray(t)) return t;
+  if(t === 'COMBO' && spec[1]){
+    return spec[1].options || spec[1].choices || spec[1].values || [];
+  }
+  return [];
+}
+
+/** Is this node a diffusion-model (UNET) loader of any flavor? */
+function isUnetLoader(classType){
+  return /^(UNETLoader|UnetLoaderGGUF)/i.test(classType || '');
+}
+/** Which loader class can actually load this file, given what's installed on the server? */
+function loaderClassForFile(file){
+  const oi = state._fullObjectInfo || {};
+  const isGguf = /\.gguf$/i.test(file);
+  if(isGguf){
+    // Prefer the plain GGUF loader; fall back to any installed GGUF unet loader variant
+    if(oi['UnetLoaderGGUF']) return 'UnetLoaderGGUF';
+    const alt = Object.keys(oi).find(k => /GGUF/i.test(k) && /unet/i.test(k) && !/clip/i.test(k));
+    return alt || null;
+  }
+  return oi['UNETLoader'] ? 'UNETLoader' : null;
+}
+/** Rewrite a loader node so it matches the file the user picked.
+ *  Node id and outputs stay identical, so every existing link survives. */
+function swapLoaderForFile(graph, nodeId, file){
+  const node = graph[nodeId];
+  if(!node || !isUnetLoader(node.class_type)) return false;
+  const target = loaderClassForFile(file);
+  if(!target || target === node.class_type){
+    // Same loader family: just set the filename on whichever key it uses
+    const k = node.inputs.unet_name !== undefined ? 'unet_name'
+            : node.inputs.unet_filename !== undefined ? 'unet_filename' : 'unet_name';
+    node.inputs[k] = file;
+    return false;
+  }
+  const oi = state._fullObjectInfo || {};
+  const def = oi[target];
+  if(!def || !def.input) return false;
+  const req = def.input.required || {};
+  const opt = def.input.optional || {};
+  const newInputs = {};
+  // Fill every input the target loader needs, using its own defaults
+  for(const [key, spec] of Object.entries({...req, ...opt})){
+    const opts = comboOptions(spec);
+    if(opts.length && opts.some(o => String(o) === file)){
+      newInputs[key] = file; // this is the filename input
+      continue;
+    }
+    if(opts.length){ newInputs[key] = opts[0]; continue; }
+    const meta = Array.isArray(spec) && spec[1] ? spec[1] : {};
+    if(meta.default !== undefined) newInputs[key] = meta.default;
+  }
+  // Safety net: if no combo matched the filename, set the conventional key
+  if(!Object.values(newInputs).includes(file)){
+    newInputs[newInputs.unet_name !== undefined ? 'unet_name' : 'unet_name'] = file;
+  }
+  node.class_type = target;
+  node.inputs = newInputs;
+  return true;
+}
+
+/** Ask the server what THIS node's THIS input actually accepts.
+ *  Beats any hardcoded map: no node type can fall through to the wrong list. */
+function optionsForField(f){
+  try{
+    const oi = state._fullObjectInfo;
+    const graph = state.currentWorkflow && state.currentWorkflow.apiGraph;
+    // Diffusion-model fields: offer every model the server can load, safetensors and GGUF
+    // alike. The loader node is swapped to match whatever gets picked.
+    if(graph && f.nodeId && graph[f.nodeId] && isUnetLoader(graph[f.nodeId].class_type)){
+      const merged = [...(state.serverOptions.unets || []), ...(state.serverOptions.unet_gguf || [])];
+      const seen = new Set();
+      const union = merged.filter(m => { const k = String(m); if(seen.has(k)) return false; seen.add(k); return true; });
+      if(union.length) return union.sort((a,b)=>String(a).localeCompare(String(b)));
+    }
+    if(oi && graph && f.nodeId && f.key && graph[f.nodeId]){
+      const def = oi[graph[f.nodeId].class_type];
+      if(def && def.input){
+        const spec = (def.input.required && def.input.required[f.key]) ||
+                     (def.input.optional && def.input.optional[f.key]);
+        const opts = comboOptions(spec);
+        if(opts.length) return opts;
+      }
+    }
+  }catch(e){}
+  // Fallback: the static per-key map
+  const raw = f.optionsKey && state.serverOptions[f.optionsKey];
+  return Array.isArray(raw) ? raw : [];
+}
+
 function buildEditableFields(apiGraph, titleMap){
   const groups = [];
   for(const nodeId in apiGraph){
@@ -2036,15 +2223,17 @@ function buildEditableFields(apiGraph, titleMap){
       continue;
     }
 
-    // UnetLoaderGGUF — unet_name key (different from UNETLoader)
-    if(node.class_type === 'UnetLoaderGGUF'){
-      if(node.inputs.unet_name && typeof node.inputs.unet_name === 'string'){
+    // Any GGUF unet loader variant (UnetLoaderGGUF, UnetLoaderGGUFAdvanced, ...)
+    if(/GGUF/i.test(node.class_type) && !/clip/i.test(node.class_type)){
+      const gkey = node.inputs.unet_name !== undefined ? 'unet_name'
+                 : node.inputs.unet_filename !== undefined ? 'unet_filename' : null;
+      if(gkey && typeof node.inputs[gkey] === 'string'){
         groups.push({
-          nodeId, key:'unet_name', kind:'select', optionsKey:'unet_gguf',
-          label:`Model — ${title}`, value: node.inputs.unet_name
+          nodeId, key:gkey, kind:'select', optionsKey:'unet_gguf',
+          label:`Model — ${title}`, value: node.inputs[gkey]
         });
+        continue;
       }
-      continue;
     }
 
     // Ideogram4Scheduler — quality preset (Turbo/Default/Quality)
@@ -3122,8 +3311,7 @@ function renderEditor(){
           </div>
         </div>`;
     } else if(f.kind === 'select'){
-      const rawOpts = (f.optionsKey && state.serverOptions[f.optionsKey]);
-      const options = Array.isArray(rawOpts) ? rawOpts : [];
+      const options = optionsForField(f);
       const useGrouped = ['checkpoints','unets','unet_gguf','upscale_models'].includes(f.optionsKey) && options.length > 0;
       const optionsHtml = useGrouped ? buildOrganizedSelectOptions(options, f.value, state.currentWorkflow?.apiGraph) : 
         ((!options.length ? `<option value="${escapeHtml(String(f.value ?? ''))}">${escapeHtml(String(f.value ?? ''))}</option>` : '') +
@@ -3276,7 +3464,7 @@ function renderEditor(){
     btn.addEventListener('click', ()=>{
       const idx = parseInt(btn.dataset.modelPick);
       const f = fields[idx];
-      const list = state.serverOptions[btn.dataset.optionsKey] || [];
+      const list = optionsForField(f);
       const label = (f.label || 'Model').replace(/[:]/g, '');
       openFilePicker(list, String(f.value ?? ''), (picked)=>{
         f.value = picked;
@@ -3671,6 +3859,7 @@ async function submitCurrentWorkflow(){
   
   const {apiGraph, fields} = state.currentWorkflow;
   const graph = JSON.parse(JSON.stringify(apiGraph));
+  try{
   fields.forEach(f=>{
     if(f.kind === 'rife_toggle'){
       if(!f.value && f.rifeInput){
@@ -3737,11 +3926,22 @@ async function submitCurrentWorkflow(){
         }
         target[path[path.length - 1]] = f.value;
       });
+    } else if(graph[f.nodeId] && isUnetLoader(graph[f.nodeId].class_type) &&
+              (f.key === 'unet_name' || f.key === 'unet_filename')){
+      // Model field on a UNET loader: swap the node to whichever loader can read this file
+      const swapped = swapLoaderForFile(graph, f.nodeId, String(f.value));
+      if(swapped) toast(`Loader switched to ${graph[f.nodeId].class_type} for this model`);
     } else {
       graph[f.nodeId].inputs[f.key] = f.value;
     }
   });
   applyOutputOverride(graph);
+  }catch(prepErr){
+    // A crash while preparing the graph used to kill Generate with no feedback at all
+    toast('Could not prepare the workflow: ' + (prepErr.message || 'unknown error'));
+    console.error('Graph prep error:', prepErr);
+    return;
+  }
   try{
     const res = await fetch(`${baseUrl()}/prompt`, {
       method:'POST',
@@ -3750,8 +3950,23 @@ async function submitCurrentWorkflow(){
     });
     const json = await res.json();
     if(json.error){
-      toast('ComfyUI rejected this workflow — see console');
-      console.error(json.error);
+      // Validation failure: json.node_errors names exactly which node and input broke
+      const lines = [];
+      const ne = json.node_errors || {};
+      for(const nid in ne){
+        const n = ne[nid];
+        const cls = (graph[nid] && graph[nid].class_type) || 'node ' + nid;
+        (n.errors || []).forEach(e => {
+          lines.push(`${cls}: ${e.message}${e.details ? ' — ' + e.details : ''}`);
+        });
+      }
+      showErrorSheet({
+        title: 'Workflow rejected',
+        message: (json.error.message || 'Validation failed') +
+                 (json.error.details ? '\n' + json.error.details : ''),
+        detail: lines.join('\n') || JSON.stringify(json.error, null, 2)
+      });
+      console.error(json.error, json.node_errors);
       return;
     }
     const promptId = json.prompt_id;
@@ -5881,6 +6096,12 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
 
 /* ====================== INIT ====================== */
 window.addEventListener('popstate', ()=>{
+  // Error sheet closes before anything else
+  const errSheet = document.querySelector('.err-overlay');
+  if(errSheet){
+    errSheet.remove();
+    return;
+  }
   // Close the LoRA tree picker first
   const picker = document.querySelector('.picker-overlay');
   if(picker){
