@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β2.0</title>
+<title>Return Current β2.5</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -134,15 +134,23 @@
     text-shadow:0 0 8px var(--safelight-glow);
   }
   .beta-glyph{
-    font-style:normal; font-weight:400; font-size:12px; vertical-align:super;
-    color:var(--safelight); text-shadow:0 0 10px var(--safelight-glow), 0 0 4px var(--safelight-glow);
+    /* The h1 uppercases everything, and uppercase β is Β — a letter shaped exactly like a
+       Latin B. Opting out of the transform is what actually keeps the beta a beta. */
+    text-transform:none;
+    font-style:italic; font-weight:700; font-size:14px;
+    vertical-align:super; letter-spacing:0;
+    color:var(--safelight);
+    text-shadow:0 0 10px var(--safelight-glow), 0 0 4px var(--safelight-glow);
   }
   .settings-version{
     margin-top:14px; padding-top:12px; border-top:1px solid var(--line);
     font-family:var(--font-mono); font-size:10px; color:var(--text-dim);
     letter-spacing:.08em; text-align:center;
   }
-  .settings-version .v-num{color:var(--safelight); text-shadow:0 0 6px var(--safelight-glow);}
+  .settings-version .v-num{
+    text-transform:none;
+    color:var(--safelight); text-shadow:0 0 6px var(--safelight-glow);
+  }
   header .status-text{font-family:var(--font-mono); font-size:10px; color:var(--text-dim); letter-spacing:0.05em;}
   header button.settings-btn{
     background:none; border:1px solid var(--line); color:var(--text-dim);
@@ -166,6 +174,33 @@
   }
 
   main{flex:1 1 auto; overflow-y:auto; padding:16px; padding-bottom:calc(200px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling:touch;}
+
+  /* ============ DESKTOP ============
+     The app is thumb-first. On a wide screen, stop the fields sprawling to 2000px:
+     centre a comfortable column, and let the gallery use the extra width instead. */
+  @media (min-width: 900px){
+    main{padding:28px 32px 120px;}
+    main > *:not(.gallery-grid):not(.gallery-header):not(.gallery-date):not(.gallery-view-bar){
+      max-width:820px; margin-left:auto; margin-right:auto;
+    }
+    .field-group{max-width:820px; margin-left:auto; margin-right:auto;}
+    .tools-history-title, .tools-mode-toggle, .tools-input-area,
+    .tools-generate-btn, .tools-status, .tools-result,
+    .wf-list, .queue-list, .action-bar-inner{max-width:820px; margin-left:auto; margin-right:auto;}
+    /* A <button> is inline-block by default, and auto margins never centre an inline-block.
+       Every full-width button that sits directly under main needs to be a block first. */
+    main > button, .tools-generate-btn, .tools-add-prompt{display:block;}
+    /* Compact rows sit side by side rather than stacking full-width */
+    .compact-row{display:grid; grid-template-columns:repeat(3, 1fr); gap:10px;}
+    .action-bar{padding-left:32px; padding-right:32px;}
+    .modal-sheet{max-width:560px;}
+    /* Chat gets room to breathe */
+    .chat-messages{max-height:60vh;}
+  }
+  @media (min-width: 1400px){
+    main > *:not(.gallery-grid):not(.gallery-header):not(.gallery-date):not(.gallery-view-bar){max-width:900px;}
+    .field-group{max-width:900px;}
+  }
 
   /* Workflow list */
   .wf-list{display:flex; flex-direction:column; gap:10px;}
@@ -360,6 +395,31 @@
   /* Gallery / Queue */
   .gallery-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:8px;}
   .gallery-grid img, .gallery-grid video{width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; border:1px solid var(--line); cursor:pointer; display:block;}
+  /* View modes: dense (2x smaller), comfortable (default), full (true aspect, one per row) */
+  .gallery-grid.view-dense{grid-template-columns:repeat(4,1fr); gap:5px;}
+  .gallery-grid.view-full{grid-template-columns:1fr; gap:14px;}
+  .gallery-grid.view-full img, .gallery-grid.view-full video{
+    aspect-ratio:auto; object-fit:contain; width:100%; height:auto; max-height:88vh; background:var(--bg);
+  }
+  @media (min-width: 900px){
+    .gallery-grid{grid-template-columns:repeat(4,1fr); gap:10px;}
+    .gallery-grid.view-dense{grid-template-columns:repeat(7,1fr); gap:6px;}
+    .gallery-grid.view-full{grid-template-columns:1fr; max-width:1100px; margin:0 auto;}
+  }
+  /* View switcher */
+  .gallery-view-bar{
+    display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px;
+  }
+  .gv-btn{
+    background:var(--bg-card); border:1px solid var(--line); border-radius:8px;
+    color:var(--text-dim); font-family:var(--font-mono); font-size:14px;
+    width:36px; height:32px; cursor:pointer; line-height:1;
+  }
+  /* Floating auto-advance in the lightbox */
+  .gv-btn.active{
+    border-color:var(--safelight); color:var(--safelight);
+    background:var(--safelight-dim); text-shadow:0 0 8px var(--safelight-glow);
+  }
   .gallery-grid video{background:var(--bg-card);}
 
   .lightbox-overlay{
@@ -519,14 +579,68 @@
     display:flex; justify-content:center; gap:16px; align-items:center;
     background:linear-gradient(0deg, rgba(0,0,0,0.6), transparent);
   }
-  .lightbox-dl, .lightbox-iterate{
+  .lightbox-dl, .lightbox-iterate, .lightbox-autopan{
     width:48px; height:48px; border:none;
     background:none; color:#fff; font-size:28px;
     cursor:pointer; display:flex; align-items:center; justify-content:center;
     text-shadow:0 0 10px var(--safelight-glow), 0 1px 4px rgba(0,0,0,.8), 0 0 1px rgba(0,0,0,.9);
     filter:drop-shadow(0 0 3px rgba(0,0,0,.6));
   }
-  .lightbox-dl:active, .lightbox-iterate:active{text-shadow:0 0 16px var(--safelight), 0 0 6px var(--safelight);}
+  .lightbox-dl:active, .lightbox-iterate:active, .lightbox-autopan:active{text-shadow:0 0 16px var(--safelight), 0 0 6px var(--safelight);}
+  /* Shuffle / repeat: drawn, not typed. No Unicode shuffle glyph exists outside emoji, and
+     the near-misses are the same class of character that rendered as tofu on mobile. SVG
+     inherits currentColor, so it lights up with the theme exactly like its lettered siblings. */
+  .lightbox-shuffle, .lightbox-loop{
+    width:48px; height:48px; border:none; background:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    color:#fff;
+    filter:drop-shadow(0 0 3px rgba(0,0,0,.7)) drop-shadow(0 1px 3px rgba(0,0,0,.8));
+  }
+  .lightbox-shuffle svg, .lightbox-loop svg{
+    width:23px; height:23px; display:block;
+  }
+  .lightbox-shuffle.running, .lightbox-loop.running{
+    color:var(--safelight);
+    filter:drop-shadow(0 0 7px var(--safelight)) drop-shadow(0 0 14px var(--safelight-glow));
+  }
+  .lightbox-shuffle:active, .lightbox-loop:active{
+    filter:drop-shadow(0 0 8px var(--safelight));
+  }
+  /* One glyph, two states. Running = it burns in the theme accent. Nothing swaps, nothing morphs. */
+  .lightbox-autopan.running{
+    color:var(--safelight);
+    text-shadow:0 0 18px var(--safelight), 0 0 8px var(--safelight-glow), 0 1px 4px rgba(0,0,0,.8);
+    animation:panPulse 1.6s ease-in-out infinite;
+  }
+  @keyframes panPulse{
+    0%,100%{opacity:1;}
+    50%{opacity:.55;}
+  }
+  /* Gallery auto-advance lives in the view bar, as a peer of the density glyphs */
+  .gv-btn.running{
+    border-color:var(--safelight); color:var(--safelight);
+    background:var(--safelight-dim);
+    text-shadow:0 0 10px var(--safelight-glow);
+    animation:panPulse 1.6s ease-in-out infinite;
+  }
+  /* Vertical carousel: the lightbox's progress bar, stood on its end */
+  .gallery-rail{
+    position:fixed; right:6px; top:calc(112px + env(safe-area-inset-top));
+    bottom:calc(84px + env(safe-area-inset-bottom));
+    width:3px; background:rgba(255,255,255,.10); border-radius:2px; z-index:30;
+    opacity:0; transition:opacity .25s; pointer-events:none;
+  }
+  .gallery-rail.show{opacity:1;}
+  .gallery-rail-fill{
+    position:absolute; left:0; width:100%; background:var(--safelight);
+    border-radius:2px; box-shadow:0 0 8px var(--safelight-glow);
+    transition:top .12s linear, height .2s;
+  }
+  body.theme-legendary .gallery-rail-fill{
+    background:linear-gradient(180deg,#ff2d7b,#ff8c00,#ffe600,#00e87b,#00bfff,#a855ff);
+    background-size:100% 300%; animation:holoShiftV 5s linear infinite;
+  }
+  @keyframes holoShiftV{0%{background-position:0 0;} 100%{background-position:0 300%;}}
   .queue-item{
     display:flex; justify-content:space-between; align-items:center;
     background:var(--bg-card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:8px;
@@ -1153,9 +1267,17 @@
   .chat-bubble .cb-img{
     max-width:160px; border-radius:8px; display:block; margin-bottom:6px;
   }
+  .chat-bubble .cb-foot{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; padding-top:5px; margin-top:2px;
+  }
   .chat-bubble .cb-copy{
     background:none; border:none; color:var(--text-dim); font-size:10px;
-    font-family:var(--font-mono); cursor:pointer; padding:4px 0 0; display:block;
+    font-family:var(--font-mono); cursor:pointer; padding:0;
+  }
+  .chat-bubble .cb-time{
+    font-family:var(--font-mono); font-size:10px; font-style:italic;
+    color:var(--text-dim); opacity:.75; white-space:nowrap;
   }
   .cb-waiting .cb-dots{
     color:var(--safelight); letter-spacing:3px; font-size:10px;
@@ -1285,6 +1407,48 @@
         <label>Port</label>
         <input type="text" id="portInput" placeholder="8188">
       </div>
+      <h2 style="margin-top:22px;">LM Studio</h2>
+      <div class="field">
+        <label>Model</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="llmModelInput" placeholder="${DEFAULT_LLM_MODEL}" style="flex:1; min-width:0;">
+          <button id="llmFetchBtn" style="flex:0 0 auto; background:var(--bg-card); border:1px solid var(--line); border-radius:8px; color:var(--safelight); font-family:var(--font-mono); font-size:11px; padding:0 12px; cursor:pointer;">⌁ Find</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Vision Model (optional)</label>
+        <input type="text" id="llmVisionInput" placeholder="same as above">
+      </div>
+      <div class="field">
+        <label>LM Studio Port</label>
+        <input type="text" id="lmsPortInput" placeholder="1234">
+      </div>
+      <div class="field checkbox">
+        <input type="checkbox" id="keepLoadedToggle">
+        <div style="flex:1;">
+          <div class="node-label" style="margin:0;">Keep model loaded</div>
+          <div style="font-size:10px; color:var(--text-dim); font-family:var(--font-mono); line-height:1.5; margin-top:2px;">Stops LM Studio unloading the model after every call. Without this you pay the full load time again on each request, which on a large model dwarfs the actual thinking.</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Response timeout (minutes)</label>
+        <input type="text" id="llmTimeoutInput" placeholder="10" inputmode="numeric">
+      </div>
+
+      <h2 style="margin-top:22px;">Gallery</h2>
+      <div class="field">
+        <label>Auto-advance delay (seconds)</label>
+        <input type="text" id="autopanInput" placeholder="2.6" inputmode="decimal">
+      </div>
+      <div class="field checkbox">
+        <input type="checkbox" id="thinkingToggle">
+        <div style="flex:1;">
+          <div class="node-label" style="margin:0;">Thinking mode</div>
+          <div style="font-size:10px; color:var(--text-dim); font-family:var(--font-mono); line-height:1.5; margin-top:2px;">For reasoning models. Always disabled for image analysis, where it is far slower for little gain. Reasoning traces are stripped from all output either way.</div>
+        </div>
+      </div>
+
+      <h2 style="margin-top:22px;">Outputs</h2>
       <div class="field checkbox" style="margin-top:14px;">
         <input type="checkbox" id="outputOverrideToggle">
         <div style="flex:1;">
@@ -1294,7 +1458,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β2.0</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β2.5</span></div>
     </div>
   </div>
 
@@ -1993,6 +2157,104 @@ const KNOWN_KEYS = {
   sampler_name:    {label:'Sampler', kind:'select', optionsKey:'samplers'},
   scheduler:       {label:'Scheduler', kind:'select', optionsKey:'schedulers'},
 };
+
+/* ============ LM STUDIO MODEL CONFIG ============ */
+const DEFAULT_LLM_MODEL = 'google/gemma-4-12b';
+
+function getLlmModel(){
+  return (localStorage.getItem('returncurrent_llm_model') || '').trim() || DEFAULT_LLM_MODEL;
+}
+function getVisionModel(){
+  // Blank means "same model handles vision"
+  return (localStorage.getItem('returncurrent_llm_vision') || '').trim() || getLlmModel();
+}
+function getLmsPort(){
+  return (localStorage.getItem('returncurrent_lms_port') || '1234').trim() || '1234';
+}
+/** Thinking is OFF by default: reasoning traces are slow and pollute structured output. */
+function isThinkingOn(){
+  return localStorage.getItem('returncurrent_llm_thinking') === 'on';
+}
+/** Qwen-style control directive. Vision calls always suppress thinking: it is dramatically
+ *  slower on image input for little gain, so the toggle only governs text calls. */
+function applyThinkDirective(systemPrompt, isVision){
+  const think = isThinkingOn() && !isVision;
+  return systemPrompt + (think ? ' /think' : ' /no_think');
+}
+/** Keep the model resident between calls. Unloading a 27B model after every request means
+ *  paying the load cost again on the next one, which dwarfs the actual inference time. */
+/** Is the page pinch-zoomed? Navigation must not fire while the user is inspecting detail. */
+function isZoomed(){
+  try{
+    if(window.visualViewport && window.visualViewport.scale > 1.05) return true;
+  }catch(e){}
+  return false;
+}
+function isShuffleOn(){ return localStorage.getItem('returncurrent_lb_shuffle') === 'on'; }
+function isLoopOn(){ return localStorage.getItem('returncurrent_lb_loop') === 'on'; }
+
+/** Delay between auto-advance steps, in ms. Clamped 1s..30s so it can't be set to nonsense. */
+function getAutopanMs(){
+  const s = parseFloat(localStorage.getItem('returncurrent_autopan_s') || '2.6');
+  const clamped = isNaN(s) ? 2.6 : Math.max(1, Math.min(30, s));
+  return Math.round(clamped * 1000);
+}
+
+/** Human duration: 8.4s, 1m 12s */
+function fmtDuration(ms){
+  const s = ms / 1000;
+  if(s < 60) return s.toFixed(1) + 's';
+  const m = Math.floor(s / 60);
+  return `${m}m ${Math.round(s - m * 60)}s`;
+}
+
+function isKeepLoaded(){
+  return localStorage.getItem('returncurrent_keep_loaded') !== 'off'; // default ON
+}
+function getLlmTimeoutMs(){
+  const v = parseInt(localStorage.getItem('returncurrent_llm_timeout') || '10', 10);
+  return (isNaN(v) ? 10 : Math.max(1, Math.min(60, v))) * 60 * 1000;
+}
+function llmPollCount(){
+  return Math.ceil(getLlmTimeoutMs() / 2000); // poller ticks every 2s
+}
+/** Fill the LM Studio node's model-lifecycle inputs from the user's setting. */
+function applyLifecycle(overrides, key){
+  const kl = key.toLowerCase();
+  if(kl === 'auto_unload'){ overrides[key] = !isKeepLoaded(); return true; }
+  if(kl === 'unload_delay'){ overrides[key] = isKeepLoaded() ? 3600 : 60; return true; }
+  if(kl === 'ttl'){ overrides[key] = isKeepLoaded() ? 3600 : 60; return true; }
+  return false;
+}
+
+/** Reasoning models emit <think>…</think>. Strip it or it lands in prompts, JSON and chat. */
+function stripThinking(text){
+  if(!text) return '';
+  let out = String(text);
+  out = out.replace(/<think>[\s\S]*?<\/think>/gi, '');
+  out = out.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+  // An unclosed opener means the model was cut off mid-trace: drop everything after it
+  const open = out.search(/<think(ing)?>/i);
+  if(open > -1) out = out.slice(0, open);
+  return out.trim();
+}
+/** Ask LM Studio directly which models it has. The node can't tell us: model_key is free text. */
+async function fetchLmStudioModels(){
+  const url = `http://${state.host}:${getLmsPort()}/v1/models`;
+  const ctl = new AbortController();
+  const timer = setTimeout(()=> ctl.abort(), 8000);
+  try{
+    const res = await fetch(url, {signal: ctl.signal});
+    clearTimeout(timer);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    const ids = (data.data || []).map(m => m.id).filter(Boolean);
+    return ids.sort((a,b)=> a.localeCompare(b));
+  }catch(e){
+    clearTimeout(timer);
+    throw e;
+  }
+}
 
 /** Surface a ComfyUI failure in the app, with the actual reason.
  *  Accepts either a WS execution_error payload or a /prompt validation rejection. */
@@ -4040,6 +4302,102 @@ function getItemDate(url){
   return m && m.ts ? formatGalleryDate(m.ts) : '';
 }
 
+/** Gallery view density: 'dense' | 'comfy' | 'full' */
+function getGalleryView(){
+  return localStorage.getItem('returncurrent_gallery_view') || 'comfy';
+}
+function setGalleryView(v){
+  localStorage.setItem('returncurrent_gallery_view', v);
+  renderGallery();
+}
+function galleryViewClass(){
+  const v = getGalleryView();
+  return v === 'comfy' ? '' : ' view-' + v;
+}
+function galleryViewBar(){
+  const v = getGalleryView();
+  // ᛜ Ingwaz (dense lattice) · ▣ frame (comfy) · ▤ full-bleed
+  return `<div class="gallery-view-bar">
+    <button class="gv-btn ${v==='dense'?'active':''}" data-gview="dense" title="Dense">ᛜ</button>
+    <button class="gv-btn ${v==='comfy'?'active':''}" data-gview="comfy" title="Comfortable">▣</button>
+    <button class="gv-btn ${v==='full'?'active':''}" data-gview="full" title="Full size">▤</button>
+  </div>`;
+}
+function wireGalleryViewBar(){
+  document.querySelectorAll('[data-gview]').forEach(btn => {
+    btn.addEventListener('click', ()=> setGalleryView(btn.dataset.gview));
+  });
+}
+
+/** Index of the gallery tile currently nearest the top of the viewport.
+ *  Used by keyboard navigation to know where "next image" starts from. */
+function currentGalleryTileIndex(tiles){
+  const top = main.scrollTop;
+  let best = 0, bestDist = Infinity;
+  tiles.forEach((t, i) => {
+    const d = Math.abs(t.offsetTop - top);
+    if(d < bestDist){ bestDist = d; best = i; }
+  });
+  return best;
+}
+
+/** Step to the previous/next image in the gallery, whatever the view density. */
+function galleryStep(dir){
+  const tiles = [...main.querySelectorAll('.gallery-grid > *')];
+  if(tiles.length < 2) return;
+  const i = currentGalleryTileIndex(tiles);
+  const next = Math.min(Math.max(i + dir, 0), tiles.length - 1);
+  if(next === i) return;
+  tiles[next].scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/** Scroll the gallery by a comfortable chunk. */
+function galleryScrollBy(dir){
+  if(!main) return;
+  main.scrollBy({top: dir * Math.round(main.clientHeight * 0.82), behavior:'smooth'});
+}
+
+/* Keep the vertical rail in sync with scrolling. Bound once. */
+let _galleryScrollWired = false;
+function wireGalleryScroll(){
+  if(_galleryScrollWired || !main) return;
+  main.addEventListener('scroll', ()=>{
+    if(state.currentTab === 'gallery') updateGalleryRail();
+  }, {passive:true});
+  _galleryScrollWired = true;
+}
+
+/* ---- Vertical carousel: the lightbox's progress bar, stood on its end ---- */
+function ensureGalleryRail(){
+  let rail = document.getElementById('galleryRail');
+  if(state.currentTab !== 'gallery'){
+    if(rail) rail.remove();
+    return;
+  }
+  if(!rail){
+    rail = document.createElement('div');
+    rail.id = 'galleryRail';
+    rail.className = 'gallery-rail';
+    rail.innerHTML = '<div class="gallery-rail-fill" id="galleryRailFill"></div>';
+    document.body.appendChild(rail);
+  }
+  updateGalleryRail();
+}
+function updateGalleryRail(){
+  const rail = document.getElementById('galleryRail');
+  const fill = document.getElementById('galleryRailFill');
+  if(!rail || !fill || !main) return;
+  const sh = main.scrollHeight, ch = main.clientHeight;
+  if(sh <= ch + 4){ rail.classList.remove('show'); return; }
+  rail.classList.add('show');
+  // Thumb length is the share of content on screen — exactly like the lightbox carousel
+  const pct = Math.max((ch / sh) * 100, 6);
+  const maxTop = 100 - pct;
+  const pos = (main.scrollTop / (sh - ch)) * maxTop;
+  fill.style.height = pct + '%';
+  fill.style.top = Math.min(Math.max(pos, 0), maxTop) + '%';
+}
+
 function renderGallery(){
   actionBar.style.display = 'none';
   state.galleryDirty = false;
@@ -4126,7 +4484,10 @@ function renderGallery(){
       })()}
     </div>`;
   });
-  main.innerHTML = `<div class="gallery-grid">${gridHtml}</div>`;
+  main.innerHTML = galleryViewBar() + `<div class="gallery-grid${galleryViewClass()}">${gridHtml}</div>`;
+  wireGalleryViewBar();
+  ensureGalleryRail();
+  wireGalleryScroll();
 
   wireGalleryEvents();
 }
@@ -4136,7 +4497,7 @@ function renderGalleryTiles(urls, newCount, isExpanded){
   if(isExpanded){
     header = `<button class="gallery-back-btn" id="galleryBack">‹ Back to gallery</button>`;
   }
-  main.innerHTML = header + `<div class="gallery-grid">${urls.map((url, i) => {
+  main.innerHTML = header + galleryViewBar() + `<div class="gallery-grid${galleryViewClass()}">${urls.map((url, i) => {
     const unseen = !state.seenImages.has(url);
     const isNew = i < newCount;
     const classes = ['gallery-tile'];
@@ -4154,6 +4515,7 @@ function renderGalleryTiles(urls, newCount, isExpanded){
   }).join('')}</div>`;
 
   if(isExpanded){
+    wireGalleryViewBar();
     document.getElementById('galleryBack').addEventListener('click', ()=>{
       state.galleryExpandedGroup = null;
       renderGallery();
@@ -4538,7 +4900,11 @@ function renderTools(){
             <div class="chat-bubble ${m.role}">
               ${m.img ? `<img class="cb-img" src="${m.img}">` : ''}
               <div class="cb-text">${escapeHtml(m.text)}</div>
-              ${m.role === 'assistant' ? `<button class="cb-copy" data-cb-copy="${mi}">Copy</button>` : ''}
+              ${m.role === 'assistant' ? `
+                <div class="cb-foot">
+                  <button class="cb-copy" data-cb-copy="${mi}">Copy</button>
+                  ${m.ms ? `<span class="cb-time">${fmtDuration(m.ms)}</span>` : ''}
+                </div>` : ''}
             </div>
           `).join('')}
           ${state._chatWaiting ? `<div class="chat-bubble assistant cb-waiting"><span class="cb-dots">●●●</span></div>` : ''}
@@ -5056,6 +5422,30 @@ async function fetchToolsNodeInfo(){
 }
 
 /** Build an inputs dict from object_info, filling defaults and overrides */
+/** Coerce a value into whatever shape the node's schema actually declares.
+ *  ComfyUI nodes are wildly inconsistent: some declare a boolean as BOOLEAN, others as a
+ *  combo of the STRINGS 'True'/'False'. Sending the wrong shape fails validation outright,
+ *  so every override is normalized against the live spec before it goes near the server. */
+function coerceToSpec(value, spec){
+  if(value === undefined || value === null) return value;
+  if(Array.isArray(value)) return value; // a node link [id, slot] — never touch
+  const opts = comboOptions(spec);
+  if(opts.length){
+    const want = String(value).toLowerCase();
+    const hit = opts.find(o => String(o).toLowerCase() === want);
+    return hit !== undefined ? hit : value;
+  }
+  const t = Array.isArray(spec) ? spec[0] : spec;
+  if(t === 'BOOLEAN'){
+    if(typeof value === 'string') return value.toLowerCase() === 'true';
+    return !!value;
+  }
+  if(t === 'INT') return Math.round(Number(value));
+  if(t === 'FLOAT') return Number(value);
+  if(t === 'STRING') return String(value);
+  return value;
+}
+
 function buildNodeInputs(nodeInfo, overrides){
   const inputs = {};
   if(!nodeInfo || !nodeInfo.input) return overrides || {};
@@ -5064,12 +5454,15 @@ function buildNodeInputs(nodeInfo, overrides){
   const all = {...required, ...optional};
   for(const [key, def] of Object.entries(all)){
     if(overrides && overrides[key] !== undefined){
-      inputs[key] = overrides[key];
-    } else if(Array.isArray(def) && Array.isArray(def[0])){
-      // COMBO type — use first option as default
-      inputs[key] = def[0][0];
-    } else if(Array.isArray(def) && def[1] && def[1].default !== undefined){
-      inputs[key] = def[1].default;
+      inputs[key] = coerceToSpec(overrides[key], def);
+    } else {
+      const opts = comboOptions(def);
+      const dflt = Array.isArray(def) && def[1] && def[1].default;
+      if(dflt !== undefined && dflt !== false || (Array.isArray(def) && def[1] && 'default' in def[1])){
+        inputs[key] = def[1].default;
+      } else if(opts.length){
+        inputs[key] = opts[0]; // combo with no declared default
+      }
     }
   }
   // Add any overrides for keys not in the schema (like links)
@@ -5111,9 +5504,10 @@ async function extractCharacterFromImages(){
       const overrides = {};
       for(const key of [...Object.keys(req), ...Object.keys(opt)]){
         const kl = key.toLowerCase();
+        if(applyLifecycle(overrides, key)) continue;
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = getCharStrip();
-        else if(kl.includes('system')) overrides[key] = charExtractSystem();
-        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+        else if(kl.includes('system')) overrides[key] = applyThinkDirective(charExtractSystem(), true);
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getVisionModel();
         else if(kl === 'image') overrides[key] = ["1", 0];
         else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
         else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 1800;
@@ -5133,7 +5527,7 @@ async function extractCharacterFromImages(){
       if(json.error) throw new Error('Server rejected the analysis graph');
       const pid = json.prompt_id;
       let got = null;
-      for(let attempt = 0; attempt < 120; attempt++){
+      for(let attempt = 0; attempt < llmPollCount(); attempt++){
         await new Promise(r => setTimeout(r, 2000));
         try{
           const hRes = await fetch(baseUrl() + '/history/' + pid);
@@ -5142,7 +5536,7 @@ async function extractCharacterFromImages(){
           if(entry && entry.outputs){
             for(const nid in entry.outputs){
               if(entry.outputs[nid].text){
-                got = Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text);
+                got = stripThinking(Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text));
                 break;
               }
             }
@@ -5166,9 +5560,10 @@ async function extractCharacterFromImages(){
       const overrides2 = {};
       for(const key of [...Object.keys(req2), ...Object.keys(opt2)]){
         const kl = key.toLowerCase();
+        if(applyLifecycle(overrides2, key)) continue;
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides2[key] = mergePrompt;
-        else if(kl.includes('system')) overrides2[key] = charExtractSystem() + ' The inputs are analyses of the same subject from different references; merge them into one.';
-        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides2[key] = 'google/gemma-4-12b';
+        else if(kl.includes('system')) overrides2[key] = applyThinkDirective(charExtractSystem() + ' The inputs are analyses of the same subject from different references; merge them into one.', false);
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides2[key] = getLlmModel();
         else if(kl === 'seed') overrides2[key] = Math.floor(Math.random()*1e15);
         else if(kl.includes('max_token') || kl.includes('max_length')) overrides2[key] = 1800;
         else if(kl === 'temperature') overrides2[key] = 0.6;
@@ -5186,7 +5581,7 @@ async function extractCharacterFromImages(){
       if(json2.error) throw new Error('Server rejected the merge graph');
       const pid2 = json2.prompt_id;
       let merged = null;
-      for(let attempt = 0; attempt < 120; attempt++){
+      for(let attempt = 0; attempt < llmPollCount(); attempt++){
         await new Promise(r => setTimeout(r, 2000));
         try{
           const hRes = await fetch(baseUrl() + '/history/' + pid2);
@@ -5195,7 +5590,7 @@ async function extractCharacterFromImages(){
           if(entry && entry.outputs){
             for(const nid in entry.outputs){
               if(entry.outputs[nid].text){
-                merged = Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text);
+                merged = stripThinking(Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text));
                 break;
               }
             }
@@ -5249,6 +5644,7 @@ async function sendChatMessage(){
   state._chatDraft = '';
   state.chatPendingImg = null;
   state._chatWaiting = true;
+  const t0 = Date.now();
   renderTools();
 
   let info;
@@ -5285,9 +5681,10 @@ async function sendChatMessage(){
       const overrides = {};
       for(const key of [...Object.keys(req), ...Object.keys(opt)]){
         const kl = key.toLowerCase();
+        if(applyLifecycle(overrides, key)) continue;
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = transcript;
-        else if(kl.includes('system')) overrides[key] = CHAT_SYSTEM;
-        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+        else if(kl.includes('system')) overrides[key] = applyThinkDirective(CHAT_SYSTEM, true);
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getVisionModel();
         else if(kl === 'image') overrides[key] = ["1", 0];
         else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
         else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 2000;
@@ -5306,9 +5703,10 @@ async function sendChatMessage(){
       const overrides = {};
       for(const key of [...Object.keys(req), ...Object.keys(opt)]){
         const kl = key.toLowerCase();
+        if(applyLifecycle(overrides, key)) continue;
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides[key] = transcript;
-        else if(kl.includes('system')) overrides[key] = CHAT_SYSTEM;
-        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+        else if(kl.includes('system')) overrides[key] = applyThinkDirective(CHAT_SYSTEM, false);
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getLlmModel();
         else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
         else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 2000;
         else if(kl === 'temperature') overrides[key] = 0.7;
@@ -5337,7 +5735,7 @@ async function sendChatMessage(){
 
     let reply = null;
     let failReason = null;
-    for(let attempt = 0; attempt < 90; attempt++){
+    for(let attempt = 0; attempt < llmPollCount(); attempt++){
       await new Promise(r => setTimeout(r, 2000));
       // Live elapsed feedback on the waiting bubble (no full re-render)
       const dotsEl = document.querySelector('.cb-waiting .cb-dots');
@@ -5352,7 +5750,7 @@ async function sendChatMessage(){
           if(entry.outputs && Object.keys(entry.outputs).length){
             for(const nid in entry.outputs){
               if(entry.outputs[nid].text){
-                reply = Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text);
+                reply = stripThinking(Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text));
                 break;
               }
             }
@@ -5380,8 +5778,8 @@ async function sendChatMessage(){
         }catch(e){}
       }
     }
-    if(!reply && !failReason) failReason = 'Timed out after 3 minutes — check LM Studio and the ComfyUI console';
-    state.chatMessages.push({role:'assistant', text: reply || ('⚠ ' + failReason)});
+    if(!reply && !failReason) failReason = `Timed out after ${Math.round(getLlmTimeoutMs()/60000)} minutes. The model may still be loading, or LM Studio may need a look.`;
+    state.chatMessages.push({role:'assistant', text: reply || ('⚠ ' + failReason), ms: Date.now() - t0});
   }catch(e){
     state.chatMessages.push({role:'assistant', text: '⚠ ' + (e.message || 'Something went wrong')});
     console.error('Chat error:', e);
@@ -5396,6 +5794,7 @@ async function runToolsGenerate(){
 
   const statusEl = document.getElementById('toolsStatus');
   const genBtn = document.getElementById('toolsGenBtn');
+  const _toolsT0 = Date.now();
   genBtn.disabled = true;
   statusEl.textContent = 'Discovering node inputs…';
 
@@ -5439,9 +5838,10 @@ async function runToolsGenerate(){
     const overrides = {};
     for(const key of [...Object.keys(req), ...Object.keys(opt)]){
       const kl = key.toLowerCase();
+      if(applyLifecycle(overrides, key)) continue;
       if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides[key] = fieldText;
-      else if(kl.includes('system')) overrides[key] = CHAR_SYSTEM;
-      else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+      else if(kl.includes('system')) overrides[key] = applyThinkDirective(CHAR_SYSTEM, false);
+      else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getLlmModel();
       else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
       else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 2000;
       else if(kl === 'temperature') overrides[key] = 0.8;
@@ -5476,9 +5876,10 @@ async function runToolsGenerate(){
         const overrides = {};
         for(const key of [...Object.keys(req), ...Object.keys(opt)]){
           const kl = key.toLowerCase();
+          if(applyLifecycle(overrides, key)) continue;
           if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = getStyleStrip();
-          else if(kl.includes('system')) overrides[key] = STYLE_ELABORATE_SYSTEM;
-          else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+          else if(kl.includes('system')) overrides[key] = applyThinkDirective(STYLE_ELABORATE_SYSTEM, true);
+          else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getVisionModel();
           else if(kl === 'image') overrides[key] = ["1", 0];
           else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
           else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 1800;
@@ -5498,7 +5899,7 @@ async function runToolsGenerate(){
           const json = await res.json();
           if(json.error) throw new Error('Rejected');
           const pid = json.prompt_id;
-          for(let attempt = 0; attempt < 120; attempt++){
+          for(let attempt = 0; attempt < llmPollCount(); attempt++){
             await new Promise(r => setTimeout(r, 2000));
             try{
               const hRes = await fetch(baseUrl() + '/history/' + pid);
@@ -5507,7 +5908,7 @@ async function runToolsGenerate(){
               if(entry && entry.outputs){
                 for(const nid in entry.outputs){
                   if(entry.outputs[nid].text){
-                    analyses.push(Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text));
+                    analyses.push(stripThinking(Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text)));
                     break;
                   }
                 }
@@ -5538,9 +5939,10 @@ async function runToolsGenerate(){
       const overrides2 = {};
       for(const key of [...Object.keys(req2), ...Object.keys(opt2)]){
         const kl = key.toLowerCase();
+        if(applyLifecycle(overrides2, key)) continue;
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides2[key] = mergePrompt;
-        else if(kl.includes('system')) overrides2[key] = STYLE_MERGE_SYSTEM;
-        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides2[key] = 'google/gemma-4-12b';
+        else if(kl.includes('system')) overrides2[key] = applyThinkDirective(STYLE_MERGE_SYSTEM, false);
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides2[key] = getLlmModel();
         else if(kl === 'seed') overrides2[key] = Math.floor(Math.random()*1e15);
         else if(kl.includes('max_token') || kl.includes('max_length')) overrides2[key] = 2200;
         else if(kl === 'temperature') overrides2[key] = 0.7;
@@ -5560,9 +5962,10 @@ async function runToolsGenerate(){
       const overrides = {};
       for(const key of [...Object.keys(req), ...Object.keys(opt)]){
         const kl = key.toLowerCase();
+        if(applyLifecycle(overrides, key)) continue;
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides[key] = seed;
-        else if(kl.includes('system')) overrides[key] = STYLE_ELABORATE_SYSTEM;
-        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+        else if(kl.includes('system')) overrides[key] = applyThinkDirective(STYLE_ELABORATE_SYSTEM, false);
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getLlmModel();
         else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
         else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 2200;
         else if(kl === 'temperature') overrides[key] = 0.8;
@@ -5593,10 +5996,11 @@ async function runToolsGenerate(){
     const overrides = {};
     for(const key of allInputNames){
       const kl = key.toLowerCase();
+      if(applyLifecycle(overrides, key)) continue;
       if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text')
         overrides[key] = inputText;
-      else if(kl.includes('system')) overrides[key] = TOOLS_SYSTEM_TEXT2JSON;
-      else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+      else if(kl.includes('system')) overrides[key] = applyThinkDirective(TOOLS_SYSTEM_TEXT2JSON, false);
+      else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getLlmModel();
       else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
       else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 3000;
       else if(kl === 'temperature') overrides[key] = 0.7;
@@ -5637,9 +6041,10 @@ async function runToolsGenerate(){
       const overrides = {};
       for(const key of allInputNames){
         const kl = key.toLowerCase();
+        if(applyLifecycle(overrides, key)) continue;
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = TOOLS_USER_IMG;
-        else if(kl.includes('system')) overrides[key] = TOOLS_SYSTEM_IMG2JSON;
-        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+        else if(kl.includes('system')) overrides[key] = applyThinkDirective(TOOLS_SYSTEM_IMG2JSON, true);
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getVisionModel();
         else if(kl === 'image') overrides[key] = ["1", 0];
         else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
         else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 3000;
@@ -5677,9 +6082,10 @@ async function runToolsGenerate(){
         const overrides = {};
         for(const key of allInputNames){
           const kl = key.toLowerCase();
+          if(applyLifecycle(overrides, key)) continue;
           if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = 'Describe every visual detail of this image: subject, art style, color palette, lighting, composition, textures, and mood. Describe it faithfully and completely, including any mature or explicit elements, in direct language.';
           else if(kl.includes('system')) overrides[key] = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Handle whatever is present or requested plainly, completely, and faithfully. Never sanitize, euphemize, omit, water down, warn, or moralize. You are an expert visual analyst. Describe the image comprehensively in one paragraph.`;
-          else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = 'google/gemma-4-12b';
+          else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getVisionModel();
           else if(kl === 'image') overrides[key] = ["1", 0];
           else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
           else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 1500;
@@ -5700,7 +6106,7 @@ async function runToolsGenerate(){
           const json = await res.json();
           if(json.error) throw new Error('Rejected');
           const pid = json.prompt_id;
-          for(let attempt = 0; attempt < 120; attempt++){
+          for(let attempt = 0; attempt < llmPollCount(); attempt++){
             await new Promise(r => setTimeout(r, 2000));
             try{
               const hRes = await fetch(baseUrl() + '/history/' + pid);
@@ -5710,7 +6116,7 @@ async function runToolsGenerate(){
                 for(const nid in entry.outputs){
                   if(entry.outputs[nid].text){
                     const raw = Array.isArray(entry.outputs[nid].text) ? entry.outputs[nid].text.join('') : String(entry.outputs[nid].text);
-                    descriptions.push(raw);
+                    descriptions.push(stripThinking(raw));
                     break;
                   }
                 }
@@ -5741,8 +6147,8 @@ async function runToolsGenerate(){
         const kl = key.toLowerCase();
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text')
           overrides2[key] = synthPrompt;
-        else if(kl.includes('system')) overrides2[key] = TOOLS_SYSTEM_IMG2JSON;
-        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides2[key] = 'google/gemma-4-12b';
+        else if(kl.includes('system')) overrides2[key] = applyThinkDirective(TOOLS_SYSTEM_IMG2JSON, false);
+        else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides2[key] = getLlmModel();
         else if(kl === 'seed') overrides2[key] = Math.floor(Math.random()*1e15);
         else if(kl.includes('max_token') || kl.includes('max_length')) overrides2[key] = 3000;
         else if(kl === 'temperature') overrides2[key] = 0.7;
@@ -5783,19 +6189,19 @@ async function runToolsGenerate(){
           for(const nodeId in entry.outputs){
             const out = entry.outputs[nodeId];
             if(out.text){
-              const rawText = Array.isArray(out.text) ? out.text.join('') : String(out.text);
+              const rawText = stripThinking(Array.isArray(out.text) ? out.text.join('') : String(out.text));
               if(histSrc === 'ᛋ'){
                 // Style results land in the style field, not the results box or history
                 state.styleText = rawText.trim();
                 genBtn.disabled = false;
-                statusEl.textContent = 'Style ready — name it and save';
+                statusEl.textContent = `Style ready in ${fmtDuration(Date.now() - _toolsT0)} — name it and save`;
                 renderTools();
                 return;
               }
               state.toolsResult = extractJsonPrompt(rawText);
               saveToolsHistory(state.toolsResult, histSrc);
               genBtn.disabled = false;
-              statusEl.textContent = 'Done — JSON prompt extracted';
+              statusEl.textContent = `Done in ${fmtDuration(Date.now() - _toolsT0)}`;
               renderTools();
               return;
             }
@@ -5827,6 +6233,7 @@ function openLightbox(idx){
   history.pushState({lightbox: true}, '');
 
   let autopanTimer = null;
+  let lightboxNav = null;
   let autopanInterval = null;
   let holdIndicator = null;
 
@@ -5857,6 +6264,19 @@ function openLightbox(idx){
       ${mediaHtml}
       <div class="lightbox-bottombar">
         <button class="lightbox-iterate" title="Iterate">∞</button>
+        ${total > 1 ? `
+          <button class="lightbox-shuffle ${isShuffleOn() ? 'running' : ''}" title="Shuffle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="m4 4 5 5"/>
+            </svg>
+          </button>
+          <button class="lightbox-autopan" title="Auto-advance">▸</button>
+          <button class="lightbox-loop ${isLoopOn() ? 'running' : ''}" title="Repeat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>
+            </svg>
+          </button>
+        ` : ''}
         <button class="lightbox-dl" title="Download">↓</button>
       </div>
     `;
@@ -5872,16 +6292,16 @@ function openLightbox(idx){
     const img = overlay.querySelector('.lightbox-img');
     img.addEventListener('contextmenu', e => e.preventDefault());
 
-    // Touch: swipe + continuous-zone long-press auto-pan
+    // Touch: swipe + edge-tap navigation. Tap zones are deliberately narrow (18%):
+    // wide zones get triggered constantly by the edge of a pinch gesture.
+    const TAP_ZONE = 0.18;
     let touchStartX = 0, touchStartY = 0, touchStartTime = 0, swiping = false;
-    let currentZone = 0; // -1=left, 0=middle, 1=right
-    let zoneEnteredAt = 0;
-    let autopanDir = 0;
+    let pinching = false;
 
     function getZone(x){
       const rect = img.getBoundingClientRect();
       const rel = (x - rect.left) / rect.width;
-      return rel < 0.3 ? -1 : rel > 0.7 ? 1 : 0;
+      return rel < TAP_ZONE ? -1 : rel > (1 - TAP_ZONE) ? 1 : 0;
     }
 
     function updatePartial(){
@@ -5903,9 +6323,9 @@ function openLightbox(idx){
           vid.autoplay = true; vid.loop = true; vid.muted = true; vid.playsInline = true;
           mediaEl.replaceWith(vid);
         } else if(!curIsVid && mediaEl.tagName === 'VIDEO'){
-          const img = document.createElement('img');
-          img.src = curUrl; img.className = 'lightbox-img';
-          mediaEl.replaceWith(img);
+          const im2 = document.createElement('img');
+          im2.src = curUrl; im2.className = 'lightbox-img';
+          mediaEl.replaceWith(im2);
         } else {
           mediaEl.src = curUrl;
         }
@@ -5914,87 +6334,145 @@ function openLightbox(idx){
       if(counter) counter.textContent = `${current+1} / ${total}`;
     }
 
-    function enterZone(dir){
-      currentZone = dir;
-      zoneEnteredAt = Date.now();
-      autopanDir = 0;
-      clearInterval(autopanInterval); autopanInterval = null;
-
-      if(dir === 0 || total <= 1){
-        // Middle zone or single image — remove indicator
-        if(holdIndicator){ holdIndicator.remove(); holdIndicator = null; }
-        return;
+    // Exposed so hotkeys and the autopan toggle can drive navigation
+    lightboxNav = (dir)=>{
+      if(dir > 0 && current < total - 1){ current++; markImageSeen(imageList[current]); updatePartial(); return true; }
+      if(dir < 0 && current > 0){ current--; updatePartial(); return true; }
+      // With repeat on, the ends join up for manual navigation too
+      if(isLoopOn() && total > 1){
+        current = dir > 0 ? 0 : total - 1;
+        markImageSeen(imageList[current]);
+        updatePartial();
+        return true;
       }
-      // Show pulsating chevron
-      if(holdIndicator) holdIndicator.remove();
-      holdIndicator = document.createElement('div');
-      holdIndicator.className = `autopan-indicator ${dir < 0 ? 'left' : 'right'}`;
-      holdIndicator.textContent = dir < 0 ? '‹' : '›';
-      overlay.appendChild(holdIndicator);
+      return false;
+    };
 
-      // Start charge timer (700ms hold to activate)
-      clearTimeout(autopanTimer);
-      autopanTimer = setTimeout(()=>{
-        swiping = false;
-        autopanDir = dir;
-        // Flash the chevron out
-        if(holdIndicator){
-          holdIndicator.style.animation = 'autopanFlash .3s ease-out forwards';
-          setTimeout(()=>{ if(holdIndicator){holdIndicator.remove(); holdIndicator=null;} }, 300);
-        }
-        // Advance immediately
-        advanceAutopan(dir);
-        // Then keep going every 2.2s
-        autopanInterval = setInterval(()=> advanceAutopan(dir), 2200);
-      }, 700);
+    // ⏵ Autopan toggle — floats over the image, tap once to run, tap again to stop.
+    // Replaces the old long-press-and-hold, which nobody used and which fought with zooming.
+    // ---- Shuffle: a proper bag, not a dice roll. Every image shows once before any repeats,
+    // then the bag refills. A naive random index would show you the same photo three times
+    // in ten steps and feel broken. ----
+    let shuffleBag = [];
+    function refillBag(){
+      shuffleBag = [];
+      for(let i = 0; i < total; i++) if(i !== current) shuffleBag.push(i);
+      for(let i = shuffleBag.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffleBag[i], shuffleBag[j]] = [shuffleBag[j], shuffleBag[i]];
+      }
+    }
+    function nextShuffled(){
+      if(!shuffleBag.length) refillBag();
+      return shuffleBag.length ? shuffleBag.pop() : null;
     }
 
-    function advanceAutopan(dir){
-      if(dir > 0 && current < total - 1){ current++; markImageSeen(imageList[current]); updatePartial(); }
-      else if(dir < 0 && current > 0){ current--; updatePartial(); }
-      else { stopAutopan(); } // hit the end
+    /** One auto-advance step. Returns false when there is nowhere left to go. */
+    function advanceStep(){
+      if(total <= 1) return false;
+      if(isShuffleOn()){
+        const next = nextShuffled();
+        if(next === null) return false;
+        current = next;
+        markImageSeen(imageList[current]);
+        updatePartial();
+        return true;
+      }
+      if(current < total - 1){
+        current++;
+        markImageSeen(imageList[current]);
+        updatePartial();
+        return true;
+      }
+      if(isLoopOn()){
+        current = 0;
+        markImageSeen(imageList[current]);
+        updatePartial();
+        return true;
+      }
+      return false; // end of the line, no loop, no shuffle
+    }
+
+    const panBtn = overlay.querySelector('.lightbox-autopan');
+    function stopPan(){
+      clearInterval(autopanInterval); autopanInterval = null;
+      if(panBtn) panBtn.classList.remove('running'); // the glyph never changes, only its state
+    }
+    stopAutopan = stopPan; // close() calls this
+    if(panBtn){
+      panBtn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if(autopanInterval){ stopPan(); return; }
+        if(total <= 1) return;
+        panBtn.classList.add('running');
+        shuffleBag = []; // fresh bag each run
+        autopanInterval = setInterval(()=>{
+          if(!advanceStep()) stopPan();
+        }, getAutopanMs());
+      });
+    }
+
+    // ---- Shuffle / repeat toggles: persist, glow, and take effect on the next step ----
+    const shufBtn = overlay.querySelector('.lightbox-shuffle');
+    if(shufBtn){
+      shufBtn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const on = !isShuffleOn();
+        localStorage.setItem('returncurrent_lb_shuffle', on ? 'on' : 'off');
+        shufBtn.classList.toggle('running', on);
+        shuffleBag = [];
+      });
+    }
+    const loopBtn = overlay.querySelector('.lightbox-loop');
+    if(loopBtn){
+      loopBtn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const on = !isLoopOn();
+        localStorage.setItem('returncurrent_lb_loop', on ? 'on' : 'off');
+        loopBtn.classList.toggle('running', on);
+      });
     }
 
     img.addEventListener('touchstart', e => {
+      if(e.touches.length > 1){ pinching = true; swiping = false; return; }
+      pinching = false;
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       touchStartTime = Date.now();
       swiping = true;
-      stopAutopan();
-      enterZone(getZone(touchStartX));
     }, {passive:true});
 
     img.addEventListener('touchmove', e => {
-      const x = e.touches[0].clientX;
-      const newZone = getZone(x);
-      if(newZone !== currentZone){
-        // Zone changed — restart charge for new zone (or clear if middle)
-        enterZone(newZone);
-      }
+      // A second finger means a pinch: cancel any pending tap/swipe outright
+      if(e.touches.length > 1){ pinching = true; swiping = false; }
     }, {passive:true});
 
     img.addEventListener('touchend', e => {
-      const held = Date.now() - touchStartTime;
-      const wasAutopanning = !!autopanDir;
-      stopAutopan();
-      if(wasAutopanning || !swiping) return;
+      // Never navigate off the back of a pinch, and never while zoomed in
+      if(pinching || e.touches.length > 0 || isZoomed()){
+        if(e.touches.length === 0) pinching = false;
+        swiping = false;
+        return;
+      }
+      if(!swiping) return;
       swiping = false;
+      const held = Date.now() - touchStartTime;
       const endX = e.changedTouches[0].clientX;
       const endY = e.changedTouches[0].clientY;
       const dx = endX - touchStartX;
       const dy = endY - touchStartY;
       const dist = Math.sqrt(dx*dx + dy*dy);
 
-      // Quick tap in left/right 30% zone → advance one image
+      if(autopanInterval) stopPan(); // any deliberate touch stops autopan
+
+      // Quick tap in a narrow edge zone → one image
       if(held < 300 && dist < 15 && total > 1){
         const zone = getZone(touchStartX);
-        if(zone > 0 && current < total - 1){ current++; markImageSeen(imageList[current]); render(); return; }
-        if(zone < 0 && current > 0){ current--; render(); return; }
+        if(zone !== 0){ lightboxNav(zone); return; }
       }
       // Normal swipe
       if(Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && held < 600){
-        if(dx < 0 && current < total - 1){ current++; markImageSeen(imageList[current]); render(); }
-        else if(dx > 0 && current > 0){ current--; render(); }
+        lightboxNav(dx < 0 ? 1 : -1);
       }
     }, {passive:true});
 
@@ -6022,6 +6500,78 @@ document.getElementById('closeSettings').addEventListener('click', ()=>{
   document.getElementById('settingsModal').classList.remove('open');
 });
 // Consolidated output toggle: reflects and persists immediately
+// LM Studio model config
+const llmModelEl = document.getElementById('llmModelInput');
+const llmVisionEl = document.getElementById('llmVisionInput');
+const lmsPortEl = document.getElementById('lmsPortInput');
+const thinkingEl = document.getElementById('thinkingToggle');
+const llmFetchEl = document.getElementById('llmFetchBtn');
+
+llmModelEl.value = localStorage.getItem('returncurrent_llm_model') || '';
+llmVisionEl.value = localStorage.getItem('returncurrent_llm_vision') || '';
+lmsPortEl.value = localStorage.getItem('returncurrent_lms_port') || '';
+thinkingEl.checked = isThinkingOn();
+
+const autopanEl = document.getElementById('autopanInput');
+autopanEl.value = localStorage.getItem('returncurrent_autopan_s') || '';
+autopanEl.addEventListener('input', ()=>{
+  const s = parseFloat(autopanEl.value);
+  if(!isNaN(s)) localStorage.setItem('returncurrent_autopan_s', String(s));
+  else localStorage.removeItem('returncurrent_autopan_s');
+});
+autopanEl.addEventListener('blur', ()=>{
+  const eff = getAutopanMs() / 1000;
+  autopanEl.value = String(eff);
+});
+
+const keepLoadedEl = document.getElementById('keepLoadedToggle');
+const llmTimeoutEl = document.getElementById('llmTimeoutInput');
+keepLoadedEl.checked = isKeepLoaded();
+llmTimeoutEl.value = localStorage.getItem('returncurrent_llm_timeout') || '';
+keepLoadedEl.addEventListener('change', ()=>{
+  localStorage.setItem('returncurrent_keep_loaded', keepLoadedEl.checked ? 'on' : 'off');
+  toast(keepLoadedEl.checked ? 'Model stays resident between calls' : 'Model unloads after each call');
+});
+llmTimeoutEl.addEventListener('input', ()=> localStorage.setItem('returncurrent_llm_timeout', llmTimeoutEl.value.trim()));
+llmTimeoutEl.addEventListener('blur', ()=>{
+  const mins = Math.round(getLlmTimeoutMs() / 60000);
+  llmTimeoutEl.value = String(mins);
+});
+
+llmModelEl.addEventListener('input', ()=> localStorage.setItem('returncurrent_llm_model', llmModelEl.value.trim()));
+llmVisionEl.addEventListener('input', ()=> localStorage.setItem('returncurrent_llm_vision', llmVisionEl.value.trim()));
+lmsPortEl.addEventListener('input', ()=> localStorage.setItem('returncurrent_lms_port', lmsPortEl.value.trim()));
+thinkingEl.addEventListener('change', ()=>{
+  localStorage.setItem('returncurrent_llm_thinking', thinkingEl.checked ? 'on' : 'off');
+  toast(thinkingEl.checked ? 'Thinking on for text tasks' : 'Thinking off');
+});
+
+// Ask LM Studio what it has loaded, then let the user pick
+llmFetchEl.addEventListener('click', async ()=>{
+  if(!state.host){ toast('Set your host first'); return; }
+  const orig = llmFetchEl.textContent;
+  llmFetchEl.textContent = '…';
+  llmFetchEl.disabled = true;
+  try{
+    const models = await fetchLmStudioModels();
+    if(!models.length){ toast('LM Studio returned no models'); return; }
+    openFilePicker(models, llmModelEl.value.trim(), (picked)=>{
+      llmModelEl.value = picked;
+      localStorage.setItem('returncurrent_llm_model', picked);
+      toast('Model set to ' + picked.split('/').pop());
+    }, 'Select Model');
+  }catch(e){
+    showErrorSheet({
+      title: 'Could not reach LM Studio',
+      message: `Tried http://${state.host}:${getLmsPort()}/v1/models and got: ${e.message || 'no response'}.`,
+      detail: 'Check that LM Studio\'s local server is running, that the port matches, and that "Enable CORS" is switched on in LM Studio → Developer → Server Settings. You can always type the model key by hand instead: copy it from the model card in LM Studio.'
+    });
+  }finally{
+    llmFetchEl.textContent = orig;
+    llmFetchEl.disabled = false;
+  }
+});
+
 const outputToggleEl = document.getElementById('outputOverrideToggle');
 const outputRootEl = document.getElementById('outputRootInput');
 outputToggleEl.checked = isOutputOverrideOn();
@@ -6095,6 +6645,102 @@ document.querySelectorAll('nav.tabs button').forEach(btn=>{
 });
 
 /* ====================== INIT ====================== */
+/* ============ KEYBOARD ============
+   Desktop convenience only. Nothing here is advertised in the UI: it should just
+   feel right if you reach for it. Touch behaviour is untouched. */
+function isTypingTarget(el){
+  if(!el) return false;
+  const t = el.tagName;
+  return t === 'INPUT' || t === 'TEXTAREA' || el.isContentEditable;
+}
+
+document.addEventListener('keydown', (e)=>{
+  const typing = isTypingTarget(document.activeElement);
+  const key = e.key;
+
+  // --- Enter to send in chat (Shift+Enter keeps the newline) ---
+  if(key === 'Enter' && !e.shiftKey && document.activeElement &&
+     document.activeElement.id === 'chatInput'){
+    e.preventDefault();
+    sendChatMessage();
+    return;
+  }
+
+  // --- Escape closes the topmost overlay ---
+  if(key === 'Escape'){
+    const layered = document.querySelector('.err-overlay, .picker-overlay, .lora-panel-overlay, .lightbox-overlay');
+    if(layered){ e.preventDefault(); history.back(); return; }
+    const menu = document.querySelector('.insert-menu');
+    if(menu){ menu.remove(); return; }
+    const modal = document.getElementById('settingsModal');
+    if(modal && modal.classList.contains('open')){ modal.classList.remove('open'); return; }
+    if(typing){ document.activeElement.blur(); return; }
+    return;
+  }
+
+  // --- Lightbox navigation: arrows / A,D ---
+  if(state._lightboxOpen && !typing){
+    if(key === 'ArrowRight' || key === 'd' || key === 'D'){
+      e.preventDefault(); if(lightboxNav) lightboxNav(1); return;
+    }
+    if(key === 'ArrowLeft' || key === 'a' || key === 'A'){
+      e.preventDefault(); if(lightboxNav) lightboxNav(-1); return;
+    }
+    if(key === ' '){ // space toggles auto-advance
+      const pb = document.querySelector('.lightbox-autopan');
+      if(pb){ e.preventDefault(); pb.click(); }
+      return;
+    }
+    return;
+  }
+
+  // --- Generate: Ctrl/Cmd+Enter anywhere, or plain Enter when not typing ---
+  const genBtn = document.getElementById('queueBtn');
+  if(genBtn && ((key === 'Enter' && (e.metaKey || e.ctrlKey)) || (key === 'Enter' && !typing))){
+    e.preventDefault();
+    genBtn.click();
+    return;
+  }
+  // Tools generate, same rule
+  const toolsBtn = document.getElementById('toolsGenBtn');
+  if(toolsBtn && key === 'Enter' && (e.metaKey || e.ctrlKey)){
+    e.preventDefault();
+    toolsBtn.click();
+    return;
+  }
+
+  if(typing) return; // everything below is for when hands are off the fields
+
+  // --- Gallery: A/D and ←/→ move image to image; W/S and ↑/↓ scroll ---
+  if(state.currentTab === 'gallery'){
+    if(key === 'ArrowRight' || key === 'd' || key === 'D'){
+      e.preventDefault(); galleryStep(1); return;
+    }
+    if(key === 'ArrowLeft' || key === 'a' || key === 'A'){
+      e.preventDefault(); galleryStep(-1); return;
+    }
+    if(key === 'ArrowDown' || key === 's' || key === 'S'){
+      e.preventDefault(); galleryScrollBy(1); return;
+    }
+    if(key === 'ArrowUp' || key === 'w' || key === 'W'){
+      e.preventDefault(); galleryScrollBy(-1); return;
+    }
+  }
+
+  // --- Tabs: 1-4 ---
+  const tabs = ['workflows','queue','gallery','tools'];
+  if(/^[1-4]$/.test(key)){
+    e.preventDefault();
+    renderTab(tabs[parseInt(key,10) - 1]);
+    return;
+  }
+  // --- / focuses the first prompt or chat box ---
+  if(key === '/'){
+    const target = document.querySelector('#chatInput, textarea[data-field-idx], [data-tools-prompt]');
+    if(target){ e.preventDefault(); target.focus(); }
+  }
+});
+
 window.addEventListener('popstate', ()=>{
   // Error sheet closes before anything else
   const errSheet = document.querySelector('.err-overlay');
