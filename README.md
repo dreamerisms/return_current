@@ -12,6 +12,31 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+### β2.5 — July 13, 2026
+- **Shuffle and repeat** in the lightbox, sitting alongside auto-advance. Shuffle uses a proper bag: every image shows once before any repeats, so it never lands on the same photo twice in ten steps. Repeat joins the ends together, for auto-advance and for manual swipes alike. Both glow in your theme while active and remember their state
+
+### β2.4 — July 13, 2026
+- **▸ Auto-advance** — step through images hands-free in the lightbox. The glyph sits with the other controls and burns in your theme colour while it runs. Delay is configurable in settings
+- **Vertical carousel** — the gallery gets the lightbox's progress bar stood on its end: the thumb sizes itself to how much is on screen and tracks as you scroll
+
+### β2.3 — July 13, 2026
+- **Desktop layout** — on a wide screen the fields stop sprawling and settle into a readable column, while the gallery spreads out to use the space
+- **Gallery view modes** — ᛜ dense, ▣ comfortable, ▤ full size (one image per row at its true aspect ratio, no square crop). Switches instantly, remembers your choice
+- **▸ Auto-advance** — step through images hands-free in the lightbox. The glyph sits with the other controls and burns in your theme colour while it runs. Delay is configurable in settings
+- **Vertical carousel** — the gallery gets the lightbox's progress bar stood on its end: the thumb sizes itself to how much is on screen and tracks as you scroll
+- **Edge taps are narrower** — the next/previous zones shrank from 30% to 18% per side, and navigation is now blocked outright while pinching or zoomed
+- **Keyboard shortcuts** (desktop, undocumented on purpose): Enter sends in chat, Ctrl/Cmd+Enter generates, A/D or arrows move image to image (lightbox and gallery), W/S scroll the gallery, Space toggles auto-advance, 1–4 switch tabs, `/` jumps to the prompt, Esc closes anything
+
+### β2.2 — July 13, 2026
+- **Keep model loaded** — stops LM Studio unloading the model after every call. On a large model, reloading between requests costs far more than the actual inference. On by default
+- **Response timing** — every chat reply shows how long it took, and the Tools status line reports the same
+- **Configurable timeout** — default raised from 3 to 10 minutes, adjustable in settings
+
+### β2.1 — July 13, 2026
+- **Bring your own model** — the LLM behind the Tools suite is no longer hardcoded. Set any LM Studio model key in settings, or tap **⌁ Find** to pull the list straight from LM Studio and pick from it. Optional separate vision model if you run one
+- **Thinking toggle** — for reasoning models. Off by default. Automatically forced off for image analysis, where thinking is far slower for little gain, and left to you for text tasks where it actually helps
+- **Reasoning traces are stripped** from every output, so `<think>` blocks never leak into your prompts, styles, characters, or chat
+
 ### β2.0 — July 13, 2026
 - **Errors reach your pocket** — when a generation fails, the app now shows you *why*, on your phone: the failing node, the exception, and the full traceback behind a toggle. One tap copies the whole thing for a bug report. No more walking to the PC to read a console
 - **Rejected workflows name names** — validation failures list exactly which node and which input ComfyUI refused
