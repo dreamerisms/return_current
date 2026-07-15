@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β2.5</title>
+<title>Return Current β2.5.1</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -677,9 +677,23 @@
   .modal-sheet{
     width:100%; background:var(--bg-raised); border-radius:18px 18px 0 0; padding:20px 18px calc(24px + env(safe-area-inset-bottom));
     border-top:1px solid var(--line);
+    max-height:90vh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+    position:relative;
+  }
+  /* The close ✕ pins to the sheet so it stays tappable no matter how far you scroll */
+  .modal-sheet .close-x{
+    position:sticky; top:0; float:right; z-index:2;
+    background:var(--bg-raised); padding:2px 4px 8px 12px;
   }
   .modal-sheet h2{font-family:var(--font-display); font-size:14px; text-transform:uppercase; letter-spacing:.08em; margin:0 0 16px;}
   .modal-sheet .field{margin-bottom:14px;}
+  .field-hint{
+    font-size:10px; color:var(--text-dim); font-family:var(--font-mono);
+    line-height:1.45; margin-top:2px;
+  }
+  /* Tighter section rhythm inside settings */
+  .modal-sheet h2{margin-top:20px;}
+  .modal-sheet h2:first-of-type{margin-top:0;}
   .modal-sheet .save-btn{
     width:100%; background:var(--safelight); color:#fff; border:none; border-radius:10px; padding:13px;
     font-family:var(--font-display); text-transform:uppercase; font-size:13px; cursor:pointer; margin-top:6px;
@@ -1427,7 +1441,7 @@
         <input type="checkbox" id="keepLoadedToggle">
         <div style="flex:1;">
           <div class="node-label" style="margin:0;">Keep model loaded</div>
-          <div style="font-size:10px; color:var(--text-dim); font-family:var(--font-mono); line-height:1.5; margin-top:2px;">Stops LM Studio unloading the model after every call. Without this you pay the full load time again on each request, which on a large model dwarfs the actual thinking.</div>
+          <div class="field-hint">Avoids reloading the model on every call.</div>
         </div>
       </div>
       <div class="field">
@@ -1444,7 +1458,7 @@
         <input type="checkbox" id="thinkingToggle">
         <div style="flex:1;">
           <div class="node-label" style="margin:0;">Thinking mode</div>
-          <div style="font-size:10px; color:var(--text-dim); font-family:var(--font-mono); line-height:1.5; margin-top:2px;">For reasoning models. Always disabled for image analysis, where it is far slower for little gain. Reasoning traces are stripped from all output either way.</div>
+          <div class="field-hint">For reasoning models. Off for image analysis; traces are always stripped.</div>
         </div>
       </div>
 
@@ -1453,12 +1467,12 @@
         <input type="checkbox" id="outputOverrideToggle">
         <div style="flex:1;">
           <div class="node-label" style="margin:0;">Consolidated outputs</div>
-          <div style="font-size:10px; color:var(--text-dim); font-family:var(--font-mono); line-height:1.5; margin:2px 0 8px;">Save everything to output/&lt;folder&gt;/&lt;model&gt;/ with dated filenames, overriding each workflow's own save path. Turn off to respect the paths set inside your workflows.</div>
+          <div class="field-hint" style="margin:2px 0 8px;">Routes all output to output/&lt;folder&gt;/&lt;model&gt;/, overriding workflow paths.</div>
           <input type="text" id="outputRootInput" placeholder="Return_Current_Output" style="width:100%; background:var(--bg-card); border:1px solid var(--line); border-radius:6px; color:var(--text); padding:7px 10px; font-size:12px; font-family:var(--font-mono); box-sizing:border-box;">
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β2.5</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β2.5.1</span></div>
     </div>
   </div>
 
@@ -6491,13 +6505,24 @@ function openLightbox(idx){
 }
 
 /* ====================== SETTINGS MODAL ====================== */
-document.getElementById('openSettings').addEventListener('click', ()=>{
+function openSettingsModal(){
   document.getElementById('hostInput').value = state.host;
   document.getElementById('portInput').value = state.port;
   document.getElementById('settingsModal').classList.add('open');
-});
-document.getElementById('closeSettings').addEventListener('click', ()=>{
-  document.getElementById('settingsModal').classList.remove('open');
+  document.getElementById('settingsModal').scrollTop = 0;
+  const sheet = document.querySelector('#settingsModal .modal-sheet');
+  if(sheet) sheet.scrollTop = 0;
+  history.pushState({settingsOpen:true}, '');
+}
+function closeSettingsModal(){
+  const modal = document.getElementById('settingsModal');
+  if(modal.classList.contains('open')) modal.classList.remove('open');
+}
+document.getElementById('openSettings').addEventListener('click', openSettingsModal);
+document.getElementById('closeSettings').addEventListener('click', ()=> history.back());
+// Tap the dimmed backdrop to dismiss
+document.getElementById('settingsModal').addEventListener('click', (e)=>{
+  if(e.target.id === 'settingsModal') history.back();
 });
 // Consolidated output toggle: reflects and persists immediately
 // LM Studio model config
@@ -6673,7 +6698,7 @@ document.addEventListener('keydown', (e)=>{
     const menu = document.querySelector('.insert-menu');
     if(menu){ menu.remove(); return; }
     const modal = document.getElementById('settingsModal');
-    if(modal && modal.classList.contains('open')){ modal.classList.remove('open'); return; }
+    if(modal && modal.classList.contains('open')){ history.back(); return; }
     if(typing){ document.activeElement.blur(); return; }
     return;
   }
@@ -6758,6 +6783,12 @@ window.addEventListener('popstate', ()=>{
   const loraPanel = document.querySelector('.lora-panel-overlay');
   if(loraPanel){
     loraPanel.remove();
+    return;
+  }
+  // Close settings sheet
+  const settingsModal = document.getElementById('settingsModal');
+  if(settingsModal && settingsModal.classList.contains('open')){
+    settingsModal.classList.remove('open');
     return;
   }
   // Close lightbox
