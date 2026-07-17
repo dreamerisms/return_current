@@ -12,6 +12,16 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+### β2.7 — July 14, 2026
+- **ᛗ / ᛋ injection in Chat** — the same Character and Style pickers from the workflow editor now sit above the chat box. Drop a saved character or style into your message at the cursor, then "show me…" renders it
+
+### β2.6 — July 14, 2026
+- **⇄ Chat renders images now.** Pick a render workflow at the bottom of the Chat pane, then just talk. Say "show me…", "draw…", "generate…", or "make me a picture of…" and the model writes an image prompt from your conversation, pushes it through your chosen workflow (your enabled LoRA keywords prepended automatically, fresh seed every time), and the finished image lands in the conversation as its own bubble. Tap it to open the lightbox. Keep talking, keep iterating — "same scene but at dawn" just works, because the prompt is written from the whole conversation
+- Renders use the exact same queue, progress bar, and gallery as everything else — chat images are gallery images
+- A failed render reports its reason right in the conversation
+- **Aspect ratio and megapixels in the pane** — if your render workflow has a ResolutionSelector, its ratio picker and a compact MP field appear right under the workflow selector. Set 16:9 at 3.5MP once and every conversational render honours it; each workflow remembers its own
+- Recent Prompts no longer renders under Chat; that space belongs to the render workflow now
+
 ### β2.5 — July 13, 2026
 - **Shuffle and repeat** in the lightbox, sitting alongside auto-advance. Shuffle uses a proper bag: every image shows once before any repeats, so it never lands on the same photo twice in ten steps. Repeat joins the ends together, for auto-advance and for manual swipes alike. Both glow in your theme while active and remember their state
 
