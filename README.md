@@ -1,6 +1,6 @@
 # RETURN // CURRENT <sup>β</sup>
 
-![Return Current](media/rc_herobanner.png)
+![Return Current](media/rc_herobanner.jpg)
 
 **Mobile controller for ComfyUI. One HTML file, zero dependencies.**
 
@@ -11,6 +11,16 @@ Your GPU, in your pocket.
 ---
 
 ## Changelog
+
+### β2.9 — July 14, 2026
+- **∞ on every rendered bubble** — re-run the exact crafted prompt with a fresh seed, straight to the queue, no LLM round-trip. Seed-rolling a look you like is now one tap. A **Prompt** button beside it copies what the model actually wrote
+- **Pinned ᛗ Character and ᛋ Style** — pin a saved character and style to the conversation and every "show me" honours them automatically. Standing art direction: Marla stays Marla, the style never drifts, and you never repeat yourself. Unpin with a tap
+- **Sessions** — save a conversation (messages, render workflow, and pins together) and pick it back up later. Auto-named from your first message, update-in-place, tap to load, ✕ to delete
+
+### β2.8 — July 14, 2026
+- **Fixed: your uploaded image being ignored.** If an image upload failed mid-flight (the classic case: picking a photo while your phone's connection was still waking up), the app would silently render the workflow's original example image. Uploads now always attempt regardless of connection state, fail loudly, and Generate refuses to run until your chosen image has actually reached the server
+- **VAE and Text Encoder pickers** — VAELoader and CLIP loader fields (single, dual, and triple) now open the folder-tree picker like every other model list. No more native dropdowns for encoder swaps
+- **ᛗ Character is now a full studio.** Named character library with edit-in-place, exactly like Styles. Two input modes: **▦ Sheet** (the 18 fields, image extraction, JSON/Natural output, as before) and **≋ Freeform** (one box that takes natural language or pasted JSON). "Load into Sheet" converts either into the fields: JSON instantly, prose via the LLM. Save from either mode; tapping a saved character routes it to the right mode automatically
 
 ### β2.7 — July 14, 2026
 - **ᛗ / ᛋ injection in Chat** — the same Character and Style pickers from the workflow editor now sit above the chat box. Drop a saved character or style into your message at the cursor, then "show me…" renders it
