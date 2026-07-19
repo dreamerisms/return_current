@@ -12,6 +12,26 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+### β3.0 — July 16, 2026
+- **Two new themes.** ⚜ **Aurum** — obsidian glass with molten metallic gold: the progress bar, rails, and active elements run an animated bright-core gradient that reads as polished metal, never flat. Legendary-tier. 📼 **Trapper** — 1990s fluorescent: translucent chartreuse current with hot-orange flashes on deep trapper-keeper blue
+- **The viewer wraps.** Panning past the last image lands on the first, mouse, keys, or swipe — no more dead ends. Repeat now only governs auto-advance
+- **Image tool speaks Natural Language** — output pill alongside JSON, same as the other tools
+- **Roomier prompts** — every prompt box grew ~25% and all of them are drag-stretchable now, chat box included
+
+### β2.9.4 — July 15, 2026
+- **Keyboard navigation inside the image viewer actually works now** — A/D and the arrow keys pan through stacks and single images alike. The navigation function was scoped where the keyboard handler could never reach it, so keys silently did nothing while the on-screen arrows worked fine
+
+### β2.9.3 — July 15, 2026
+- **Gallery misses actually fixed at the root.** A finished render whose history wrote slowly (video runs especially) was being permanently locked out of the gallery by an overeager duplicate-guard — which is why the watchdog seemed to make things worse. Completion is now only marked done after images are actually collected, so the fast path and the watchdog can both retry until it lands
+- Lightbox keyboard navigation now works in every stack viewer regardless of how it was opened
+
+### β2.9.2 — July 15, 2026
+- **The ghost of Gemma is exorcised.** If no LM Studio model was configured in *this* browser (settings are per-browser, so a fresh device or tester always starts empty), the app silently fell back to a hardcoded model that may not exist on your machine — producing a Python traceback from the node. There is no silent fallback anymore: every LLM feature checks first and tells you exactly what to do — "open ⚙ → LM Studio and tap ⌁ Find"
+
+### β2.9.1 — July 15, 2026
+- **The gallery can no longer miss a finished render.** Completion used to depend on catching a single WebSocket message; if it was dropped, the image sat on the server until you refreshed. A watchdog now polls active jobs directly, so every generation lands in the gallery without ever refreshing — and without resetting whatever you were doing in the other panes
+- **Desktop lightbox navigation** — mouse clicks use the same edge zones as touch, hover reveals ‹ › arrows at the edges (bare glyphs, invisible on touch devices), and A/D and the arrow keys were already live
+
 ### β2.9 — July 14, 2026
 - **∞ on every rendered bubble** — re-run the exact crafted prompt with a fresh seed, straight to the queue, no LLM round-trip. Seed-rolling a look you like is now one tap. A **Prompt** button beside it copies what the model actually wrote
 - **Pinned ᛗ Character and ᛋ Style** — pin a saved character and style to the conversation and every "show me" honours them automatically. Standing art direction: Marla stays Marla, the style never drifts, and you never repeat yourself. Unpin with a tap

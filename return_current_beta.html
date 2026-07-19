@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β2.9</title>
+<title>Return Current β3.0</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -51,6 +51,45 @@
     --bg:#050805; --bg-raised:#0a120a; --bg-card:#101a10; --line:#1a2e1a;
     --text:#a0e8a0; --text-dim:#3a6a3a;
     --safelight:#39ff14; --safelight-dim:#0a3a08; --safelight-glow:rgba(57,255,20,.18); --ok:#2aaa2a;
+  }
+  body.theme-aurum{
+    --bg:#070706; --bg-raised:#0e0d0a; --bg-card:#16130d; --line:#2e2614;
+    --text:#eee3c8; --text-dim:#8a7a55;
+    --safelight:#f7cf4d; --safelight-dim:#3a2f0e; --safelight-glow:rgba(247,207,77,.28); --ok:#8a7a2a;
+  }
+  /* Aurum: molten gold on obsidian glass. The gradient runs bright-core so it reads
+     as polished metal catching light, never flat mustard. */
+  body.theme-aurum .progress-bar-fill,
+  body.theme-aurum .lightbox-carousel-fill,
+  body.theme-aurum .gallery-rail-fill,
+  body.theme-aurum nav.tabs button.active::after{
+    background:linear-gradient(90deg,#7a5c15,#f2c14e,#fff6c8,#ffd700,#b8860b,#f2c14e,#7a5c15) !important;
+    background-size:300% 100% !important;
+    animation:holoShift 4s linear infinite !important;
+    box-shadow:0 0 14px rgba(255,215,0,.5);
+  }
+  body.theme-aurum .gallery-rail-fill{
+    background:linear-gradient(180deg,#7a5c15,#f2c14e,#fff6c8,#ffd700,#7a5c15) !important;
+    background-size:100% 300% !important;
+    animation:holoShiftV 4s linear infinite !important;
+  }
+  body.theme-trapper{
+    --bg:#081026; --bg-raised:#0d1832; --bg-card:#132444; --line:#1f3a63;
+    --text:#e0f4ff; --text-dim:#5a7fa8;
+    --safelight:#d4ff00; --safelight-dim:#2c3a05; --safelight-glow:rgba(212,255,0,.24); --ok:#6fd44f;
+  }
+  /* Trapper: 1990s fluorescent — chartreuse current with hot-orange flashes on deep blue */
+  body.theme-trapper .progress-bar-fill,
+  body.theme-trapper .lightbox-carousel-fill,
+  body.theme-trapper nav.tabs button.active::after{
+    background:linear-gradient(90deg,#d4ff00,#ff7a00,#d4ff00) !important;
+    background-size:200% 100% !important;
+    animation:holoShift 3s linear infinite !important;
+  }
+  body.theme-trapper .gallery-rail-fill{
+    background:linear-gradient(180deg,#d4ff00,#ff7a00,#d4ff00) !important;
+    background-size:100% 200% !important;
+    animation:holoShiftV 3s linear infinite !important;
   }
   body.theme-legendary{
     --bg:#08080e; --bg-raised:#10101a; --bg-card:#181824; --line:#2a2a3e;
@@ -273,7 +312,7 @@
     color:var(--text); padding:10px 12px; font-size:13px; font-family:var(--font-mono);
   }
   .field input[type=number], .field.seed-field input{font-family:var(--font-mono);}
-  .field textarea{min-height:180px; resize:vertical; font-family:var(--font-mono); line-height:1.5; font-size:13px;}
+  .field textarea{min-height:225px; resize:vertical; font-family:var(--font-mono); line-height:1.5; font-size:13px;}
   .field textarea.neg-prompt{min-height:52px;}
   .compact-row{display:flex; gap:8px;}
   .compact-row .field-group{flex:1; min-width:0;}
@@ -578,6 +617,19 @@
     padding:14px 16px calc(14px + env(safe-area-inset-bottom));
     display:flex; justify-content:center; gap:16px; align-items:center;
     background:linear-gradient(0deg, rgba(0,0,0,0.6), transparent);
+  }
+  .lb-arrow{
+    position:absolute; top:50%; transform:translateY(-50%); z-index:5;
+    border:none; background:none; color:#fff; font-size:42px; line-height:1;
+    cursor:pointer; padding:18px 14px;
+    opacity:0; pointer-events:none; transition:opacity .2s;
+    text-shadow:0 0 10px var(--safelight-glow), 0 1px 4px rgba(0,0,0,.8);
+  }
+  .lb-arrow-l{left:6px;}
+  .lb-arrow-r{right:6px;}
+  @media (hover:hover){
+    .lightbox-overlay:hover .lb-arrow{opacity:.55; pointer-events:auto;}
+    .lb-arrow:hover{opacity:1; text-shadow:0 0 18px var(--safelight), 0 0 8px var(--safelight-glow);}
   }
   .lightbox-dl, .lightbox-iterate, .lightbox-autopan{
     width:48px; height:48px; border:none;
@@ -982,7 +1034,7 @@
   .tools-mode-toggle button.active{background:var(--safelight-dim); border-color:var(--safelight); color:var(--text);}
   .tools-input-area{margin-bottom:12px;}
   .tools-input-area textarea{
-    width:100%; min-height:160px; background:var(--bg); border:1px solid var(--line);
+    width:100%; min-height:200px; background:var(--bg); border:1px solid var(--line);
     border-radius:8px; color:var(--text); padding:10px; font-size:13px;
     font-family:var(--font-mono); resize:vertical; box-sizing:border-box;
     line-height:1.5;
@@ -1334,8 +1386,8 @@
   .chat-input-row{display:flex; gap:8px; align-items:flex-end;}
   .chat-input-row textarea{
     flex:1; background:var(--bg-card); border:1px solid var(--line); border-radius:12px;
-    color:var(--text); padding:10px 12px; font-size:14px; resize:none;
-    min-height:42px; max-height:120px; box-sizing:border-box; font-family:inherit;
+    color:var(--text); padding:10px 12px; font-size:14px; resize:vertical;
+    min-height:52px; max-height:200px; box-sizing:border-box; font-family:inherit;
   }
   .chat-input-row textarea:focus{outline:none; border-color:var(--safelight-dim);}
   .chat-attach-btn{
@@ -1405,7 +1457,9 @@
           <div class="theme-swatch" data-theme="theme-rose" style="background:#e8457a; --swatch-color:#e8457a;" title="Rosé"></div>
           <div class="theme-swatch" data-theme="theme-holo" style="background:#00c8ff; --swatch-color:#00c8ff;" title="Holo"></div>
           <div class="theme-swatch" data-theme="theme-terminal" style="background:#39ff14; --swatch-color:#39ff14;" title="Terminal"></div>
+          <div class="theme-swatch" data-theme="theme-trapper" style="background:linear-gradient(135deg,#d4ff00 55%,#ff7a00); --swatch-color:#d4ff00;" title="Trapper"></div>
           <div class="theme-swatch" data-theme="theme-legendary" style="background:linear-gradient(135deg,#ff2d7b,#ff8c00,#ffe600,#00e87b,#00bfff,#a855ff); --swatch-color:#a855ff;" title="Legendary"></div>
+          <div class="theme-swatch" data-theme="theme-aurum" style="background:linear-gradient(135deg,#3a2f0e,#f2c14e 40%,#fff6c8 52%,#ffd700 65%,#7a5c15); --swatch-color:#ffd700;" title="Aurum"></div>
         </div>
       </div>
       <button class="settings-btn" id="openSettings">⚙</button>
@@ -1448,7 +1502,7 @@
       <div class="field">
         <label>Model</label>
         <div style="display:flex; gap:8px;">
-          <input type="text" id="llmModelInput" placeholder="${DEFAULT_LLM_MODEL}" style="flex:1; min-width:0;">
+          <input type="text" id="llmModelInput" placeholder="tap ⌁ Find, or paste a model key" style="flex:1; min-width:0;">
           <button id="llmFetchBtn" style="flex:0 0 auto; background:var(--bg-card); border:1px solid var(--line); border-radius:8px; color:var(--safelight); font-family:var(--font-mono); font-size:11px; padding:0 12px; cursor:pointer;">⌁ Find</button>
         </div>
       </div>
@@ -1495,7 +1549,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β2.9</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β3.0</span></div>
     </div>
   </div>
 
@@ -1527,6 +1581,7 @@ const state = {
   _chatWaiting: false,
   charFields: {}, // character creator field values
   charFormat: 'json', // 'json' | 'natural'
+  imgFormat: 'json', // image tool output: 'json' | 'natural'
   charName: '', // character library name
   charInputMode: 'sheet', // 'sheet' | 'freeform'
   charFreeText: '', // freeform textarea (natural language or pasted JSON)
@@ -1954,10 +2009,54 @@ function deleteGalleryImage(url){
   renderGallery();
 }
 
+/* Completion watchdog: while jobs are active, poll their history directly. The WS
+   'executing: null' message is the fast path, but it is ONE message on a connection
+   mobile browsers love to drop — if it's missed, the render sits finished on the
+   server while the app waits forever. This makes completion inevitable. */
+let _jobWatchdog = null;
+function ensureJobWatchdog(){
+  if(_jobWatchdog) return;
+  _jobWatchdog = setInterval(async ()=>{
+    if(!state.activeJobs.size){
+      clearInterval(_jobWatchdog);
+      _jobWatchdog = null;
+      return;
+    }
+    for(const pid of [...state.activeJobs.keys()]){
+      try{
+        const r = await fetch(baseUrl() + '/history/' + pid);
+        if(!r.ok) continue;
+        const h = await r.json();
+        const entry = h[pid];
+        if(entry && entry.outputs && Object.keys(entry.outputs).length){
+          await onGenerationComplete(pid); // safe to call repeatedly now
+          if(state.processedPrompts.has(pid)) state.activeJobs.delete(pid);
+        } else if(entry && entry.status && entry.status.completed === false && entry.status.status_str === 'error'){
+          state.activeJobs.delete(pid); // failed job: stop watching it
+        }
+      }catch(e){ /* server unreachable this tick; try again next */ }
+    }
+    // If the watchdog drained the last job, restore the idle UI the WS would have
+    if(!state.activeJobs.size){
+      state.busy = false;
+      try{
+        setConnDot(state.connected ? 'connected' : 'disconnected');
+        document.getElementById('progressContainer').style.display = 'none';
+        updateQueueButton();
+      }catch(e){}
+    }
+  }, 8000);
+}
+
+let lightboxNav = null; // assigned by whichever lightbox is open; global so the keyboard can drive it
+let _completingNow = new Set();
 async function onGenerationComplete(promptId){
-  if(state.processedPrompts.has(promptId)) return;
-  state.processedPrompts.add(promptId); // in-memory guard against duplicate async calls
-  // NOTE: we persist to sessionStorage ONLY after successfully collecting images below
+  if(state.processedPrompts.has(promptId)) return; // already landed successfully
+  if(_completingNow.has(promptId)) return;         // a call is in flight right now
+  _completingNow.add(promptId);
+  // CRITICAL: the id is only marked processed AFTER images are collected. Burning it up
+  // front meant one slow history write (video runs often exceed the retry window)
+  // permanently locked that render out of the gallery — for the WS path AND the watchdog.
   
   try{
     // Retry fetching history — ComfyUI may not have written it yet
@@ -1969,7 +2068,7 @@ async function onGenerationComplete(promptId){
       if(entry && entry.outputs && Object.keys(entry.outputs).length > 0) break;
       await new Promise(r => setTimeout(r, 500));
     }
-    if(!entry) return;
+    if(!entry){ _completingNow.delete(promptId); return; }
 
     // Extract model name from the prompt graph stored in history
     let modelName = 'Output';
@@ -2053,8 +2152,12 @@ async function onGenerationComplete(promptId){
         if(state.currentTab === 'gallery') renderGallery();
       }catch(e){ console.error('Gallery render error:', e); }
 
+      state.processedPrompts.add(promptId); // success — NOW it's safe to never revisit
+      _completingNow.delete(promptId);
       try{ sessionStorage.setItem('returncurrent_processed', JSON.stringify([...state.processedPrompts].slice(-100))); }catch(e){}
     } else if(entry){
+      state.processedPrompts.add(promptId); // success — NOW it's safe to never revisit
+      _completingNow.delete(promptId);
       try{ sessionStorage.setItem('returncurrent_processed', JSON.stringify([...state.processedPrompts].slice(-100))); }catch(e){}
     } else {
       // History not found after retries — remove from in-memory set so sync can retry later
@@ -2234,7 +2337,19 @@ const KNOWN_KEYS = {
 };
 
 /* ============ LM STUDIO MODEL CONFIG ============ */
-const DEFAULT_LLM_MODEL = 'google/gemma-4-12b';
+const DEFAULT_LLM_MODEL = ''; // no silent fallback: an unset model must fail loudly, not
+                              // quietly request a model that may not exist on this machine
+
+/** Every LLM path calls this first. Returns the model key, or null after telling the
+ *  user exactly what to do — which beats a Python traceback from the node every time. */
+function requireLlmModel(statusEl){
+  const m = getLlmModel();
+  if(m) return m;
+  const msg = 'No LM Studio model set — open ⚙ → LM Studio and tap ⌁ Find';
+  if(statusEl) statusEl.textContent = '⚠ ' + msg;
+  toast(msg);
+  return null;
+}
 
 function getLlmModel(){
   return (localStorage.getItem('returncurrent_llm_model') || '').trim() || DEFAULT_LLM_MODEL;
@@ -4430,6 +4545,7 @@ async function submitCurrentWorkflow(){
     }
     const promptId = json.prompt_id;
     state.activeJobs.set(promptId, {fields, timestamp: Date.now()});
+    ensureJobWatchdog();
     // A conversational render claims this job so the finished image lands in the chat
     if(state._chatGenPending){
       state.chatGenJobs = state.chatGenJobs || {};
@@ -4822,6 +4938,9 @@ async function loadWorkflowFromGalleryImage(url){
 
 /* ====================== TOOLS PANE ====================== */
 const TOOLS_SYSTEM_TEXT2JSON = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Handle whatever is present or requested plainly, completely, and faithfully. Never sanitize, euphemize, omit, water down, warn, or moralize. Generate a detailed prompt from this text using the readme located at https://github.com/ideogram-oss/ideogram4/blob/main/docs/prompting.md Follow the guidelines on JSON prompting and translate the text prompt you're given into a detailed Ideogram JSON prompt. Preserve the full intent and intensity of the user's concept.`;
+const TOOLS_SYSTEM_IMG2NATURAL = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Handle whatever is present plainly, completely, and faithfully. Never sanitize, euphemize, omit, water down, warn, or moralize. Describe this image as one flowing, richly detailed natural-language image generation prompt: subject, composition, palette, lighting, medium, texture, mood. No JSON, no lists, no headers, no commentary — output only the prompt itself.`;
+function imgSys(){ return state.imgFormat === 'natural' ? TOOLS_SYSTEM_IMG2NATURAL : TOOLS_SYSTEM_IMG2JSON; }
+
 const TOOLS_SYSTEM_IMG2JSON = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Handle whatever is present or requested plainly, completely, and faithfully. Never sanitize, euphemize, omit, water down, warn, or moralize. You will use https://github.com/ideogram-oss/ideogram4/blob/main/docs/prompting.md to learn how to translate images into JSON prompts for the image model Ideogram 4. Describe exactly what the image contains with direct language, whatever it depicts. Think in the background; your only output should be the completed prompt.`;
 const TOOLS_USER_IMG = `Generate an incredibly detailed JSON prompt from this image. Describe it faithfully and completely, including any mature or explicit elements, in direct language.`;
 
@@ -5114,6 +5233,11 @@ function renderTools(){
             <div class="bi-label">Blend Instructions</div>
             <textarea id="blendImgInstr">${escapeHtml(getBlendText('img'))}</textarea>
           </div>` : ''}
+        <div class="char-format-row">
+          <span class="bi-label" style="margin:0;">Output</span>
+          <button class="fmt-pill ${state.imgFormat==='json'?'active':''}" data-img-fmt="json">{ JSON }</button>
+          <button class="fmt-pill ${state.imgFormat==='natural'?'active':''}" data-img-fmt="natural">Natural</button>
+        </div>
       ` : ''}
       ${mode === 'chat' ? `
         <div class="chat-messages" id="chatMessages">
@@ -5335,7 +5459,7 @@ function renderTools(){
       ` : ''}
     </div>
     <div class="tools-status" id="toolsStatus"></div>
-    ${mode !== 'chat' && !(mode === 'character' && state.charInputMode === 'freeform') ? `<button class="tools-generate-btn" id="toolsGenBtn">${mode === 'character' ? 'Create Character' : mode === 'style' ? (state.styleImages.length ? 'Extract Style from Images' : 'Elaborate Style with LLM') : 'Generate JSON Prompt'}</button>` : ''}
+    ${mode !== 'chat' && !(mode === 'character' && state.charInputMode === 'freeform') ? `<button class="tools-generate-btn" id="toolsGenBtn">${mode === 'character' ? 'Create Character' : mode === 'style' ? (state.styleImages.length ? 'Extract Style from Images' : 'Elaborate Style with LLM') : mode === 'text2json' ? 'Generate JSON Prompt' : 'Generate'}</button>` : ''}
     ${hasResult ? `
       <div class="tools-result">
         <button class="copy-btn" id="toolsCopyBtn">Copy</button>
@@ -5720,6 +5844,12 @@ function renderTools(){
   const charExtractBtn = document.getElementById('charExtractBtn');
   if(charExtractBtn) charExtractBtn.addEventListener('click', ()=> extractCharacterFromImages());
 
+  main.querySelectorAll('[data-img-fmt]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.imgFormat = btn.dataset.imgFmt;
+      main.querySelectorAll('[data-img-fmt]').forEach(b=>b.classList.toggle('active', b === btn));
+    });
+  });
   main.querySelectorAll('[data-char-fmt]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       state.charFormat = btn.dataset.charFmt;
@@ -6102,6 +6232,7 @@ async function loadFreeformIntoSheet(){
   }catch(e){ /* not JSON: LLM path */ }
 
   const statusEl = document.getElementById('toolsStatus');
+  if(!requireLlmModel(statusEl)) return;
   const btn = document.getElementById('charFreeLoad');
   if(btn) btn.disabled = true;
   try{
@@ -6174,6 +6305,7 @@ async function loadFreeformIntoSheet(){
 /** Extract a character from reference images into the character fields */
 async function extractCharacterFromImages(){
   if(!state.charImages.length) return;
+  if(!requireLlmModel(document.getElementById('toolsStatus'))) return;
   if(!state.connected){ toast('Connect to your server first'); return; }
   const statusEl = document.getElementById('toolsStatus');
   const btn = document.getElementById('charExtractBtn');
@@ -6330,6 +6462,7 @@ async function extractCharacterFromImages(){
 /** Conversational render: craft a prompt from the chat, push it through the chosen
  *  workflow, and land the finished image back in the conversation as a bubble. */
 async function runChatImageGeneration(userText, presetPrompt){
+  if(!requireLlmModel(null)) return;
   if(state._chatGenBusy){
     state.chatMessages.push({role:'assistant', text:'⚠ Already rendering — let this one finish first.'});
     renderTools();
@@ -6478,6 +6611,7 @@ async function sendChatMessage(){
 
   const pendingImg = state.chatPendingImg;
 
+  if(!requireLlmModel(null)) return;
   // Push user message
   state.chatMessages.push({role:'user', text: draft || '(image)', img: pendingImg ? pendingImg.url : null});
   state._chatDraft = '';
@@ -6643,6 +6777,7 @@ async function runToolsGenerate(){
   const statusEl = document.getElementById('toolsStatus');
   const genBtn = document.getElementById('toolsGenBtn');
   const _toolsT0 = Date.now();
+  if(!requireLlmModel(document.getElementById('toolsStatus'))) return;
   genBtn.disabled = true;
   statusEl.textContent = 'Discovering node inputs…';
 
@@ -6891,7 +7026,7 @@ async function runToolsGenerate(){
         const kl = key.toLowerCase();
         if(applyLifecycle(overrides, key)) continue;
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = TOOLS_USER_IMG;
-        else if(kl.includes('system')) overrides[key] = applyThinkDirective(TOOLS_SYSTEM_IMG2JSON, true);
+        else if(kl.includes('system')) overrides[key] = applyThinkDirective(imgSys(), true);
         else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getVisionModel();
         else if(kl === 'image') overrides[key] = ["1", 0];
         else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
@@ -6995,7 +7130,7 @@ async function runToolsGenerate(){
         const kl = key.toLowerCase();
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text')
           overrides2[key] = synthPrompt;
-        else if(kl.includes('system')) overrides2[key] = applyThinkDirective(TOOLS_SYSTEM_IMG2JSON, false);
+        else if(kl.includes('system')) overrides2[key] = applyThinkDirective(imgSys(), false);
         else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides2[key] = getLlmModel();
         else if(kl === 'seed') overrides2[key] = Math.floor(Math.random()*1e15);
         else if(kl.includes('max_token') || kl.includes('max_length')) overrides2[key] = 3000;
@@ -7046,7 +7181,8 @@ async function runToolsGenerate(){
                 renderTools();
                 return;
               }
-              state.toolsResult = extractJsonPrompt(rawText);
+              const wantsNatural = histSrc === 'Image' && state.imgFormat === 'natural';
+              state.toolsResult = wantsNatural ? rawText.trim() : extractJsonPrompt(rawText);
               saveToolsHistory(state.toolsResult, histSrc);
               genBtn.disabled = false;
               statusEl.textContent = `Done in ${fmtDuration(Date.now() - _toolsT0)}`;
@@ -7081,7 +7217,6 @@ function openLightbox(idx){
   history.pushState({lightbox: true}, '');
 
   let autopanTimer = null;
-  let lightboxNav = null;
   let autopanInterval = null;
   let holdIndicator = null;
 
@@ -7110,6 +7245,10 @@ function openLightbox(idx){
       </div>
       ${showCarousel ? `<div class="lightbox-carousel"><div class="lightbox-carousel-fill" style="width:${fillWidth}%;left:${fillLeft}%"></div></div>` : ''}
       ${mediaHtml}
+      ${total > 1 ? `
+        <button class="lb-arrow lb-arrow-l" title="Previous">‹</button>
+        <button class="lb-arrow lb-arrow-r" title="Next">›</button>
+      ` : ''}
       <div class="lightbox-bottombar">
         <button class="lightbox-iterate" title="Iterate">∞</button>
         ${total > 1 ? `
@@ -7145,6 +7284,7 @@ function openLightbox(idx){
     const TAP_ZONE = 0.18;
     let touchStartX = 0, touchStartY = 0, touchStartTime = 0, swiping = false;
     let pinching = false;
+    let lastTouchAt = 0; // guards click handlers against touch-synthesized clicks
 
     function getZone(x){
       const rect = img.getBoundingClientRect();
@@ -7186,8 +7326,9 @@ function openLightbox(idx){
     lightboxNav = (dir)=>{
       if(dir > 0 && current < total - 1){ current++; markImageSeen(imageList[current]); updatePartial(); return true; }
       if(dir < 0 && current > 0){ current--; updatePartial(); return true; }
-      // With repeat on, the ends join up for manual navigation too
-      if(isLoopOn() && total > 1){
+      // Manual navigation always wraps: no dead ends. The repeat toggle now only
+      // governs whether auto-advance loops.
+      if(total > 1){
         current = dir > 0 ? 0 : total - 1;
         markImageSeen(imageList[current]);
         updatePartial();
@@ -7260,6 +7401,14 @@ function openLightbox(idx){
       });
     }
 
+    // Desktop edge arrows
+    overlay.querySelectorAll('.lb-arrow').forEach(ar => {
+      ar.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        lightboxNav(ar.classList.contains('lb-arrow-l') ? -1 : 1);
+      });
+    });
+
     // ---- Shuffle / repeat toggles: persist, glow, and take effect on the next step ----
     const shufBtn = overlay.querySelector('.lightbox-shuffle');
     if(shufBtn){
@@ -7295,7 +7444,16 @@ function openLightbox(idx){
       if(e.touches.length > 1){ pinching = true; swiping = false; }
     }, {passive:true});
 
+    // Desktop: plain mouse clicks navigate with the same 18% edge ruleset as touch
+    img.addEventListener('click', e => {
+      if(Date.now() - lastTouchAt < 600) return; // this click came from a touch
+      if(isZoomed() || total <= 1) return;
+      const zone = getZone(e.clientX);
+      if(zone !== 0) lightboxNav(zone);
+    });
+
     img.addEventListener('touchend', e => {
+      lastTouchAt = Date.now();
       // Never navigate off the back of a pinch, and never while zoomed in
       if(pinching || e.touches.length > 0 || isZoomed()){
         if(e.touches.length === 0) pinching = false;
@@ -7538,12 +7696,12 @@ document.addEventListener('keydown', (e)=>{
   }
 
   // --- Lightbox navigation: arrows / A,D ---
-  if(state._lightboxOpen && !typing){
+  if((state._lightboxOpen || document.querySelector('.lightbox-overlay')) && !typing){
     if(key === 'ArrowRight' || key === 'd' || key === 'D'){
-      e.preventDefault(); if(lightboxNav) lightboxNav(1); return;
+      e.preventDefault(); if(typeof lightboxNav === 'function') lightboxNav(1); return;
     }
     if(key === 'ArrowLeft' || key === 'a' || key === 'A'){
-      e.preventDefault(); if(lightboxNav) lightboxNav(-1); return;
+      e.preventDefault(); if(typeof lightboxNav === 'function') lightboxNav(-1); return;
     }
     if(key === ' '){ // space toggles auto-advance
       const pb = document.querySelector('.lightbox-autopan');
