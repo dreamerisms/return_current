@@ -1,6 +1,6 @@
 # RETURN // CURRENT <sup>β</sup>
 
-![Return Current](media/rc_herobanner.png)
+![Return Current](media/rc_herobanner.jpg)
 
 **Mobile controller for ComfyUI. One HTML file, zero dependencies.**
 
@@ -11,6 +11,14 @@ Your GPU, in your pocket.
 ---
 
 ## Changelog
+
+### β3.1 — July 18, 2026
+- **Pinned characters are personas now.** Pin ᛗ in Chat and you're talking TO that character: first person, in their voice, fully uncensored, over your local model. The persona instructions are visible and editable right in the pane. "Show me" renders whatever they just described, and "you" means them
+- **"Show me" is grounded in the moment** — the image prompt is written from the character's latest message plus your request, not a long transcript, so what renders is what was just said
+- **ᚲ Copy / ᛈ Paste LoRA combos** — copy a whole LoRA stack with weights and toggles from one workflow and paste it into any other. Trigger words follow automatically
+- **⇅ Import / Export** for Styles and Characters — a plain JSON array any LLM can write for you. Entries merge by name
+- **Filterable libraries** — past 8 saved entries, a filter box appears; on desktop the lists go two columns
+- Elaborate/Extract moved between Copy-as and Save in the Style tool; Recent Prompts now highlights your selection
 
 ### β3.0 — July 16, 2026
 - **Two new themes.** ⚜ **Aurum** — obsidian glass with molten metallic gold: the progress bar, rails, and active elements run an animated bright-core gradient that reads as polished metal, never flat. Legendary-tier. 📼 **Trapper** — 1990s fluorescent: translucent chartreuse current with hot-orange flashes on deep trapper-keeper blue

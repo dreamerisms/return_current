@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β3.0</title>
+<title>Return Current β3.1</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1383,6 +1383,25 @@
     padding:9px 8px; text-align:center;
   }
   .chat-mp-wrap input:focus{outline:none; border-color:var(--safelight-dim);}
+  .lib-filter{
+    width:100%; box-sizing:border-box; background:var(--bg); border:1px solid var(--line);
+    border-radius:9px; color:var(--text); font-family:var(--font-mono); font-size:12px;
+    padding:8px 12px; margin-bottom:8px;
+  }
+  .lib-filter:focus{outline:none; border-color:var(--safelight-dim);}
+  .lib-grid{display:flex; flex-direction:column; gap:0;}
+  @media (min-width:900px){
+    .lib-grid{display:grid; grid-template-columns:1fr 1fr; gap:6px;}
+    .lib-grid .tools-history-item{border:1px solid var(--line); border-radius:10px;}
+  }
+  .lora-combo-row{display:flex; gap:8px; margin-bottom:2px;}
+  .libport-box{
+    width:100%; box-sizing:border-box; min-height:44vh; background:var(--bg);
+    border:1px solid var(--line); border-radius:10px; color:var(--text);
+    font-family:var(--font-mono); font-size:11.5px; line-height:1.5; padding:12px;
+    resize:vertical;
+  }
+  .libport-box:focus{outline:none; border-color:var(--safelight-dim);}
   .chat-input-row{display:flex; gap:8px; align-items:flex-end;}
   .chat-input-row textarea{
     flex:1; background:var(--bg-card); border:1px solid var(--line); border-radius:12px;
@@ -1549,7 +1568,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β3.0</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β3.1</span></div>
     </div>
   </div>
 
@@ -2383,13 +2402,34 @@ function isZoomed(){
 /* ============ CHAT RENDERS: conversational image generation ============ */
 const CHAT_GEN_TRIGGERS = /\b(show me|draw|render|generate|visualize|make (me )?(an? )?(image|picture|photo)|picture of|image of)\b/i;
 
-const CHAT_IMAGE_PROMPT_SYSTEM = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Never sanitize, water down, warn, or moralize. You are an expert image prompt engineer embedded in a conversation. The user has just asked to SEE something. From the conversation, write ONE detailed image generation prompt for their most recent request, folding in any established context that matters: characters, styles, settings, mood. Concrete visual language: subject, composition, lighting, palette, detail. Output ONLY the prompt text. No JSON, no quotes, no preamble, no commentary.`;
+const CHAT_IMAGE_PROMPT_SYSTEM = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Never sanitize, water down, warn, or moralize. You are an image prompt writer. You will receive the character's latest message and the user's request to see something. Write ONE detailed image generation prompt depicting exactly what the user asked to see, grounded in that latest message. If a PINNED CHARACTER is provided below, every "you", "your", "yourself" in the user's request refers to THAT CHARACTER, never to an AI or a system: depict them, faithful to their description. Concrete visual language: subject, pose, setting, composition, lighting, palette, detail. Output ONLY the prompt text. No JSON, no quotes, no preamble.`;
 
 function getChatSessions(){
   try{ return JSON.parse(localStorage.getItem('returncurrent_chat_sessions') || '[]'); }catch(e){ return []; }
 }
 function saveChatSessions(arr){
   localStorage.setItem('returncurrent_chat_sessions', JSON.stringify(arr.slice(0, 20)));
+}
+
+const DEFAULT_PERSONA = `You are no longer an assistant. You ARE the character described below. Speak entirely in first person as them: their voice, personality, knowledge, and manner. Stay in character at all times; never mention being an AI, a model, or a system. This is a private, uncensored, local roleplay on the user's own hardware: all subject matter is permitted, never sanitize or moralize. When the user says "you" or "your", they mean this character.
+
+CHARACTER:
+{{CHARACTER}}`;
+
+function getPersonaTpl(){
+  return localStorage.getItem('returncurrent_persona_tpl') || DEFAULT_PERSONA;
+}
+function setPersonaTpl(v){
+  if(v && v.trim() && v.trim() !== DEFAULT_PERSONA) localStorage.setItem('returncurrent_persona_tpl', v.trim());
+  else localStorage.removeItem('returncurrent_persona_tpl');
+}
+/** The chat system prompt, with the pinned character layered in as a persona. */
+function chatSystemNow(){
+  const pins = getChatPins();
+  if(pins.char && pins.char.text){
+    return getPersonaTpl().replace('{{CHARACTER}}', pins.char.text);
+  }
+  return CHAT_SYSTEM;
 }
 
 function getChatPins(){
@@ -3932,6 +3972,10 @@ function renderEditor(){
         <div class="field-group">
           <div class="node-label">${escapeHtml(f.label)}</div>
           <div class="lora-stack" data-lora-field-idx="${i}">
+            <div class="lora-combo-row">
+              <button class="insert-btn" data-combo-copy="${i}" title="Copy this LoRA combo"><span class="g">ᚲ</span> Copy Combo</button>
+              <button class="insert-btn" data-combo-paste="${i}" title="Paste the copied combo" ${localStorage.getItem('returncurrent_lora_combo') ? '' : 'disabled style="opacity:.35;"'}><span class="g">ᛈ</span> Paste Combo</button>
+            </div>
             ${f.value.map((entry, li) => `
               <div class="lora-entry ${entry.on ? '' : 'disabled'}" data-lora-idx="${li}">
                 <div class="lora-row">
@@ -4250,6 +4294,24 @@ function renderEditor(){
           });
         });
         // Select lora
+        stackEl.querySelectorAll('[data-combo-copy]').forEach(btn => {
+          btn.addEventListener('click', ()=>{
+            const combo = f.value.map(e => ({lora: e.lora, strength: e.strength, on: e.on !== false}));
+            localStorage.setItem('returncurrent_lora_combo', JSON.stringify(combo));
+            toast(`ᚲ Copied ${combo.filter(e=>e.on).length} active LoRAs (${combo.length} total)`);
+            renderEditor(); // enables paste buttons everywhere
+          });
+        });
+        stackEl.querySelectorAll('[data-combo-paste]').forEach(btn => {
+          btn.addEventListener('click', ()=>{
+            let combo = null;
+            try{ combo = JSON.parse(localStorage.getItem('returncurrent_lora_combo') || 'null'); }catch(e){}
+            if(!Array.isArray(combo) || !combo.length){ toast('Nothing copied yet'); return; }
+            f.value = combo.map(e => ({lora: e.lora, strength: e.strength, on: e.on !== false}));
+            toast(`ᛈ Pasted ${combo.length} LoRAs — trigger words follow automatically`);
+            renderEditor(); // fields persist, so this re-render is lossless
+          });
+        });
         stackEl.querySelectorAll('[data-lora-pick]').forEach(btn => {
           btn.addEventListener('click', () => {
             const li = parseInt(btn.dataset.loraPick);
@@ -5173,6 +5235,56 @@ function openFilePicker(list, currentValue, onPick, title){
   render();
 }
 
+/** Import/export a library (styles or characters) as a plain JSON array: LLM-writable,
+ *  human-readable, merged by name on import. */
+function openLibPortSheet(kind){
+  const isStyle = kind === 'style';
+  const getLib = isStyle ? getStyles : getCharLib;
+  const saveLib = isStyle ? saveStylesList : saveCharLib;
+  const label = isStyle ? 'Styles' : 'Characters';
+  const overlay = document.createElement('div');
+  overlay.className = 'picker-overlay';
+  overlay.innerHTML = `
+    <div class="picker-sheet">
+      <div class="picker-head">
+        <h3>⇅ Import / Export ${label}</h3>
+        <button class="pk-close">✕</button>
+      </div>
+      <textarea class="libport-box" placeholder='Paste a JSON array in this shape (an LLM can write it for you):\n\n[\n  {"name": "${isStyle ? 'Vinyl Toy Macro' : 'Marla'}", "text": "${isStyle ? 'glossy ABS surfaces, macro photography…' : 'full character description or {\\"character\\":{…}} JSON as a string'}"},\n  {"name": "…", "text": "…"}\n]\n\nThen tap Import. Entries merge by name: existing ones update, new ones are added.'></textarea>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button class="tools-add-prompt" data-port-export style="margin:0; flex:1;">Export to box</button>
+        <button class="tools-add-prompt" data-port-import style="margin:0; flex:1; border-style:solid; border-color:var(--safelight-dim); color:var(--safelight);">Import</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  history.pushState({portOpen:true}, '');
+  const box = overlay.querySelector('.libport-box');
+  overlay.querySelector('.pk-close').addEventListener('click', ()=> history.back());
+  overlay.addEventListener('click', e => { if(e.target === overlay) history.back(); });
+  overlay.querySelector('[data-port-export]').addEventListener('click', ()=>{
+    box.value = JSON.stringify(getLib().map(e => ({name: e.name, text: e.text})), null, 2);
+    box.focus(); box.select();
+    toast(`${getLib().length} ${label.toLowerCase()} exported — copy the box`);
+  });
+  overlay.querySelector('[data-port-import]').addEventListener('click', ()=>{
+    let arr = null;
+    try{ arr = JSON.parse(box.value); }catch(e){}
+    if(!Array.isArray(arr)){ toast('That is not a JSON array — check the format'); return; }
+    const lib = getLib();
+    let added = 0, updated = 0;
+    for(const item of arr){
+      if(!item || typeof item.name !== 'string' || typeof item.text !== 'string' || !item.name.trim() || !item.text.trim()) continue;
+      const ex = lib.find(x => x.name === item.name.trim());
+      if(ex){ ex.text = item.text; ex.ts = Date.now(); updated++; }
+      else{ lib.unshift({id: (isStyle ? 'st_' : 'ch_') + Date.now() + '_' + added, name: item.name.trim(), text: item.text, ts: Date.now()}); added++; }
+    }
+    saveLib(lib);
+    toast(`Imported: ${added} new, ${updated} updated`);
+    history.back();
+    renderTools();
+  });
+}
+
 function getStyles(){
   try{ return JSON.parse(localStorage.getItem('returncurrent_styles') || '[]'); }catch(e){ return []; }
 }
@@ -5271,13 +5383,28 @@ function renderTools(){
             <button id="chatAttachRemove">✕</button>
           </div>` : ''}
         ${(()=>{
+          const pins = getChatPins();
           const savedChars = getSavedCharacters();
           const savedStyles = getStyles();
-          if(!savedChars.length && !savedStyles.length) return '';
-          return `<div class="insert-row" style="margin-top:10px;">
-            ${savedChars.length ? `<button class="insert-btn" data-chat-insert="char"><span class="g">ᛗ</span> Character ▾</button>` : ''}
-            ${savedStyles.length ? `<button class="insert-btn" data-chat-insert="style"><span class="g">ᛋ</span> Style ▾</button>` : ''}
-          </div>`;
+          if(!savedChars.length && !savedStyles.length && !pins.char && !pins.style) return '';
+          return `
+          <div class="insert-row" style="margin-top:10px;">
+            ${pins.char
+              ? `<button class="insert-btn" data-chat-unpin="char" style="border-color:var(--safelight-dim); color:var(--safelight);"><span class="g">ᛗ</span> ${escapeHtml(pins.char.name)} ✕</button>`
+              : (savedChars.length ? `<button class="insert-btn" data-chat-pin="char"><span class="g">ᛗ</span> Pin Character ▾</button>` : '')}
+            ${savedChars.length ? `<button class="insert-btn" data-chat-insert="char"><span class="g">ᛗ</span> Insert ▾</button>` : ''}
+          </div>
+          <div class="insert-row" style="margin-top:6px;">
+            ${pins.style
+              ? `<button class="insert-btn" data-chat-unpin="style" style="border-color:var(--safelight-dim); color:var(--safelight);"><span class="g">ᛋ</span> ${escapeHtml(pins.style.name)} ✕</button>`
+              : (savedStyles.length ? `<button class="insert-btn" data-chat-pin="style"><span class="g">ᛋ</span> Pin Style ▾</button>` : '')}
+            ${savedStyles.length ? `<button class="insert-btn" data-chat-insert="style"><span class="g">ᛋ</span> Insert ▾</button>` : ''}
+          </div>
+          ${pins.char ? `
+          <div class="blend-instructions" style="margin-top:8px;">
+            <div class="bi-label">Persona Instructions — you are talking TO ${escapeHtml(pins.char.name)}</div>
+            <textarea id="personaInstr">${escapeHtml(getPersonaTpl())}</textarea>
+          </div>` : ''}`;
         })()}
         <div class="chat-input-row">
           <button class="chat-attach-btn">⊕<input type="file" accept="image/*" id="chatImgInput"></button>
@@ -5304,21 +5431,7 @@ function renderTools(){
             </div>` : ''}
           </div>`;
         })()}
-        ${(()=>{
-          const pins = getChatPins();
-          const chars = getSavedCharacters();
-          const styles = getStyles();
-          if(!chars.length && !styles.length && !pins.char && !pins.style) return '';
-          return `<div class="insert-row" style="margin-top:8px;">
-            ${pins.char
-              ? `<button class="insert-btn" data-chat-unpin="char"><span class="g">ᛗ</span> ${escapeHtml(pins.char.name)} ✕</button>`
-              : (chars.length ? `<button class="insert-btn" data-chat-pin="char"><span class="g">ᛗ</span> Pin Character ▾</button>` : '')}
-            ${pins.style
-              ? `<button class="insert-btn" data-chat-unpin="style"><span class="g">ᛋ</span> ${escapeHtml(pins.style.name)} ✕</button>`
-              : (styles.length ? `<button class="insert-btn" data-chat-pin="style"><span class="g">ᛋ</span> Pin Style ▾</button>` : '')}
-          </div>`;
-        })()}
-        <div class="field-hint" style="margin-top:6px;">Say "show me…" and the model writes a prompt from the conversation and renders it here. Pinned ᛗ/ᛋ ride every render.</div>
+        <div class="field-hint" style="margin-top:6px;">Say "show me…" and the latest message becomes an image, rendered here.</div>
         <div style="display:flex; gap:8px; margin-top:12px;">
           <button class="tools-add-prompt" id="chatSessSave" style="margin:0; flex:1;">${state.chatSessionId ? 'Update Session' : 'Save Session'}</button>
         </div>
@@ -5391,13 +5504,16 @@ function renderTools(){
         <div style="display:flex; gap:8px; margin:12px 0;">
           <button class="tools-add-prompt" id="charSaveBtn" style="margin:0; flex:1; border-style:solid; border-color:var(--safelight-dim); color:var(--safelight);">${state.charEditingId ? 'Save Changes' : 'Save Character'}</button>
           <button class="tools-add-prompt" id="charNewBtn" style="margin:0; flex:0 0 70px;">New</button>
+          <button class="tools-add-prompt" id="charPortBtn" style="margin:0; flex:0 0 44px;" title="Import / Export">⇅</button>
         </div>
         ${(()=>{
           const lib = getCharLib();
           if(!lib.length) return '';
           return `<div class="tools-history-title">Saved Characters</div>` +
+            (lib.length > 8 ? `<input class="lib-filter" data-lib-filter="charList" type="text" placeholder="Filter ${lib.length} characters…">` : '') +
+            `<div class="lib-grid" id="charList">` +
             lib.map((ch, i) => `
-              <div class="tools-history-item ${state.charEditingId === ch.id ? 'blended' : ''}" data-charlib-idx="${i}">
+              <div class="tools-history-item ${state.charEditingId === ch.id ? 'blended' : ''}" data-charlib-idx="${i}" data-search="${escapeHtml((ch.name + ' ' + ch.text.slice(0,120)).toLowerCase())}">
                 <span class="th-src">ᛗ</span>
                 <div style="flex:1; min-width:0;">
                   <div style="font-family:var(--font-body); font-size:13px; font-weight:700; font-style:italic; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(ch.name)}</div>
@@ -5405,7 +5521,7 @@ function renderTools(){
                 </div>
                 <button class="th-delete" data-charlib-delete="${i}">✕</button>
               </div>
-            `).join('');
+            `).join('') + `</div>`;
         })()}
       ` : ''}
       ${mode === 'style' ? `
@@ -5436,17 +5552,21 @@ function renderTools(){
           <button class="fmt-pill ${state.styleFormat==='natural'?'active':''}" data-style-fmt="natural">Natural</button>
           <button class="fmt-pill ${state.styleFormat==='json'?'active':''}" data-style-fmt="json">{ JSON }</button>
         </div>
+        <button class="tools-generate-btn" id="styleLlmBtn" style="margin:12px 0 0;">${state.styleImages.length ? 'Extract Style from Images' : 'Elaborate Style with LLM'}</button>
         <div style="display:flex; gap:8px; margin:12px 0;">
           <button class="tools-add-prompt" id="styleSaveBtn" style="margin:0; flex:1; border-style:solid; border-color:var(--safelight-dim); color:var(--safelight);">${state.styleEditingId ? 'Save Changes' : 'Save Style'}</button>
           <button class="tools-add-prompt" id="styleCopyBtn" style="margin:0; flex:1;">Copy</button>
           <button class="tools-add-prompt" id="styleNewBtn" style="margin:0; flex:0 0 70px;">New</button>
+          <button class="tools-add-prompt" id="stylePortBtn" style="margin:0; flex:0 0 44px;" title="Import / Export">⇅</button>
         </div>
         ${(()=>{
           const styles = getStyles();
           if(!styles.length) return '';
           return `<div class="tools-history-title">Saved Styles</div>` +
+            (styles.length > 8 ? `<input class="lib-filter" data-lib-filter="styleList" type="text" placeholder="Filter ${styles.length} styles…">` : '') +
+            `<div class="lib-grid" id="styleList">` +
             styles.map((s, i) => `
-              <div class="tools-history-item ${state.styleEditingId === s.id ? 'blended' : ''}" data-style-idx="${i}">
+              <div class="tools-history-item ${state.styleEditingId === s.id ? 'blended' : ''}" data-style-idx="${i}" data-search="${escapeHtml((s.name + ' ' + s.text.slice(0,120)).toLowerCase())}">
                 <span class="th-src">ᛋ</span>
                 <div style="flex:1; min-width:0;">
                   <div style="font-family:var(--font-body); font-size:13px; font-weight:700; font-style:italic; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(s.name)}</div>
@@ -5454,12 +5574,12 @@ function renderTools(){
                 </div>
                 <button class="th-delete" data-style-delete="${i}">✕</button>
               </div>
-            `).join('');
+            `).join('') + `</div>`;
         })()}
       ` : ''}
     </div>
     <div class="tools-status" id="toolsStatus"></div>
-    ${mode !== 'chat' && !(mode === 'character' && state.charInputMode === 'freeform') ? `<button class="tools-generate-btn" id="toolsGenBtn">${mode === 'character' ? 'Create Character' : mode === 'style' ? (state.styleImages.length ? 'Extract Style from Images' : 'Elaborate Style with LLM') : mode === 'text2json' ? 'Generate JSON Prompt' : 'Generate'}</button>` : ''}
+    ${mode !== 'chat' && mode !== 'style' && !(mode === 'character' && state.charInputMode === 'freeform') ? `<button class="tools-generate-btn" id="toolsGenBtn">${mode === 'character' ? 'Create Character' : mode === 'style' ? (state.styleImages.length ? 'Extract Style from Images' : 'Elaborate Style with LLM') : mode === 'text2json' ? 'Generate JSON Prompt' : 'Generate'}</button>` : ''}
     ${hasResult ? `
       <div class="tools-result">
         <button class="copy-btn" id="toolsCopyBtn">Copy</button>
@@ -5472,7 +5592,7 @@ function renderTools(){
       if(!history.length) return '';
       return `<div class="tools-history-title">Recent Prompts</div>` +
         history.map((h, i) => `
-          <div class="tools-history-item ${h.src === '∞' ? 'blended' : ''}" data-th-idx="${i}">
+          <div class="tools-history-item ${h.src === '∞' || state._histSel === i ? 'blended' : ''}" data-th-idx="${i}">
             ${(()=>{
               if(!h.src) return '';
               if(h.src === '∞') return `<span class="th-src inf">∞</span>`;
@@ -5539,6 +5659,29 @@ function renderTools(){
       renderTools();
     });
   }
+  // Library filters: client-side show/hide so typing never loses focus
+  main.querySelectorAll('[data-lib-filter]').forEach(inp => {
+    inp.addEventListener('input', ()=>{
+      const q = inp.value.trim().toLowerCase();
+      const list = document.getElementById(inp.dataset.libFilter);
+      if(!list) return;
+      list.querySelectorAll('.tools-history-item').forEach(item => {
+        item.style.display = (!q || (item.dataset.search || '').includes(q)) ? '' : 'none';
+      });
+    });
+  });
+  // Import / Export sheets
+  const stylePortBtn = document.getElementById('stylePortBtn');
+  if(stylePortBtn) stylePortBtn.addEventListener('click', ()=> openLibPortSheet('style'));
+  const charPortBtn = document.getElementById('charPortBtn');
+  if(charPortBtn) charPortBtn.addEventListener('click', ()=> openLibPortSheet('character'));
+  // Style pane's inline LLM button drives the shared generate engine
+  const styleLlmBtn = document.getElementById('styleLlmBtn');
+  if(styleLlmBtn) styleLlmBtn.addEventListener('click', ()=> runToolsGenerate());
+  // Persona template editing
+  const personaInstr = document.getElementById('personaInstr');
+  if(personaInstr) personaInstr.addEventListener('input', ()=> setPersonaTpl(personaInstr.value));
+
   // ᛗ/ᛋ insertion into the chat box — same menus as the workflow prompts
   main.querySelectorAll('[data-chat-insert]').forEach(btn => {
     btn.addEventListener('click', (e)=>{
@@ -6031,6 +6174,7 @@ function renderTools(){
       const idx = parseInt(item.dataset.thIdx);
       const history = getToolsHistory();
       if(!history[idx]) return;
+      state._histSel = idx;
       // Character JSON entries round-trip back into the Character tool's fields
       if(history[idx].src === '👤'){
         try{
@@ -6516,11 +6660,10 @@ async function runChatImageGeneration(userText, presetPrompt){
     const info = state.toolsNodeInfo || await fetchToolsNodeInfo();
     if(!info.text) return fail('Text Generation node not found on the server.');
 
-    const transcript = state.chatMessages
-      .filter(m => (m.role === 'user' || m.role === 'assistant') && !m.pending && m.text)
-      .slice(-12)
-      .map(m => (m.role === 'user' ? 'USER: ' : 'ASSISTANT: ') + m.text)
-      .join('\n');
+    // The request is grounded in the character's LATEST message only, not a long transcript:
+    // "show me that" means the thing just described, and "you" means the pinned character.
+    const lastReply = [...state.chatMessages].reverse().find(m => m.role === 'assistant' && !m.pending && m.text && !m.text.startsWith('⚠'));
+    const transcript = (lastReply ? "CHARACTER'S LATEST MESSAGE:\n" + lastReply.text + '\n\n' : '') + 'USER REQUEST: ' + (userText || 'depict the latest message');
 
     const req = info.text.input.required || {};
     const opt = info.text.input.optional || {};
@@ -6528,7 +6671,7 @@ async function runChatImageGeneration(userText, presetPrompt){
     for(const key of [...Object.keys(req), ...Object.keys(opt)]){
       const kl = key.toLowerCase();
       if(applyLifecycle(overrides, key)) continue;
-      if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides[key] = transcript + '\n\nWrite the image prompt for the most recent request.';
+      if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides[key] = transcript;
       else if(kl.includes('system')) overrides[key] = applyThinkDirective(CHAT_IMAGE_PROMPT_SYSTEM + chatPinSuffix(), false);
       else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getLlmModel();
       else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
@@ -6687,7 +6830,7 @@ async function sendChatMessage(){
         const kl = key.toLowerCase();
         if(applyLifecycle(overrides, key)) continue;
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = transcript;
-        else if(kl.includes('system')) overrides[key] = applyThinkDirective(CHAT_SYSTEM, true);
+        else if(kl.includes('system')) overrides[key] = applyThinkDirective(chatSystemNow(), true);
         else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getVisionModel();
         else if(kl === 'image') overrides[key] = ["1", 0];
         else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
@@ -6709,7 +6852,7 @@ async function sendChatMessage(){
         const kl = key.toLowerCase();
         if(applyLifecycle(overrides, key)) continue;
         if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides[key] = transcript;
-        else if(kl.includes('system')) overrides[key] = applyThinkDirective(CHAT_SYSTEM, false);
+        else if(kl.includes('system')) overrides[key] = applyThinkDirective(chatSystemNow(), false);
         else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getLlmModel();
         else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
         else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 2000;
@@ -6794,10 +6937,14 @@ async function sendChatMessage(){
 }
 
 async function runToolsGenerate(){
+  // In style mode the trigger is the inline button; the shared genBtn may be absent
+  const _inlineBtn = document.getElementById('styleLlmBtn');
+  if(_inlineBtn) _inlineBtn.disabled = true;
   if(!state.connected){ toast('Not connected to server'); return; }
 
   const statusEl = document.getElementById('toolsStatus');
-  const genBtn = document.getElementById('toolsGenBtn');
+  const genBtnEl = document.getElementById('toolsGenBtn');
+  const genBtn = genBtnEl || {disabled:false};
   const _toolsT0 = Date.now();
   if(!requireLlmModel(document.getElementById('toolsStatus'))) return;
   genBtn.disabled = true;
@@ -6808,7 +6955,7 @@ async function runToolsGenerate(){
     info = await fetchToolsNodeInfo();
   }catch(e){
     statusEl.textContent = 'Could not fetch node info';
-    genBtn.disabled = false;
+    genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
     return;
   }
 
@@ -6818,7 +6965,7 @@ async function runToolsGenerate(){
   let histSrc = mode === 'text2json' ? 'Text' : 'Image';
   if(mode === 'character'){
     const filled = CHAR_FIELDS.filter(f => (state.charFields[f.k] || '').trim());
-    if(!filled.length){ toast('Fill in at least one field'); genBtn.disabled = false; statusEl.textContent=''; return; }
+    if(!filled.length){ toast('Fill in at least one field'); genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } statusEl.textContent=''; return; }
     histSrc = '👤';
     if(state.charFormat === 'json'){
       // Assemble locally — no server round-trip needed
@@ -6826,7 +6973,7 @@ async function runToolsGenerate(){
       filled.forEach(f => { obj[f.k] = state.charFields[f.k].trim(); });
       state.toolsResult = JSON.stringify({character: obj}, null, 2);
       saveToolsHistory(state.toolsResult, '👤');
-      genBtn.disabled = false;
+      genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
       statusEl.textContent = 'Character assembled';
       renderTools();
       return;
@@ -6834,7 +6981,7 @@ async function runToolsGenerate(){
     // Natural language — compose via the LLM
     if(!info.text){
       statusEl.textContent = 'Expo Lmstudio Text Generation not found on server';
-      genBtn.disabled = false;
+      genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
       return;
     }
     const fieldText = filled.map(f => `${f.label}: ${state.charFields[f.k].trim()}`).join('\n');
@@ -6860,7 +7007,7 @@ async function runToolsGenerate(){
     histSrc = 'ᛋ';
     if(state.styleImages.length){
       // Extract style from images: per-image style analysis, then unify
-      if(!info.img){ statusEl.textContent = 'Expo Lmstudio Unified not found on server'; genBtn.disabled = false; return; }
+      if(!info.img){ statusEl.textContent = 'Expo Lmstudio Unified not found on server'; genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return; }
       const analyses = [];
       for(let ii = 0; ii < state.styleImages.length; ii++){
         statusEl.textContent = `Analyzing style ${ii + 1} of ${state.styleImages.length}\u2026`;
@@ -6874,7 +7021,7 @@ async function runToolsGenerate(){
           if(!uploadedName) throw new Error('No filename');
         }catch(e){
           statusEl.textContent = 'Upload failed: ' + e.message;
-          genBtn.disabled = false; return;
+          genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
         }
         const req = info.img.input.required || {};
         const opt = info.img.input.optional || {};
@@ -6924,19 +7071,19 @@ async function runToolsGenerate(){
           }
         }catch(e){
           statusEl.textContent = 'Style analysis failed on image ' + (ii + 1);
-          genBtn.disabled = false; return;
+          genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
         }
       }
       if(analyses.length === 1){
         // Single image: its analysis is the style, no synthesis needed
         state.styleText = analyses[0].trim();
-        genBtn.disabled = false;
+        genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
         statusEl.textContent = 'Style extracted';
         renderTools();
         return;
       }
       // Multiple: unify via text node
-      if(!info.text){ statusEl.textContent = 'Text Generation node not found (needed to unify)'; genBtn.disabled = false; return; }
+      if(!info.text){ statusEl.textContent = 'Text Generation node not found (needed to unify)'; genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return; }
       statusEl.textContent = 'Unifying into one style\u2026';
       const mergePrompt = analyses.map((a, i) => `=== STYLE ANALYSIS ${i + 1} ===\n${a}`).join('\n\n');
       const req2 = info.text.input.required || {};
@@ -6960,8 +7107,8 @@ async function runToolsGenerate(){
     } else {
       // Elaborate the written style
       const seed = (state.styleText || '').trim();
-      if(!seed){ toast('Write at least a rough style first'); genBtn.disabled = false; statusEl.textContent=''; return; }
-      if(!info.text){ statusEl.textContent = 'Expo Lmstudio Text Generation not found on server'; genBtn.disabled = false; return; }
+      if(!seed){ toast('Write at least a rough style first'); genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } statusEl.textContent=''; return; }
+      if(!info.text){ statusEl.textContent = 'Expo Lmstudio Text Generation not found on server'; genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return; }
       const req = info.text.input.required || {};
       const opt = info.text.input.optional || {};
       const overrides = {};
@@ -6983,14 +7130,14 @@ async function runToolsGenerate(){
     }
   } else if(mode === 'text2json'){
     const prompts = state.toolsPrompts.map(p => (p || '').trim()).filter(Boolean);
-    if(!prompts.length){ toast('Enter some text first'); genBtn.disabled = false; statusEl.textContent=''; return; }
+    if(!prompts.length){ toast('Enter some text first'); genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } statusEl.textContent=''; return; }
     if(prompts.length > 1) histSrc = '∞';
     const inputText = prompts.length === 1 ? prompts[0] :
       getBlendText('text') + '\n\n' +
       prompts.map((p, i) => `=== CONCEPT ${i + 1} ===\n${p}`).join('\n\n');
     if(!info.text){
       statusEl.textContent = 'Expo Lmstudio Text Generation not found on server';
-      genBtn.disabled = false;
+      genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
       return;
     }
     const req = info.text.input.required || {};
@@ -7017,10 +7164,10 @@ async function runToolsGenerate(){
       "2": { "class_type": "ShowText|pysssss", "inputs": {"text": ["1", 0]} }
     };
   } else {
-    if(!state.toolsImages.length){ toast('Add at least one image'); genBtn.disabled = false; statusEl.textContent=''; return; }
+    if(!state.toolsImages.length){ toast('Add at least one image'); genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } statusEl.textContent=''; return; }
     if(!info.img){
       statusEl.textContent = 'Expo Lmstudio Unified not found on server';
-      genBtn.disabled = false;
+      genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
       return;
     }
 
@@ -7038,7 +7185,7 @@ async function runToolsGenerate(){
         if(!uploadedName) throw new Error('No filename in response');
       }catch(e){
         statusEl.textContent = 'Upload failed: ' + e.message;
-        genBtn.disabled = false; return;
+        genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
       }
       const req = info.img.input.required || {};
       const opt = info.img.input.optional || {};
@@ -7078,7 +7225,7 @@ async function runToolsGenerate(){
           if(!uploadedName) throw new Error('No filename');
         }catch(e){
           statusEl.textContent = 'Upload failed: ' + e.message;
-          genBtn.disabled = false; return;
+          genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
         }
         // Build a per-image graph
         const req = info.img.input.required || {};
@@ -7132,13 +7279,13 @@ async function runToolsGenerate(){
           }
         }catch(e){
           statusEl.textContent = 'Analysis failed for image ' + (ii + 1);
-          genBtn.disabled = false; return;
+          genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
         }
       }
       // Synthesis pass: blend all descriptions into one JSON prompt using text-only node
       if(!info.text){
         statusEl.textContent = 'Text Generation node not found (needed for synthesis)';
-        genBtn.disabled = false; return;
+        genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
       }
       statusEl.textContent = 'Blending descriptions into final prompt\u2026';
       const blendInstr = getBlendText('img');
@@ -7178,7 +7325,7 @@ async function runToolsGenerate(){
     if(json.error){
       statusEl.textContent = 'Rejected — check browser console';
       console.error('ComfyUI error:', json);
-      genBtn.disabled = false;
+      genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
       return;
     }
     const promptId = json.prompt_id;
@@ -7198,7 +7345,7 @@ async function runToolsGenerate(){
               if(histSrc === 'ᛋ'){
                 // Style results land in the style field, not the results box or history
                 state.styleText = rawText.trim();
-                genBtn.disabled = false;
+                genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
                 statusEl.textContent = `Style ready in ${fmtDuration(Date.now() - _toolsT0)} — name it and save`;
                 renderTools();
                 return;
@@ -7206,7 +7353,7 @@ async function runToolsGenerate(){
               const wantsNatural = histSrc === 'Image' && state.imgFormat === 'natural';
               state.toolsResult = wantsNatural ? flattenToProse(rawText) : extractJsonPrompt(rawText);
               saveToolsHistory(state.toolsResult, histSrc);
-              genBtn.disabled = false;
+              genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
               statusEl.textContent = `Done in ${fmtDuration(Date.now() - _toolsT0)}`;
               renderTools();
               return;
@@ -7217,11 +7364,11 @@ async function runToolsGenerate(){
       if(statusEl) statusEl.textContent = 'Waiting for LLM… ' + ((attempt+1)*2) + 's';
     }
     statusEl.textContent = 'Timed out';
-    genBtn.disabled = false;
+    genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
   }catch(e){
     statusEl.textContent = 'Could not reach ComfyUI';
     console.error(e);
-    genBtn.disabled = false;
+    genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
   }
 }
 
