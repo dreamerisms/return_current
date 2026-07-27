@@ -12,6 +12,13 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+### β3.2 — July 25, 2026
+- **Hidden prompts are found now.** Workflows that route their prompt through a primitive string node (so the encoder's text box is an input socket, not a widget) used to show no prompt field at all. The app now reads the prompt wherever it actually lives, and works out positive vs negative by following the graph instead of guessing from names
+- **GetNode / SetNode support** — workflows wired with KJNodes' named-wire nodes now import correctly, links resolved back to their real sources. Re-import any workflow that used them
+- **ᚲ Copy / ᛈ Paste Parameters** — carry sampler, scheduler, steps, CFG, denoise, text encoders, VAE, aspect ratio, megapixels, model and both seeds from one workflow to another, leaving the prompt and LoRAs alone. Values the target can't use are skipped and counted rather than forced
+- **The status line moved up and lit up.** It now sits at the top of the Tools pane and sticks there, glowing in your theme and pulsing while the model works, settling when it's done. The elapsed timer is untouched
+- **New example workflow: LTX-2 video** with audio, image-to-video, and the spatial upscaler chain
+
 ### β3.1 — July 18, 2026
 - **Pinned characters are personas now.** Pin ᛗ in Chat and you're talking TO that character: first person, in their voice, fully uncensored, over your local model. The persona instructions are visible and editable right in the pane. "Show me" renders whatever they just described, and "you" means them
 - **"Show me" is grounded in the moment** — the image prompt is written from the character's latest message plus your request, not a long transcript, so what renders is what was just said
@@ -184,7 +191,7 @@ Double-click it. Leave it running.
 
 ## Example Workflows
 
-The [`workflows/`](workflows/) folder has tested examples for **SDXL, Anima, Ideogram 4, Krea 2, and Wan 2.2 video** — all open cleanly in ComfyUI *and* import into the app. The four image workflows share a surrealist botanical prompt, and the Wan 2.2 workflow's default prompt animates their outputs: an end-to-end demo chain out of the box. Full prerequisite download tables in the folder README.
+The [`workflows/`](workflows/) folder has tested examples for **SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, and LTX-2 video** — all open cleanly in ComfyUI *and* import into the app. The four image workflows share a surrealist botanical prompt, and the Wan 2.2 workflow's default prompt animates their outputs: an end-to-end demo chain out of the box. Full prerequisite download tables in the folder README.
 
 ## Troubleshooting
 
