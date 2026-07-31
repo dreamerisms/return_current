@@ -12,6 +12,12 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+### β3.2.1 — July 25, 2026
+- **Chat stopped writing ad copy.** The chat system prompt now bans markdown, headers, bold, blockquotes, section breaks, em dashes, rhetorical questions and closing taglines outright, keeps replies short, and when you ask it to alter a prompt it returns the prompt alone and changes only what you asked
+- **Rendered prompts are model-shaped.** "Show me" prompts now open with the shot type and camera angle and cap at 150 words of concrete, drawable detail, so fewer tokens are wasted on language image models ignore
+- **Text tool converts both ways** — a JSON / Natural Language toggle sits under the prompt box and the button reads Generate Prompt. Paste JSON and get prose, paste prose and get JSON, in either direction
+- **⇤ Send to Freeform** in the Character tool, the mirror of Load into Sheet, so a character moves between the 18 fields and a plain text box freely
+
 ### β3.2 — July 25, 2026
 - **Hidden prompts are found now.** Workflows that route their prompt through a primitive string node (so the encoder's text box is an input socket, not a widget) used to show no prompt field at all. The app now reads the prompt wherever it actually lives, and works out positive vs negative by following the graph instead of guessing from names
 - **GetNode / SetNode support** — workflows wired with KJNodes' named-wire nodes now import correctly, links resolved back to their real sources. Re-import any workflow that used them
