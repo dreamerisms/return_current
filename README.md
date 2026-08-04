@@ -12,6 +12,23 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+### β3.5 — August 3, 2026
+- **Import workflows from video.** ComfyUI embeds the workflow in the videos it renders, the same way it does with PNGs. Drop an MP4, MOV, or WebM on the import box and the whole graph comes back, subgraphs included. Falls back to a raw scan for containers that store it differently
+- **Roomier LLM budgets** — every tool's token allowance doubled and the word caps in the prompt writers were raised. The tools were quietly clipping detail that the video and image guides actually ask for
+- The Copy button on tool results now matches the rest of the app instead of using the browser's default styling
+
+### β3.4 — August 3, 2026
+- **ᛖ Motion, a sixth tool.** Drop in a still, optionally add direction or dialogue, and get back a video prompt written the way modern video models actually want one: preservation rules first, then what moves in order, one camera movement, what changes in the light, sound tied to visible events, and the frame it ends on. No re-describing the picture, because the model already sees it
+- The instructions driving it sit in an editable field below, prefilled and readable. Rewrite them for your own model and hit Save, or hit Default to put them back
+- Results save to Recent Prompts under ᛖ, so a good motion prompt is one tap away from any workflow
+
+### β3.3 — August 2, 2026
+- **Subgraph support.** ComfyUI's collapsed subgraphs kept every control inside them invisible to the app, because the workflow file stores them as separate definitions with a single placeholder node in the graph. They are now inlined on import: internal nodes surface as real fields, promoted widgets keep their values, and bypassed subgraphs stay bypassed. Any workflow built with subgraphs will need re-importing
+- **MiniMax H3 support**, with a new example workflow: first and last frame image tiles side by side, duration promoted near the top where it belongs rather than buried, and the model, encoder and VAEs all selectable
+- **Upscale toggle** — video upscale chains become a single on/off bar in your theme colour, with the upscale model on its own picker. Off reroutes around the upscaler at submit
+- Frame and image inputs are now dashed drop tiles matching the Tools pane, with a small camera button in the corner
+- **Character sheets survive a truncated reply.** Long descriptions could exceed the model's output budget and get cut mid-JSON, which used to throw the whole response away. The token budget now scales with your input, and a partial reply is salvaged field by field instead of failing
+
 ### β3.2.1 — July 25, 2026
 - **Chat stopped writing ad copy.** The chat system prompt now bans markdown, headers, bold, blockquotes, section breaks, em dashes, rhetorical questions and closing taglines outright, keeps replies short, and when you ask it to alter a prompt it returns the prompt alone and changes only what you asked
 - **Rendered prompts are model-shaped.** "Show me" prompts now open with the shot type and camera angle and cap at 150 words of concrete, drawable detail, so fewer tokens are wasted on language image models ignore
@@ -197,7 +214,7 @@ Double-click it. Leave it running.
 
 ## Example Workflows
 
-The [`workflows/`](workflows/) folder has tested examples for **SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, and LTX-2 video** — all open cleanly in ComfyUI *and* import into the app. The four image workflows share a surrealist botanical prompt, and the Wan 2.2 workflow's default prompt animates their outputs: an end-to-end demo chain out of the box. Full prerequisite download tables in the folder README.
+The [`workflows/`](workflows/) folder has tested examples for **SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, LTX-2 video, and MiniMax H3 video** — all open cleanly in ComfyUI *and* import into the app. The four image workflows share a surrealist botanical prompt, and the Wan 2.2 workflow's default prompt animates their outputs: an end-to-end demo chain out of the box. Full prerequisite download tables in the folder README.
 
 ## Troubleshooting
 
