@@ -12,6 +12,10 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+### β3.6 — August 4, 2026
+- **ᛖ Motion now writes real MiniMax H3 prompts.** The first version produced a prose paragraph, which is not the shape H3 asks for. It now outputs the documented structure: the frame anchor line, `integrated_multimodal_description` with `[Shot N]` blocks and `MM:SS.mmm` cut times, `overall_soundscape`, and `non_diegetic_music`. Shot count is budgeted against the duration of the workflow you have open, camera moves use H3's own vocabulary, and dialogue is preserved verbatim in `<d>` tags
+- **Two frames supported** — add a first and last frame and the anchor line covers both, matching the first-to-last-frame workflows. Tiles are labelled so the roles are never ambiguous
+
 ### β3.5 — August 3, 2026
 - **Import workflows from video.** ComfyUI embeds the workflow in the videos it renders, the same way it does with PNGs. Drop an MP4, MOV, or WebM on the import box and the whole graph comes back, subgraphs included. Falls back to a raw scan for containers that store it differently
 - **Roomier LLM budgets** — every tool's token allowance doubled and the word caps in the prompt writers were raised. The tools were quietly clipping detail that the video and image guides actually ask for

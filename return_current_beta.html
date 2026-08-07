@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β3.5</title>
+<title>Return Current β3.6</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1416,6 +1416,19 @@
     .lib-grid .tools-history-item{border:1px solid var(--line); border-radius:10px;}
   }
   /* Dashed frame tiles, matching the Tools pane's image inputs */
+  .drop-hot{
+    border-color:var(--safelight) !important;
+    box-shadow:0 0 0 1px var(--safelight-dim), 0 0 18px var(--safelight-glow);
+  }
+  .tools-img-tiles.drop-hot{
+    outline:1px dashed var(--safelight); outline-offset:4px; border-radius:10px;
+  }
+  .tools-img-tile .frame-role{
+    position:absolute; left:4px; bottom:4px; z-index:2;
+    background:rgba(10,9,8,.78); color:var(--safelight);
+    font-family:var(--font-mono); font-size:8px; letter-spacing:.1em;
+    padding:2px 5px; border-radius:4px; pointer-events:none;
+  }
   .img-drop{
     position:relative; width:100%; min-height:110px;
     border:1px dashed var(--line); border-radius:10px;
@@ -1648,7 +1661,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β3.5</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β3.6</span></div>
     </div>
   </div>
 
@@ -2190,24 +2203,32 @@ async function onGenerationComplete(promptId){
     const otherImages = [];
     let isVideo = false;
     let lastVideoUrl = null;
+    // Save nodes report their results under different keys depending on the node: images for
+    // SaveImage, gifs for VHS_VideoCombine, videos for the core SaveVideo. Rather than chase
+    // every key, walk them all and decide what a file IS by its extension.
+    const VIDEO_EXT = /\.(mp4|webm|mov|m4v|mkv|avi|gif|webp)$/i;
+    const isVideoFile = (name)=> /\.(mp4|webm|mov|m4v|mkv|avi)$/i.test(name || '');
     for(const nodeId in entry.outputs){
       const out = entry.outputs[nodeId];
-      if(out.images){
-        for(const img of out.images){
-          const key = `${img.type||''}:${img.subfolder||''}/${img.filename}`;
+      if(!out || typeof out !== 'object') continue;
+      for(const bucket of Object.keys(out)){
+        const list = out[bucket];
+        if(!Array.isArray(list)) continue;
+        for(const f of list){
+          if(!f || typeof f !== 'object' || !f.filename) continue;
+          const key = `${f.type||''}:${f.subfolder||''}/${f.filename}`;
           if(seenFilenames.has(key)) continue;
           seenFilenames.add(key);
-          const imgType = img.type || 'output';
-          const url = `${baseUrl()}/view?filename=${encodeURIComponent(img.filename)}&subfolder=${encodeURIComponent(img.subfolder||'')}&type=${encodeURIComponent(imgType)}`;
-          if(imgType === 'output') outputImages.push(url);
+          const fType = f.type || 'output';
+          const url = `${baseUrl()}/view?filename=${encodeURIComponent(f.filename)}&subfolder=${encodeURIComponent(f.subfolder||'')}&type=${encodeURIComponent(fType)}`;
+          // gifs is VHS's bucket and always holds playable media, whatever the extension
+          if(bucket === 'gifs' || bucket === 'videos' || isVideoFile(f.filename)){
+            isVideo = true;
+            lastVideoUrl = url;
+            continue;
+          }
+          if(fType === 'output') outputImages.push(url);
           else otherImages.push(url);
-        }
-      }
-      if(out.gifs){
-        isVideo = true;
-        for(const vid of out.gifs){
-          const vidType = vid.type || 'output';
-          lastVideoUrl = `${baseUrl()}/view?filename=${encodeURIComponent(vid.filename)}&subfolder=${encodeURIComponent(vid.subfolder||'')}&type=${encodeURIComponent(vidType)}`;
         }
       }
     }
@@ -2320,10 +2341,68 @@ function findNullByte(data, start){
   return data.length;
 }
 
+/** Is this URL pointing at playable video? Trust the filename over stored metadata, so
+ *  gallery entries recorded before video support still render and iterate correctly. */
+/** Make any element accept a dropped image. One helper behind every image input in the
+ *  app, so a picker and its drop target can never drift apart.
+ *  TOP-LEVEL on purpose: the editor and the Tools panes both call it. */
+function bindImageDrop(el, onFiles){
+  if(!el || el._dropBound) return;
+  el._dropBound = true;
+  const stop = (e)=>{ e.preventDefault(); e.stopPropagation(); };
+  ['dragenter','dragover'].forEach(ev => el.addEventListener(ev, (e)=>{
+    stop(e);
+    el.classList.add('drop-hot');
+  }));
+  ['dragleave','dragend'].forEach(ev => el.addEventListener(ev, (e)=>{
+    stop(e);
+    el.classList.remove('drop-hot');
+  }));
+  el.addEventListener('drop', (e)=>{
+    stop(e);
+    el.classList.remove('drop-hot');
+    const dt = e.dataTransfer;
+    if(!dt) return;
+    let files = [...(dt.files || [])].filter(f => /^image\//i.test(f.type));
+    if(!files.length && dt.items){
+      files = [...dt.items].filter(i => i.kind === 'file' && /^image\//i.test(i.type))
+                           .map(i => i.getAsFile()).filter(Boolean);
+    }
+    if(files.length) onFiles(files);
+  });
+}
+
+function urlIsVideo(url){
+  try{
+    const m = String(url).match(/[?&]filename=([^&]+)/);
+    const name = m ? decodeURIComponent(m[1]) : String(url);
+    return /\.(mp4|webm|mov|m4v|mkv|avi)(\?|$)/i.test(name);
+  }catch(e){ return false; }
+}
+/** True if this gallery item should play rather than display. */
+function isVideoUrl(url){
+  const meta = state.galleryMeta[url];
+  return !!(meta && meta.video) || urlIsVideo(url);
+}
+
 async function extractWorkflowFromPng(file){
   const buf = await file.arrayBuffer();
+  if(buf.byteLength < 8) throw new Error('That file is empty or unreadable');
   const view = new DataView(buf);
-  if(view.getUint32(0) !== 0x89504e47) throw new Error('Not a valid PNG');
+  if(view.getUint32(0) !== 0x89504e47){
+    // Not a PNG. ComfyUI embeds the same workflow in the videos it renders, so try that
+    // before giving up: iterating from a video should work exactly like iterating from a still.
+    const fromVideo = extractVideoWorkflow(buf);
+    if(fromVideo){
+      const uiJson = fromVideo.workflow ? JSON.parse(fromVideo.workflow) : null;
+      const apiJson = fromVideo.prompt ? JSON.parse(fromVideo.prompt) : null;
+      return {
+        apiGraph: apiJson || (uiJson ? await convertUiToApi(uiJson) : null),
+        uiGraph: uiJson
+      };
+    }
+    throw new Error('No workflow metadata in this file');
+  }
   let offset = 8;
   let promptJson = null;   // resolved, executable API-format graph — authoritative
   let workflowJson = null; // UI-format graph — used only for friendlier labels
@@ -3402,24 +3481,29 @@ function setupDropZone(){
  *  box names the entries ("workflow", "prompt") and ilst holds the payloads at matching
  *  1-based indices. WebM and anything unexpected fall back to a raw scan. */
 function extractVideoWorkflow(buf){
+  if(!buf || buf.byteLength < 16) return null;
   const view = new DataView(buf);
   const bytes = new Uint8Array(buf);
   const str = (off, len)=> String.fromCharCode(...bytes.subarray(off, off + len));
 
   function findBox(start, end, wanted){
-    let p = start;
-    while(p + 8 <= end){
+    // A malformed or truncated file can declare a box larger than the data we hold, so every
+    // bound is clamped: reading past the buffer throws a DataView range error otherwise.
+    const limit = Math.min(end, bytes.length);
+    let p = Math.max(0, start);
+    while(p + 8 <= limit){
       let size = view.getUint32(p);
       const type = str(p + 4, 4);
       let head = 8;
-      if(size === 1){ // 64-bit size
+      if(size === 1){
+        if(p + 16 > limit) break;
         size = Number(view.getBigUint64(p + 8));
         head = 16;
       } else if(size === 0){
-        size = end - p;
+        size = limit - p;
       }
       if(size < head) break;
-      if(type === wanted) return {start: p + head, end: p + size, head};
+      if(type === wanted) return {start: p + head, end: Math.min(p + size, limit), head};
       p += size;
     }
     return null;
@@ -4757,8 +4841,11 @@ function renderEditor(){
       const libBtn = main.querySelector(`[data-library-idx="${i}"]`);
       const camInput = document.getElementById(`cameraInput${i}`);
       const libInput = document.getElementById(`libraryInput${i}`);
-      camBtn.addEventListener('click', ()=>camInput.click());
-      libBtn.addEventListener('click', ()=>libInput.click());
+      if(camBtn) camBtn.addEventListener('click', (e)=>{ e.stopPropagation(); camInput.click(); });
+      if(libBtn){
+        libBtn.addEventListener('click', ()=>libInput.click());
+        if(typeof bindImageDrop === 'function') bindImageDrop(libBtn, (files)=> handleImageFieldUpload(files[0], i));
+      }
       [camInput, libInput].forEach(inp=>{
         inp.addEventListener('change', async e=>{
           if(e.target.files[0]) await handleImageFieldUpload(e.target.files[0], i);
@@ -5544,7 +5631,7 @@ function renderGallery(){
       ${item.type === 'single' ? `<button class="gallery-iterate" data-iterate-url="${escapeHtml(url)}" title="Iterate">∞</button>` : ''}
       ${(()=>{
         const meta = state.galleryMeta[url];
-        const isVid = meta && meta.video;
+        const isVid = isVideoUrl(url);
         if(item.type === 'group') return `${isVid ? '<span class="video-icon">▶</span>' : ''}<span class="group-badge">${item.count}</span>`;
         if(isVid) return '<span class="video-icon">▶</span>';
         return '';
@@ -5655,23 +5742,28 @@ function wireGalleryEvents(){
 async function loadWorkflowFromGalleryImage(url){
   toast('Extracting workflow…');
   try{
-    // For videos, swap the file extension to .png in the URL to get the workflow metadata
-    const meta = state.galleryMeta[url];
-    let fetchUrl = url;
-    if(meta && meta.video){
-      fetchUrl = url.replace(/filename=([^&]+)/, (m, fname) => {
-        const decoded = decodeURIComponent(fname);
-        const pngName = decoded.replace(/\.[^.]+$/, '.png');
-        return 'filename=' + encodeURIComponent(pngName);
-      });
+    // Videos carry the workflow themselves. Older VHS setups also wrote a companion PNG
+    // beside the clip, so that stays as a fallback rather than the first assumption.
+    const pngTwin = (u)=> u.replace(/filename=([^&]+)/, (m, fname) =>
+      'filename=' + encodeURIComponent(decodeURIComponent(fname).replace(/\.[^.]+$/, '.png')));
+    const candidates = isVideoUrl(url) ? [url, pngTwin(url)] : [url];
+
+    let apiGraph = null, uiGraph = null, lastErr = null;
+    for(const candidate of candidates){
+      try{
+        const res = await fetch(candidate);
+        if(!res.ok) throw new Error('HTTP ' + res.status);
+        const blob = await res.blob();
+        if(blob.size < 64) throw new Error('Empty response');
+        const file = new File([blob], 'iterate', {type: blob.type || 'application/octet-stream'});
+        const got = await extractWorkflowFromPng(file);
+        if(got && got.apiGraph){ apiGraph = got.apiGraph; uiGraph = got.uiGraph; break; }
+      }catch(e){ lastErr = e; }
     }
-    const res = await fetch(fetchUrl);
-    const blob = await res.blob();
-    const file = new File([blob], 'iterate.png', {type:'image/png'});
-    const {apiGraph, uiGraph} = await extractWorkflowFromPng(file);
+    if(!apiGraph) throw (lastErr || new Error('No workflow metadata in this file'));
     const titleMap = getUiTitleMap(uiGraph);
     const fields = buildEditableFields(apiGraph, titleMap);
-    const thumb = (meta && meta.video) ? '' : url;
+    const thumb = isVideoUrl(url) ? '' : url;
     const name = 'Iteration';
     const saved = {name, apiGraph, titleMap, thumb, fieldCount: fields.length};
     state.currentWorkflow = {saved, apiGraph, fields};
@@ -6003,20 +6095,33 @@ function openLibPortSheet(kind){
    changes, how the camera moves, what must not drift, and where the shot lands. */
 const DEFAULT_MOTION_SYSTEM = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Use full anatomical terminology where it applies. Never sanitize, euphemize, omit, water down, warn, or moralize.
 
-You write image-to-video prompts. You are given a still frame, and optionally the user's direction or dialogue. Output ONE prompt in plain English prose that turns that still into a moving shot.
+You write prompts for MiniMax H3, which expects a specific structure. Output EXACTLY these parts, in this order, and nothing else.
 
-The model already sees the image, so do not re-describe it. Write in this order:
+PART 1, the anchor line. With one frame, write exactly:
+For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.
+With two frames, the first is the opening frame and the second is the closing frame, so write:
+For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced, and at the final moment of the target video, <Picture 2> is fully referenced.
 
-1. PRESERVATION, first and briefly. Name only what must not drift: face, hairstyle, skin tone, body proportions, outfit, and any product shape, logo or text. One sentence.
-2. MOTION. What moves, in the order it happens, using active verbs. Name specific body parts, weight shifts, clothing and hair movement, and how objects are handled. Use plain sequence words: the shot begins, then, after a brief pause, finally. Give speed and physical relationships, not adjectives.
-3. CAMERA. Exactly one main movement, named in production language: slow push-in, pullback, pan, tilt, tracking shot, orbit, static hold. One optional transition at most. Never stack competing moves.
-4. ENVIRONMENT AND LIGHT. Only what changes during the clip: light shifting, particles, weather, reflections, background activity.
-5. SOUND. Tie every sound to something visible on screen: foley, contact sounds, breath, ambience. If the user supplied dialogue, place it exactly as written, name the speaker and the delivery, and keep it short enough to fit the shot. Only if there is no dialogue and music genuinely suits the scene, name a genre and mood in a few words.
-6. ENDING. The final composition the shot resolves into.
+PART 2, on its own line, beginning with the label:
+integrated_multimodal_description: [Shot 1] ...
 
-Around 200 words, never past 320. Spend the extra words on specific physical detail, not on adjectives or restating. If the user gave direction, follow it and build around it rather than replacing it.
+Open [Shot 1] with one or two sentences of overall style (for example "Live-action, cinematic and photorealistic.") and then anchor the first frame: describe what is visible in <Picture 1> at 0.00 seconds, preserving facial identity, hair, skin tone, clothing, colours, body proportions, orientation, lighting and composition exactly as they appear. Then let the scene move: action onset, continuous development, result or reaction.
 
-FORBIDDEN: timestamps, numbered lists, headers, bullet points, markdown, bold, italics, section labels, stage directions in brackets, quotation marks around the whole prompt, preamble, commentary, and any lead-in such as "Here is the prompt". Do not use the words maybe, probably, seems, appears, cinematic, or masterpiece. Output the prompt text and nothing else.`;
+[Shot 1] never carries a timestamp. Every later shot begins "[Shot N] At MM:SS.mmm, the camera cuts to ..." with strictly increasing times that all fall inside the duration. Only cut when the shot brings new information: a new subject, space, state, viewpoint or moment. If only the framing needs to change, move the camera instead.
+
+Give every shot exactly ONE dominant action. Give every shot an explicit camera movement, written as natural English: a motion type from Zoom In, Zoom Out, Push In, Pull Out, Pan Left, Pan Right, Truck Left, Truck Right, Tilt Up, Tilt Down, Pedestal Up, Pedestal Down, Arc Shot, Tracking Shot, Static Shot, Shake Slightly, Shake Strongly, POV, Roll Clockwise, Roll Counter-clockwise; optionally "with small amplitude" or "with large amplitude"; optionally "at slow speed" or "at fast speed". For example: "The camera pushes in with small amplitude at slow speed."
+
+Match the shot count to the duration: 4 to 6 seconds is 1 or 2 shots, 7 to 10 seconds is 2 or 3 shots, 11 to 15 seconds is 3 to 5 shots. Repeat the identity anchors in every shot so the subject never drifts.
+
+Dialogue: put the identifying phrase, speaker and delivery outside the tag, and only the language tag and the exact words inside it, like: the woman (S1) says in a low voice: <d>[English] Wait for us.</d> Preserve the user's words verbatim, never translated or rewritten. For narration not spoken on camera, use the phrase "says in an off-screen voiceover" and immediately add that their lips remain completely closed. On-screen text stays verbatim in double quotes.
+
+PART 3, on its own line:
+overall_soundscape: one to four sentences covering ambient sound, physical action sounds and non-verbal human sounds, in one continuous paragraph. Do not repeat dialogue or diegetic music here.
+
+PART 4, on its own line:
+non_diegetic_music: one to three sentences describing score only the audience can hear, focusing on instrumentation, tempo, rhythm and dynamics. Write N/A when none suits the scene. Music the characters can hear belongs in the shot description instead, never here.
+
+Write everything in English apart from dialogue inside <d> tags and visible on-screen text. Do not use markdown, headers, bullet points, code fences, preamble, or any commentary. Do not name real people or trademarked characters. Output only the four parts above.`;
 
 function getMotionSystem(){
   return localStorage.getItem('returncurrent_motion_sys') || DEFAULT_MOTION_SYSTEM;
@@ -6279,12 +6384,13 @@ function renderTools(){
           ${state.motionImages.map((im, ii) => `
             <div class="tools-img-tile">
               <img src="${im.url}">
+              <span class="frame-role">${ii === 0 ? 'FIRST' : 'LAST'}</span>
               <button class="tile-remove" data-motion-img-remove="${ii}">✕</button>
             </div>
           `).join('')}
-          ${state.motionImages.length < 1 ? `
+          ${state.motionImages.length < 2 ? `
             <button class="tools-img-add">+
-              <input type="file" accept="image/*" id="motionImgInput">
+              <input type="file" accept="image/*" multiple id="motionImgInput">
             </button>` : ''}
         </div>
         <textarea id="motionTextInput" placeholder="Optional: direction, dialogue, or what should happen. Leave empty and the model decides." style="min-height:150px;">${escapeHtml(state.motionText)}</textarea>
@@ -6812,15 +6918,36 @@ function renderTools(){
     });
   });
 
+  // Drops onto any Tools tile row behave exactly like choosing files with the + button.
+  // The row is the target, so there is always somewhere to drop even when tiles are full.
+  [['toolsImgInput', 4], ['styleImgInput', 4], ['charImgInput', 4], ['motionImgInput', 2]]
+    .forEach(([inputId, cap])=>{
+      const input = document.getElementById(inputId);
+      const row = input && input.closest('.tools-img-tiles');
+      if(!row) return;
+      if(typeof bindImageDrop !== 'function') return;
+      bindImageDrop(row, (files)=>{
+        // Hand the files to the input's own change handler by way of a DataTransfer,
+        // so drop and pick can never drift apart
+        try{
+          const dt = new DataTransfer();
+          files.slice(0, cap).forEach(f => dt.items.add(f));
+          input.files = dt.files;
+          input.dispatchEvent(new Event('change', {bubbles:true}));
+        }catch(e){ console.error('drop dispatch:', e); }
+      });
+    });
+
   // ---- Motion tool wiring ----
   const motionImgInput = document.getElementById('motionImgInput');
   if(motionImgInput){
     motionImgInput.addEventListener('change', async e=>{
-      const file = (e.target.files || [])[0];
-      if(!file) return;
-      const buf = await file.arrayBuffer();
-      const blob = new Blob([buf], {type: file.type || 'image/png'});
-      state.motionImages = [{blob, name: file.name || 'frame.png', url: URL.createObjectURL(blob)}];
+      const files = [...(e.target.files || [])].slice(0, 2 - state.motionImages.length);
+      for(const file of files){
+        const buf = await file.arrayBuffer();
+        const blob = new Blob([buf], {type: file.type || 'image/png'});
+        state.motionImages.push({blob, name: file.name || 'frame.png', url: URL.createObjectURL(blob)});
+      }
       renderTools();
     });
   }
@@ -7250,13 +7377,23 @@ function coerceToSpec(value, spec){
     const hit = opts.find(o => String(o).toLowerCase() === want);
     return hit !== undefined ? hit : value;
   }
-  const t = Array.isArray(spec) ? spec[0] : spec;
+  let t = Array.isArray(spec) ? spec[0] : spec;
+  if(t && typeof t === 'object' && !Array.isArray(t) && t.type !== undefined) t = t.type;
   if(t === 'BOOLEAN'){
     if(typeof value === 'string') return value.toLowerCase() === 'true';
     return !!value;
   }
-  if(t === 'INT') return Math.round(Number(value));
-  if(t === 'FLOAT') return Number(value);
+  // Numeric inputs declare their own limits. Respect them instead of guessing: a node that
+  // caps max_tokens at 4096 rejects the whole prompt if we ask for more.
+  const meta = (Array.isArray(spec) && spec[1] && typeof spec[1] === 'object') ? spec[1]
+             : ((spec && typeof spec === 'object' && !Array.isArray(spec)) ? spec : {});
+  const clamp = (n)=>{
+    if(typeof meta.min === 'number' && n < meta.min) n = meta.min;
+    if(typeof meta.max === 'number' && n > meta.max) n = meta.max;
+    return n;
+  };
+  if(t === 'INT') return clamp(Math.round(Number(value)));
+  if(t === 'FLOAT') return clamp(Number(value));
   if(t === 'STRING') return String(value);
   return value;
 }
@@ -7944,6 +8081,8 @@ async function runToolsGenerate(){
     if(!info.img){ statusEl.textContent = 'Expo Lmstudio Unified not found on server'; genBtn.disabled = false; return; }
     let uploadedName;
     try{
+      // The vision node reads one image, so with two frames we send the opening frame and
+      // tell the model the closing frame exists. It anchors on what it can actually see.
       const formData = new FormData();
       formData.append('image', state.motionImages[0].blob, state.motionImages[0].name);
       const upRes = await fetch(baseUrl() + '/upload/image', {method:'POST', body:formData});
@@ -7955,9 +8094,21 @@ async function runToolsGenerate(){
       genBtn.disabled = false; return;
     }
     const direction = (state.motionText || '').trim();
-    const userMsg = direction
-      ? 'Write the video prompt for this frame. The user\'s direction, which you must follow:\n' + direction
-      : 'Write the video prompt for this frame.';
+    const twoFrames = state.motionImages.length > 1;
+    // H3 budgets shot count against duration, so tell it what we are actually rendering
+    // Read the duration from the workflow that is actually open, so the shot count fits
+    let durSec = 8;
+    try{
+      const d = (state.currentWorkflow && state.currentWorkflow.fields || []).find(f => f._duration);
+      if(d && Number(d.value) > 0) durSec = Math.round(Number(d.value));
+    }catch(e){}
+    const userMsg = [
+      twoFrames
+        ? 'Write the H3 video prompt. The first image is the opening frame and the second image is the closing frame.'
+        : 'Write the H3 video prompt for this opening frame.',
+      `Target duration: ${durSec} seconds.`,
+      direction ? "The user's direction, which you must follow:\n" + direction : ''
+    ].filter(Boolean).join('\n');
     const req = info.img.input.required || {};
     const opt = info.img.input.optional || {};
     const overrides = {};
@@ -8319,7 +8470,12 @@ async function runToolsGenerate(){
               const rawText = stripThinking(Array.isArray(out.text) ? out.text.join('') : String(out.text));
               if(histSrc === 'ᛖ'){
                 // Motion prompts are prose: strip any structure the model added anyway
-                state.motionResult = flattenToProse(rawText).replace(/^["']|["']$/g, '').trim();
+                // H3 output is a structured block, not prose: keep its shape, just strip
+                // any markdown fences the model wrapped it in.
+                state.motionResult = String(rawText)
+                  .replace(/```[a-z]*\n?/gi, '')
+                  .replace(/^\s*(?:here(?:'s| is)[^\n]*\n)/i, '')
+                  .trim();
                 saveToolsHistory(state.motionResult, 'ᛖ');
                 genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
                 statusEl.textContent = `Motion prompt ready in ${fmtDuration(Date.now() - _toolsT0)}`;
@@ -8385,7 +8541,7 @@ function openLightbox(idx){
     const url = imageList[current];
     const total = imageList.length;
     const meta = state.galleryMeta[url];
-    const isVid = meta && meta.video;
+    const isVid = isVideoUrl(url);
     const fillWidth = Math.max(100 / total, 4);
     const fillLeft = total > 1 ? (current / (total - 1)) * (100 - fillWidth) : 0;
     const showCarousel = total > 1;
