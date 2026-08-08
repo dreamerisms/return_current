@@ -12,7 +12,7 @@ Your GPU, in your pocket.
 
 ## Changelog
 
-### β3.7 — August 5, 2026
+### β3.7 — August 7, 2026
 - **Upscale toggle understands two-save workflows.** When a workflow saves both a normal and an upscaled file, switching Upscale off now removes the entire upscale branch, including its own save node, so you get one file instead of two identical ones. Workflows with a single save still route around the upscaler as before, and the toggle says which behaviour applies
 - New example workflow: MiniMax H3 with the upscale branch and both saves
 
