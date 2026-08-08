@@ -12,6 +12,10 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+### β3.7 — August 5, 2026
+- **Upscale toggle understands two-save workflows.** When a workflow saves both a normal and an upscaled file, switching Upscale off now removes the entire upscale branch, including its own save node, so you get one file instead of two identical ones. Workflows with a single save still route around the upscaler as before, and the toggle says which behaviour applies
+- New example workflow: MiniMax H3 with the upscale branch and both saves
+
 ### β3.6 — August 4, 2026
 - **ᛖ Motion now writes real MiniMax H3 prompts.** The first version produced a prose paragraph, which is not the shape H3 asks for. It now outputs the documented structure: the frame anchor line, `integrated_multimodal_description` with `[Shot N]` blocks and `MM:SS.mmm` cut times, `overall_soundscape`, and `non_diegetic_music`. Shot count is budgeted against the duration of the workflow you have open, camera moves use H3's own vocabulary, and dialogue is preserved verbatim in `<d>` tags
 - **Two frames supported** — add a first and last frame and the anchor line covers both, matching the first-to-last-frame workflows. Tiles are labelled so the roles are never ambiguous

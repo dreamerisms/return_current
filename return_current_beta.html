@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β3.6</title>
+<title>Return Current β3.7</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1160,21 +1160,21 @@
   /* Multi-image tiles */
   .tools-img-tiles{display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:4px;}
   .tools-img-tile{
-    width:72px; height:72px; border-radius:10px; border:1px solid var(--line);
-    position:relative; flex:0 0 72px; overflow:visible;
+    width:144px; height:144px; border-radius:10px; border:1px solid var(--line);
+    position:relative; flex:0 0 144px; overflow:visible;
   }
   .tools-img-tile img{width:100%; height:100%; object-fit:cover; border-radius:10px; display:block;}
   .tools-img-tile .tile-remove{
-    position:absolute; top:-7px; right:-7px; width:20px; height:20px;
+    position:absolute; top:-8px; right:-8px; width:24px; height:24px;
     border-radius:50%; background:var(--bg); border:1px solid var(--line);
     color:var(--text-dim); font-size:10px; line-height:18px; text-align:center;
     cursor:pointer; padding:0; z-index:2;
   }
   .tools-img-tile .tile-remove:active{color:var(--safelight); border-color:var(--safelight-dim);}
   .tools-img-add{
-    width:72px; height:72px; border-radius:10px; border:1px dashed var(--line);
-    background:none; color:var(--text-dim); font-size:24px; cursor:pointer;
-    flex:0 0 72px; position:relative;
+    width:144px; height:144px; border-radius:10px; border:1px dashed var(--line);
+    background:none; color:var(--text-dim); font-size:40px; cursor:pointer;
+    flex:0 0 144px; position:relative;
   }
   .tools-img-add:active{border-color:var(--safelight-dim); color:var(--safelight);}
   .tools-img-add input{position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;}
@@ -1182,7 +1182,7 @@
   .tools-prompt-row{position:relative; margin-bottom:10px;}
   .tools-prompt-row textarea{margin-bottom:0;}
   .tools-prompt-row .prompt-remove{
-    position:absolute; top:-7px; right:-7px; width:20px; height:20px;
+    position:absolute; top:-8px; right:-8px; width:24px; height:24px;
     border-radius:50%; background:var(--bg); border:1px solid var(--line);
     color:var(--text-dim); font-size:10px; line-height:18px; text-align:center;
     cursor:pointer; padding:0; z-index:2;
@@ -1424,23 +1424,23 @@
     outline:1px dashed var(--safelight); outline-offset:4px; border-radius:10px;
   }
   .tools-img-tile .frame-role{
-    position:absolute; left:4px; bottom:4px; z-index:2;
+    position:absolute; left:6px; bottom:6px; z-index:2;
     background:rgba(10,9,8,.78); color:var(--safelight);
-    font-family:var(--font-mono); font-size:8px; letter-spacing:.1em;
-    padding:2px 5px; border-radius:4px; pointer-events:none;
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.1em;
+    padding:3px 7px; border-radius:5px; pointer-events:none;
   }
   .img-drop{
-    position:relative; width:100%; min-height:110px;
+    position:relative; width:100%; min-height:220px;
     border:1px dashed var(--line); border-radius:10px;
     background:var(--bg); cursor:pointer; overflow:hidden;
     display:flex; align-items:center; justify-content:center;
   }
   .img-drop:active{border-color:var(--safelight-dim);}
   .img-drop .image-input-preview{
-    width:100%; height:100%; max-height:220px; object-fit:contain; display:block;
+    width:100%; height:100%; max-height:440px; object-fit:contain; display:block;
   }
   .img-drop-hint{
-    position:absolute; font-family:var(--font-mono); font-size:26px;
+    position:absolute; font-family:var(--font-mono); font-size:44px;
     color:var(--text-dim); pointer-events:none;
   }
   .img-drop:has(.image-input-preview[style*="block"]) .img-drop-hint{display:none;}
@@ -1661,7 +1661,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β3.6</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β3.7</span></div>
     </div>
   </div>
 
@@ -1697,7 +1697,6 @@ const state = {
   textFormat: 'json', // text tool output: 'json' | 'natural'
   motionImages: [], // [{blob,name,url}] single frame for the Motion tool
   motionText: '', // optional direction, dialogue, or intent
-  motionResult: '',
   charName: '', // character library name
   charInputMode: 'sheet', // 'sheet' | 'freeform'
   charFreeText: '', // freeform textarea (natural language or pasted JSON)
@@ -2502,7 +2501,7 @@ const KNOWN_KEYS = {
   ckpt_name:       {label:'Model', kind:'select', optionsKey:'checkpoints'},
   unet_name:       {label:'Model', kind:'select', optionsKey:'unets'},
   unet_filename:   {label:'Model', kind:'select', optionsKey:'unet_gguf'},
-  lora_name:       {label:'LoRA file', kind:'text'},
+  lora_name:       {label:'LoRA', kind:'select'},
   strength_model:  {label:'LoRA Strength', kind:'number'},
   width:           {label:'Width', kind:'number'},
   height:          {label:'Height', kind:'number'},
@@ -2512,6 +2511,8 @@ const KNOWN_KEYS = {
   sampler_name:    {label:'Sampler', kind:'select', optionsKey:'samplers'},
   scheduler:       {label:'Scheduler', kind:'select', optionsKey:'schedulers'},
   vae_name:        {label:'VAE', kind:'select'},
+  strength_model:  {label:'LoRA Strength', kind:'number'},
+  strength_clip:   {label:'LoRA Strength (CLIP)', kind:'number'},
   first_frame:     {label:'First Frame', kind:'image'},
   last_frame:      {label:'Last Frame', kind:'image'},
   model_name:      {label:'Upscale Model', kind:'select'},
@@ -2701,6 +2702,26 @@ function llmPollCount(){
   return Math.ceil(getLlmTimeoutMs() / 2000); // poller ticks every 2s
 }
 /** Fill the LM Studio node's model-lifecycle inputs from the user's setting. */
+/** These tools are one-shots. Some LLM nodes expose conversation state, and leaving it to
+ *  the schema default lets one call bleed into the next. Blank it deliberately. */
+function clearConversationState(overrides, key, spec){
+  const kl = key.toLowerCase();
+  // Guard against size settings that merely contain the word context
+  if(/(length|size|window|limit|tokens|max|min)/.test(kl)) return false;
+  if(!/(history|conversation|context|memory|session|chat_id|thread|previous|prior)/.test(kl)) return false;
+  const opts = comboOptions(spec);
+  if(opts.length){
+    const off = opts.find(o => /^(false|no|none|off|disable)/i.test(String(o)));
+    if(off !== undefined){ overrides[key] = off; return true; }
+    return false;
+  }
+  let t = Array.isArray(spec) ? spec[0] : spec;
+  if(t && typeof t === 'object' && !Array.isArray(t) && t.type !== undefined) t = t.type;
+  if(t === 'STRING'){ overrides[key] = ''; return true; }
+  if(t === 'BOOLEAN'){ overrides[key] = false; return true; }
+  return false;
+}
+
 function applyLifecycle(overrides, key){
   const kl = key.toLowerCase();
   if(kl === 'auto_unload'){ overrides[key] = !isKeepLoaded(); return true; }
@@ -3001,6 +3022,56 @@ function classifyPromptNodes(apiGraph){
 /** Nodes whose whole job is to hold a string. Their value IS a prompt. */
 function isStringPrimitive(classType){
   return /^(PrimitiveString|PrimitiveStringMultiline|String Literal|StringConstant|CR Text|Text Multiline|ttN text|JWStringMultiline)/i.test(classType || '');
+}
+
+/** Everything downstream of the upscaler, plus any node that exists only to feed it.
+ *  A workflow with its own HQ save node needs the whole branch removed when upscaling is
+ *  switched off, not rerouted around: rerouting would send the un-upscaled video to the
+ *  HQ save as well and write two identical files. */
+function upscaleBranch(graph, upNodeId){
+  const consumersOf = (id)=>{
+    const out = [];
+    for(const nid in graph){
+      const inputs = graph[nid].inputs || {};
+      for(const k in inputs){
+        const v = inputs[k];
+        if(Array.isArray(v) && String(v[0]) === String(id)){ out.push(nid); break; }
+      }
+    }
+    return out;
+  };
+  // Walk forward from the upscaler
+  const downstream = new Set();
+  const queue = [String(upNodeId)];
+  while(queue.length){
+    const cur = queue.shift();
+    for(const nxt of consumersOf(cur)){
+      if(downstream.has(nxt)) continue;
+      downstream.add(nxt);
+      queue.push(nxt);
+    }
+  }
+  const doomed = new Set([String(upNodeId), ...downstream]);
+  // Then pull in anything whose only purpose was feeding that path
+  let changed = true;
+  while(changed){
+    changed = false;
+    for(const nid in graph){
+      if(doomed.has(nid)) continue;
+      const consumers = consumersOf(nid);
+      if(!consumers.length) continue; // an output node in its own right, leave it
+      if(consumers.every(cid => doomed.has(cid))){
+        doomed.add(nid);
+        changed = true;
+      }
+    }
+  }
+  const SAVE = /^(SaveVideo|SaveImage|SaveAnimated|VHS_VideoCombine|PreviewImage)/i;
+  const hasOwnSave = [...doomed].some(id => SAVE.test(graph[id] && graph[id].class_type || ''));
+  // Only meaningful if something else still saves once the branch is gone
+  const survivesElsewhere = Object.keys(graph)
+    .some(id => !doomed.has(id) && SAVE.test(graph[id].class_type || ''));
+  return {doomed, hasOwnSave: hasOwnSave && survivesElsewhere};
 }
 
 function buildEditableFields(apiGraph, titleMap){
@@ -3306,7 +3377,20 @@ function buildEditableFields(apiGraph, titleMap){
       } else if(t === 'boolean'){
         groups.push({nodeId, key, kind:'checkbox', label:`${key} — ${title}`, value: val, advanced:true});
       } else if(t === 'string' && val.length < 500){
-        groups.push({nodeId, key, kind: val.length > 60 ? 'text' : 'shorttext', label:`${key} — ${title}`, value: val, advanced:true});
+        // Ask the server what this input accepts before guessing from the value. A long
+        // filename is still a choice from a list, not a paragraph to type into.
+        let isCombo = false;
+        try{
+          const def = state._fullObjectInfo && state._fullObjectInfo[node.class_type];
+          const spec = def && def.input &&
+            ((def.input.required && def.input.required[key]) || (def.input.optional && def.input.optional[key]));
+          isCombo = comboOptions(spec).length > 0;
+        }catch(e){}
+        groups.push({
+          nodeId, key,
+          kind: isCombo ? 'select' : (val.length > 60 ? 'text' : 'shorttext'),
+          label:`${key} — ${title}`, value: val, advanced:true
+        });
       }
     }
   }
@@ -3359,10 +3443,13 @@ function buildEditableFields(apiGraph, titleMap){
     for(const nid in apiGraph){
       if(apiGraph[nid].class_type !== 'ImageUpscaleWithModel') continue;
       const srcLink = apiGraph[nid].inputs && apiGraph[nid].inputs.image;
+      const branch = upscaleBranch(apiGraph, nid);
       groups.push({
         nodeId: nid, key:'__upscale_toggle__', kind:'upscale_toggle',
-        label:'Upscale', value: !apiGraph[nid]._startsOff,
-        upscaleInput: Array.isArray(srcLink) ? srcLink : null
+        label: branch.hasOwnSave ? 'Upscale (saves a second file)' : 'Upscale',
+        value: !apiGraph[nid]._startsOff,
+        upscaleInput: Array.isArray(srcLink) ? srcLink : null,
+        hasOwnSave: branch.hasOwnSave
       });
     }
   }
@@ -5256,18 +5343,25 @@ async function submitCurrentWorkflow(){
   try{
   fields.forEach(f=>{
     if(f.kind === 'upscale_toggle'){
-      if(!f.value && f.upscaleInput){
-        // Bypass upscaling: whatever read the upscaler now reads its source instead
+      if(!f.value){
         const upNodeId = f.nodeId;
-        for(const nid in graph){
-          const inputs = graph[nid].inputs;
-          for(const key in inputs){
-            if(Array.isArray(inputs[key]) && inputs[key][0] === upNodeId){
-              inputs[key] = f.upscaleInput;
+        const branch = upscaleBranch(graph, upNodeId);
+        if(branch.hasOwnSave){
+          // The branch saves its own file, so remove it entirely. Anything left keeps
+          // rendering and saving the normal-quality output exactly as before.
+          branch.doomed.forEach(id => { delete graph[id]; });
+        } else if(f.upscaleInput){
+          // A single save chain: route around the upscaler and keep everything else
+          for(const nid in graph){
+            const inputs = graph[nid].inputs;
+            for(const key in inputs){
+              if(Array.isArray(inputs[key]) && String(inputs[key][0]) === String(upNodeId)){
+                inputs[key] = f.upscaleInput;
+              }
             }
           }
+          delete graph[upNodeId];
         }
-        delete graph[upNodeId];
       }
     } else if(f.kind === 'rife_toggle'){
       if(!f.value && f.rifeInput){
@@ -6393,20 +6487,16 @@ function renderTools(){
               <input type="file" accept="image/*" multiple id="motionImgInput">
             </button>` : ''}
         </div>
-        <textarea id="motionTextInput" placeholder="Optional: direction, dialogue, or what should happen. Leave empty and the model decides." style="min-height:150px;">${escapeHtml(state.motionText)}</textarea>
+        <textarea id="motionTextInput" placeholder="Optional: direction, dialogue, or what should happen. Leave empty and the model decides." style="min-height:300px;">${escapeHtml(state.motionText)}</textarea>
+        <button class="tools-generate-btn" id="motionGenBtn" style="margin:12px 0 0;">Generate Motion Prompt</button>
         <div class="blend-instructions">
           <div class="bi-label">Motion Instructions</div>
-          <textarea id="motionSysInstr" style="min-height:140px;">${escapeHtml(getMotionSystem())}</textarea>
+          <textarea id="motionSysInstr" style="min-height:280px;">${escapeHtml(getMotionSystem())}</textarea>
           <div style="display:flex; gap:8px; margin-top:8px;">
             <button class="tools-add-prompt" id="motionSysSave" style="margin:0; flex:1; border-style:solid; border-color:var(--safelight-dim); color:var(--safelight);">Save</button>
             <button class="tools-add-prompt" id="motionSysDefault" style="margin:0; flex:1;">Default</button>
           </div>
         </div>
-        ${state.motionResult ? `
-          <div class="tools-result">
-            <button class="tools-copy-btn" id="motionCopyBtn">Copy</button>
-            <pre>${escapeHtml(state.motionResult)}</pre>
-          </div>` : ''}
       ` : ''}
       ${mode === 'style' ? `
         <div class="char-field" style="margin-bottom:10px;">
@@ -6462,7 +6552,7 @@ function renderTools(){
         })()}
       ` : ''}
     </div>
-    ${mode !== 'chat' && mode !== 'style' && !(mode === 'character' && state.charInputMode === 'freeform') ? `<button class="tools-generate-btn" id="toolsGenBtn">${mode === 'motion' ? 'Generate Motion Prompt' : mode === 'character' ? 'Create Character' : mode === 'style' ? (state.styleImages.length ? 'Extract Style from Images' : 'Elaborate Style with LLM') : mode === 'text2json' ? 'Generate Prompt' : 'Generate'}</button>` : ''}
+    ${mode !== 'chat' && mode !== 'style' && mode !== 'motion' && !(mode === 'character' && state.charInputMode === 'freeform') ? `<button class="tools-generate-btn" id="toolsGenBtn">${mode === 'character' ? 'Create Character' : mode === 'style' ? (state.styleImages.length ? 'Extract Style from Images' : 'Elaborate Style with LLM') : mode === 'text2json' ? 'Generate Prompt' : 'Generate'}</button>` : ''}
     ${hasResult ? `
       <div class="tools-result">
         <button class="copy-btn" id="toolsCopyBtn">Copy</button>
@@ -6978,13 +7068,8 @@ function renderTools(){
       toast('Restored the default instructions');
     });
   }
-  const motionCopyBtn = document.getElementById('motionCopyBtn');
-  if(motionCopyBtn){
-    motionCopyBtn.addEventListener('click', ()=>{
-      copyToClipboard(state.motionResult);
-      toast('Motion prompt copied');
-    });
-  }
+  const motionGenBtn = document.getElementById('motionGenBtn');
+  if(motionGenBtn) motionGenBtn.addEventListener('click', ()=> runToolsGenerate());
 
   // ---- Style tool wiring ----
   const styleNameEl = document.getElementById('styleNameInput');
@@ -8010,13 +8095,18 @@ async function sendChatMessage(){
 
 async function runToolsGenerate(){
   // In style mode the trigger is the inline button; the shared genBtn may be absent
-  const _inlineBtn = document.getElementById('styleLlmBtn');
-  if(_inlineBtn) _inlineBtn.disabled = true;
+  ['styleLlmBtn','motionGenBtn'].forEach(id=>{
+    const b = document.getElementById(id);
+    if(b) b.disabled = true;
+  });
   if(!state.connected){ toast('Not connected to server'); return; }
 
   const statusEl = document.getElementById('toolsStatus');
   const genBtnEl = document.getElementById('toolsGenBtn');
   const genBtn = genBtnEl || {disabled:false};
+  // Clear the previous answer up front. Leaving it on screen while a new one is generating
+  // is what made the tools look like they were carrying a conversation forward.
+  state.toolsResult = '';
   const _toolsT0 = Date.now();
   if(!requireLlmModel(document.getElementById('toolsStatus'))) return;
   genBtn.disabled = true;
@@ -8027,7 +8117,7 @@ async function runToolsGenerate(){
     info = await fetchToolsNodeInfo();
   }catch(e){
     statusEl.textContent = 'Could not fetch node info';
-    genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+    genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
     return;
   }
 
@@ -8037,7 +8127,7 @@ async function runToolsGenerate(){
   let histSrc = mode === 'text2json' ? 'Text' : 'Image';
   if(mode === 'character'){
     const filled = CHAR_FIELDS.filter(f => (state.charFields[f.k] || '').trim());
-    if(!filled.length){ toast('Fill in at least one field'); genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } statusEl.textContent=''; return; }
+    if(!filled.length){ toast('Fill in at least one field'); genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } statusEl.textContent=''; return; }
     histSrc = '👤';
     if(state.charFormat === 'json'){
       // Assemble locally — no server round-trip needed
@@ -8045,7 +8135,7 @@ async function runToolsGenerate(){
       filled.forEach(f => { obj[f.k] = state.charFields[f.k].trim(); });
       state.toolsResult = JSON.stringify({character: obj}, null, 2);
       saveToolsHistory(state.toolsResult, '👤');
-      genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+      genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
       statusEl.textContent = 'Character assembled';
       renderTools();
       return;
@@ -8053,7 +8143,7 @@ async function runToolsGenerate(){
     // Natural language — compose via the LLM
     if(!info.text){
       statusEl.textContent = 'Expo Lmstudio Text Generation not found on server';
-      genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+      genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
       return;
     }
     const fieldText = filled.map(f => `${f.label}: ${state.charFields[f.k].trim()}`).join('\n');
@@ -8115,6 +8205,7 @@ async function runToolsGenerate(){
     for(const key of [...Object.keys(req), ...Object.keys(opt)]){
       const kl = key.toLowerCase();
       if(applyLifecycle(overrides, key)) continue;
+      if(clearConversationState(overrides, key, req[key] || opt[key])) continue;
       if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = userMsg;
       else if(kl.includes('system')) overrides[key] = applyThinkDirective(getMotionSystem(), true);
       else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getVisionModel();
@@ -8133,7 +8224,7 @@ async function runToolsGenerate(){
     histSrc = 'ᛋ';
     if(state.styleImages.length){
       // Extract style from images: per-image style analysis, then unify
-      if(!info.img){ statusEl.textContent = 'Expo Lmstudio Unified not found on server'; genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return; }
+      if(!info.img){ statusEl.textContent = 'Expo Lmstudio Unified not found on server'; genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } return; }
       const analyses = [];
       for(let ii = 0; ii < state.styleImages.length; ii++){
         statusEl.textContent = `Analyzing style ${ii + 1} of ${state.styleImages.length}\u2026`;
@@ -8147,7 +8238,7 @@ async function runToolsGenerate(){
           if(!uploadedName) throw new Error('No filename');
         }catch(e){
           statusEl.textContent = 'Upload failed: ' + e.message;
-          genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
+          genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } return;
         }
         const req = info.img.input.required || {};
         const opt = info.img.input.optional || {};
@@ -8197,19 +8288,19 @@ async function runToolsGenerate(){
           }
         }catch(e){
           statusEl.textContent = 'Style analysis failed on image ' + (ii + 1);
-          genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
+          genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } return;
         }
       }
       if(analyses.length === 1){
         // Single image: its analysis is the style, no synthesis needed
         state.styleText = analyses[0].trim();
-        genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+        genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
         statusEl.textContent = 'Style extracted';
         renderTools();
         return;
       }
       // Multiple: unify via text node
-      if(!info.text){ statusEl.textContent = 'Text Generation node not found (needed to unify)'; genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return; }
+      if(!info.text){ statusEl.textContent = 'Text Generation node not found (needed to unify)'; genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } return; }
       statusEl.textContent = 'Unifying into one style\u2026';
       const mergePrompt = analyses.map((a, i) => `=== STYLE ANALYSIS ${i + 1} ===\n${a}`).join('\n\n');
       const req2 = info.text.input.required || {};
@@ -8233,8 +8324,8 @@ async function runToolsGenerate(){
     } else {
       // Elaborate the written style
       const seed = (state.styleText || '').trim();
-      if(!seed){ toast('Write at least a rough style first'); genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } statusEl.textContent=''; return; }
-      if(!info.text){ statusEl.textContent = 'Expo Lmstudio Text Generation not found on server'; genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return; }
+      if(!seed){ toast('Write at least a rough style first'); genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } statusEl.textContent=''; return; }
+      if(!info.text){ statusEl.textContent = 'Expo Lmstudio Text Generation not found on server'; genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } return; }
       const req = info.text.input.required || {};
       const opt = info.text.input.optional || {};
       const overrides = {};
@@ -8256,14 +8347,14 @@ async function runToolsGenerate(){
     }
   } else if(mode === 'text2json'){
     const prompts = state.toolsPrompts.map(p => (p || '').trim()).filter(Boolean);
-    if(!prompts.length){ toast('Enter some text first'); genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } statusEl.textContent=''; return; }
+    if(!prompts.length){ toast('Enter some text first'); genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } statusEl.textContent=''; return; }
     if(prompts.length > 1) histSrc = '∞';
     const inputText = prompts.length === 1 ? prompts[0] :
       getBlendText('text') + '\n\n' +
       prompts.map((p, i) => `=== CONCEPT ${i + 1} ===\n${p}`).join('\n\n');
     if(!info.text){
       statusEl.textContent = 'Expo Lmstudio Text Generation not found on server';
-      genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+      genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
       return;
     }
     const req = info.text.input.required || {};
@@ -8290,10 +8381,10 @@ async function runToolsGenerate(){
       "2": { "class_type": "ShowText|pysssss", "inputs": {"text": ["1", 0]} }
     };
   } else {
-    if(!state.toolsImages.length){ toast('Add at least one image'); genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } statusEl.textContent=''; return; }
+    if(!state.toolsImages.length){ toast('Add at least one image'); genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } statusEl.textContent=''; return; }
     if(!info.img){
       statusEl.textContent = 'Expo Lmstudio Unified not found on server';
-      genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+      genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
       return;
     }
 
@@ -8311,7 +8402,7 @@ async function runToolsGenerate(){
         if(!uploadedName) throw new Error('No filename in response');
       }catch(e){
         statusEl.textContent = 'Upload failed: ' + e.message;
-        genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
+        genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } return;
       }
       const req = info.img.input.required || {};
       const opt = info.img.input.optional || {};
@@ -8351,7 +8442,7 @@ async function runToolsGenerate(){
           if(!uploadedName) throw new Error('No filename');
         }catch(e){
           statusEl.textContent = 'Upload failed: ' + e.message;
-          genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
+          genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } return;
         }
         // Build a per-image graph
         const req = info.img.input.required || {};
@@ -8405,13 +8496,13 @@ async function runToolsGenerate(){
           }
         }catch(e){
           statusEl.textContent = 'Analysis failed for image ' + (ii + 1);
-          genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
+          genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } return;
         }
       }
       // Synthesis pass: blend all descriptions into one JSON prompt using text-only node
       if(!info.text){
         statusEl.textContent = 'Text Generation node not found (needed for synthesis)';
-        genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; } return;
+        genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } return;
       }
       statusEl.textContent = 'Blending descriptions into final prompt\u2026';
       const blendInstr = getBlendText('img');
@@ -8451,7 +8542,7 @@ async function runToolsGenerate(){
     if(json.error){
       statusEl.textContent = 'Rejected — check browser console';
       console.error('ComfyUI error:', json);
-      genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+      genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
       return;
     }
     const promptId = json.prompt_id;
@@ -8472,12 +8563,14 @@ async function runToolsGenerate(){
                 // Motion prompts are prose: strip any structure the model added anyway
                 // H3 output is a structured block, not prose: keep its shape, just strip
                 // any markdown fences the model wrapped it in.
-                state.motionResult = String(rawText)
+                // H3 output is a structured block, not prose: keep its shape, strip only
+                // markdown fences or a lead-in the model added on its own.
+                state.toolsResult = String(rawText)
                   .replace(/```[a-z]*\n?/gi, '')
                   .replace(/^\s*(?:here(?:'s| is)[^\n]*\n)/i, '')
                   .trim();
-                saveToolsHistory(state.motionResult, 'ᛖ');
-                genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+                saveToolsHistory(state.toolsResult, 'ᛖ');
+                genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
                 statusEl.textContent = `Motion prompt ready in ${fmtDuration(Date.now() - _toolsT0)}`;
                 renderTools();
                 return;
@@ -8485,7 +8578,7 @@ async function runToolsGenerate(){
               if(histSrc === 'ᛋ'){
                 // Style results land in the style field, not the results box or history
                 state.styleText = rawText.trim();
-                genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+                genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
                 statusEl.textContent = `Style ready in ${fmtDuration(Date.now() - _toolsT0)} — name it and save`;
                 renderTools();
                 return;
@@ -8494,7 +8587,7 @@ async function runToolsGenerate(){
                                 || (histSrc === 'Text' && state.textFormat === 'natural');
               state.toolsResult = wantsNatural ? flattenToProse(rawText) : extractJsonPrompt(rawText);
               saveToolsHistory(state.toolsResult, histSrc);
-              genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+              genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
               statusEl.textContent = `Done in ${fmtDuration(Date.now() - _toolsT0)}`;
               renderTools();
               return;
@@ -8505,11 +8598,11 @@ async function runToolsGenerate(){
       if(statusEl) statusEl.textContent = 'Waiting for LLM… ' + ((attempt+1)*2) + 's';
     }
     statusEl.textContent = 'Timed out';
-    genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+    genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
   }catch(e){
     statusEl.textContent = 'Could not reach ComfyUI';
     console.error(e);
-    genBtn.disabled = false; { const b = document.getElementById('styleLlmBtn'); if(b) b.disabled = false; }
+    genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
   }
 }
 
