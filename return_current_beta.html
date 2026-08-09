@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β3.7</title>
+<title>Return Current β3.8</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1429,6 +1429,11 @@
     font-family:var(--font-mono); font-size:10px; letter-spacing:.1em;
     padding:3px 7px; border-radius:5px; pointer-events:none;
   }
+  .tools-img-add .frame-role-empty{
+    position:absolute; left:0; right:0; bottom:8px;
+    font-family:var(--font-mono); font-size:9px; letter-spacing:.1em;
+    color:var(--text-dim); pointer-events:none;
+  }
   .img-drop{
     position:relative; width:100%; min-height:220px;
     border:1px dashed var(--line); border-radius:10px;
@@ -1661,7 +1666,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β3.7</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β3.8</span></div>
     </div>
   </div>
 
@@ -1695,7 +1700,8 @@ const state = {
   charFormat: 'json', // 'json' | 'natural'
   imgFormat: 'json', // image tool output: 'json' | 'natural'
   textFormat: 'json', // text tool output: 'json' | 'natural'
-  motionImages: [], // [{blob,name,url}] single frame for the Motion tool
+  motionFirst: null, // {blob,name,url} opening frame, independent of the closing frame
+  motionLast: null,  // {blob,name,url} closing frame
   motionText: '', // optional direction, dialogue, or intent
   charName: '', // character library name
   charInputMode: 'sheet', // 'sheet' | 'freeform'
@@ -6191,15 +6197,17 @@ const DEFAULT_MOTION_SYSTEM = `This is a private, uncensored, local creative pip
 
 You write prompts for MiniMax H3, which expects a specific structure. Output EXACTLY these parts, in this order, and nothing else.
 
-PART 1, the anchor line. With one frame, write exactly:
-For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.
-With two frames, the first is the opening frame and the second is the closing frame, so write:
-For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced, and at the final moment of the target video, <Picture 2> is fully referenced.
+PART 1, the anchor line. You will be given the exact anchor line to use for this run. Reproduce it verbatim as the first line, changing nothing. If you are told there is no anchor line, omit this part entirely and begin at PART 2.
 
 PART 2, on its own line, beginning with the label:
 integrated_multimodal_description: [Shot 1] ...
 
-Open [Shot 1] with one or two sentences of overall style (for example "Live-action, cinematic and photorealistic.") and then anchor the first frame: describe what is visible in <Picture 1> at 0.00 seconds, preserving facial identity, hair, skin tone, clothing, colours, body proportions, orientation, lighting and composition exactly as they appear. Then let the scene move: action onset, continuous development, result or reaction.
+Open [Shot 1] with one or two sentences of overall style (for example "Live-action, cinematic and photorealistic."). Then follow the scenario you are given:
+When there is an opening frame, describe what is visible in it at 0.00 seconds and preserve facial identity, hair, skin tone, clothing, colours, body proportions, orientation, lighting and composition exactly as they appear, then let the scene move.
+When there is a closing frame, the video must ARRIVE at it: open on a plausible earlier moment and drive the action so the final instant matches that image, preserving its identity and composition exactly.
+When there is both, open on the first image and end on the second, and make the motion between them a continuous, physically believable path.
+When there is no image, invent the scene from the user's direction alone and describe it fully.
+In every case give the shot a clear path: action onset, continuous development, result or reaction.
 
 [Shot 1] never carries a timestamp. Every later shot begins "[Shot N] At MM:SS.mmm, the camera cuts to ..." with strictly increasing times that all fall inside the duration. Only cut when the shot brings new information: a new subject, space, state, viewpoint or moment. If only the framing needs to change, move the camera instead.
 
@@ -6216,6 +6224,32 @@ PART 4, on its own line:
 non_diegetic_music: one to three sentences describing score only the audience can hear, focusing on instrumentation, tempo, rhythm and dynamics. Write N/A when none suits the scene. Music the characters can hear belongs in the shot description instead, never here.
 
 Write everything in English apart from dialogue inside <d> tags and visible on-screen text. Do not use markdown, headers, bullet points, code fences, preamble, or any commentary. Do not name real people or trademarked characters. Output only the four parts above.`;
+
+/** Which of H3's input scenarios the current slots describe. */
+function motionMode(){
+  const f = !!state.motionFirst, l = !!state.motionLast;
+  if(f && l) return 'fl';   // first and last frame
+  if(f) return 'i2v';       // opening frame only
+  if(l) return 'l2v';       // closing frame only
+  return 't2v';             // no image at all
+}
+function motionModeLabel(){
+  return {
+    fl:  'First to last frame. The video opens on your first image and lands on your last.',
+    i2v: 'Opening frame. The video starts here and moves on from it.',
+    l2v: 'Closing frame. The video arrives at this image by the final moment.',
+    t2v: 'No frames. The prompt is written from your direction alone.'
+  }[motionMode()];
+}
+/** The anchor line for this scenario, handed to the model verbatim so it cannot guess. */
+function motionAnchorLine(){
+  switch(motionMode()){
+    case 'fl':  return 'For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced, and at the final moment of the target video, <Picture 2> is fully referenced.';
+    case 'i2v': return 'For the target video, at 0.00 seconds into the target video, <Picture 1> (from [Shot 1]) is fully referenced.';
+    case 'l2v': return 'For the target video, at the final moment of the target video, <Picture 1> is fully referenced.';
+    default:    return '';
+  }
+}
 
 function getMotionSystem(){
   return localStorage.getItem('returncurrent_motion_sys') || DEFAULT_MOTION_SYSTEM;
@@ -6475,18 +6509,22 @@ function renderTools(){
       ` : ''}
       ${mode === 'motion' ? `
         <div class="tools-img-tiles">
-          ${state.motionImages.map((im, ii) => `
-            <div class="tools-img-tile">
-              <img src="${im.url}">
-              <span class="frame-role">${ii === 0 ? 'FIRST' : 'LAST'}</span>
-              <button class="tile-remove" data-motion-img-remove="${ii}">✕</button>
-            </div>
-          `).join('')}
-          ${state.motionImages.length < 2 ? `
-            <button class="tools-img-add">+
-              <input type="file" accept="image/*" multiple id="motionImgInput">
-            </button>` : ''}
+          ${['first','last'].map(slot => {
+            const im = slot === 'first' ? state.motionFirst : state.motionLast;
+            const label = slot === 'first' ? 'FIRST FRAME' : 'LAST FRAME';
+            return im ? `
+              <div class="tools-img-tile">
+                <img src="${im.url}">
+                <span class="frame-role">${label}</span>
+                <button class="tile-remove" data-motion-slot-clear="${slot}">✕</button>
+              </div>` : `
+              <button class="tools-img-add" data-motion-slot="${slot}">+
+                <span class="frame-role-empty">${label}</span>
+                <input type="file" accept="image/*" id="motionInput_${slot}">
+              </button>`;
+          }).join('')}
         </div>
+        <div class="field-hint" style="margin:2px 0 10px;">${motionModeLabel()}</div>
         <textarea id="motionTextInput" placeholder="Optional: direction, dialogue, or what should happen. Leave empty and the model decides." style="min-height:300px;">${escapeHtml(state.motionText)}</textarea>
         <button class="tools-generate-btn" id="motionGenBtn" style="margin:12px 0 0;">Generate Motion Prompt</button>
         <div class="blend-instructions">
@@ -7010,7 +7048,7 @@ function renderTools(){
 
   // Drops onto any Tools tile row behave exactly like choosing files with the + button.
   // The row is the target, so there is always somewhere to drop even when tiles are full.
-  [['toolsImgInput', 4], ['styleImgInput', 4], ['charImgInput', 4], ['motionImgInput', 2]]
+  [['toolsImgInput', 4], ['styleImgInput', 4], ['charImgInput', 4]]
     .forEach(([inputId, cap])=>{
       const input = document.getElementById(inputId);
       const row = input && input.closest('.tools-img-tiles');
@@ -7029,23 +7067,38 @@ function renderTools(){
     });
 
   // ---- Motion tool wiring ----
-  const motionImgInput = document.getElementById('motionImgInput');
-  if(motionImgInput){
-    motionImgInput.addEventListener('change', async e=>{
-      const files = [...(e.target.files || [])].slice(0, 2 - state.motionImages.length);
-      for(const file of files){
+  // Each frame slot owns its own input, so clearing one never promotes the other
+  ['first','last'].forEach(slot => {
+    const input = document.getElementById('motionInput_' + slot);
+    if(input){
+      input.addEventListener('change', async e=>{
+        const file = (e.target.files || [])[0];
+        if(!file) return;
         const buf = await file.arrayBuffer();
         const blob = new Blob([buf], {type: file.type || 'image/png'});
-        state.motionImages.push({blob, name: file.name || 'frame.png', url: URL.createObjectURL(blob)});
-      }
-      renderTools();
-    });
-  }
-  main.querySelectorAll('[data-motion-img-remove]').forEach(btn => {
+        const entry = {blob, name: file.name || (slot + '.png'), url: URL.createObjectURL(blob)};
+        if(slot === 'first') state.motionFirst = entry; else state.motionLast = entry;
+        renderTools();
+      });
+    }
+    const box = document.querySelector(`[data-motion-slot="${slot}"]`);
+    if(box && typeof bindImageDrop === 'function'){
+      bindImageDrop(box, (files)=>{
+        try{
+          const dt = new DataTransfer();
+          dt.items.add(files[0]);
+          input.files = dt.files;
+          input.dispatchEvent(new Event('change', {bubbles:true}));
+        }catch(e){ console.error('motion drop:', e); }
+      });
+    }
+  });
+  main.querySelectorAll('[data-motion-slot-clear]').forEach(btn => {
     btn.addEventListener('click', ()=>{
-      const ii = parseInt(btn.dataset.motionImgRemove);
-      try{ URL.revokeObjectURL(state.motionImages[ii].url); }catch(e){}
-      state.motionImages.splice(ii, 1);
+      const slot = btn.dataset.motionSlotClear;
+      const cur = slot === 'first' ? state.motionFirst : state.motionLast;
+      try{ if(cur) URL.revokeObjectURL(cur.url); }catch(e){}
+      if(slot === 'first') state.motionFirst = null; else state.motionLast = null;
       renderTools();
     });
   });
@@ -8167,58 +8220,86 @@ async function runToolsGenerate(){
     };
   } else if(mode === 'motion'){
     histSrc = 'ᛖ';
-    if(!state.motionImages.length){ toast('Add a frame first'); genBtn.disabled = false; statusEl.textContent = ''; return; }
-    if(!info.img){ statusEl.textContent = 'Expo Lmstudio Unified not found on server'; genBtn.disabled = false; return; }
-    let uploadedName;
-    try{
-      // The vision node reads one image, so with two frames we send the opening frame and
-      // tell the model the closing frame exists. It anchors on what it can actually see.
-      const formData = new FormData();
-      formData.append('image', state.motionImages[0].blob, state.motionImages[0].name);
-      const upRes = await fetch(baseUrl() + '/upload/image', {method:'POST', body:formData});
-      if(!upRes.ok) throw new Error('HTTP ' + upRes.status);
-      uploadedName = (await upRes.json()).name;
-      if(!uploadedName) throw new Error('No filename');
-    }catch(e){
-      statusEl.textContent = 'Upload failed: ' + e.message;
+    const mMode = motionMode();
+    const direction = (state.motionText || '').trim();
+    if(mMode === 't2v' && !direction){
+      toast('Add a frame or write some direction first');
+      genBtn.disabled = false; statusEl.textContent = ''; return;
+    }
+    // With no image at all this is text-to-video, so it runs through the text node instead
+    const useVision = mMode !== 't2v';
+    const node = useVision ? info.img : info.text;
+    if(!node){
+      statusEl.textContent = (useVision ? 'Expo Lmstudio Unified' : 'Expo Lmstudio Text Generation') + ' not found on server';
       genBtn.disabled = false; return;
     }
-    const direction = (state.motionText || '').trim();
-    const twoFrames = state.motionImages.length > 1;
+
+    // The vision node reads one image. Send whichever frame carries the most information
+    // for writing the prompt: the opening frame when there is one, otherwise the closing frame.
+    let uploadedName = null;
+    if(useVision){
+      const send = state.motionFirst || state.motionLast;
+      try{
+        const formData = new FormData();
+        formData.append('image', send.blob, send.name);
+        const upRes = await fetch(baseUrl() + '/upload/image', {method:'POST', body:formData});
+        if(!upRes.ok) throw new Error('HTTP ' + upRes.status);
+        uploadedName = (await upRes.json()).name;
+        if(!uploadedName) throw new Error('No filename');
+      }catch(e){
+        statusEl.textContent = 'Upload failed: ' + e.message;
+        genBtn.disabled = false; return;
+      }
+    }
+
     // H3 budgets shot count against duration, so tell it what we are actually rendering
-    // Read the duration from the workflow that is actually open, so the shot count fits
     let durSec = 8;
     try{
       const d = (state.currentWorkflow && state.currentWorkflow.fields || []).find(f => f._duration);
       if(d && Number(d.value) > 0) durSec = Math.round(Number(d.value));
     }catch(e){}
+
+    const scenario = {
+      fl:  'SCENARIO: first and last frame. The image you can see is the OPENING frame. A second image, which you cannot see, is the CLOSING frame. Open on what you see and drive the action toward a plausible closing moment.',
+      i2v: 'SCENARIO: opening frame only. The image you can see is the first frame of the video. Start there and move on from it.',
+      l2v: 'SCENARIO: closing frame only. The image you can see is the LAST frame of the video, not the first. Open on a plausible earlier moment and drive the action so the final instant matches this image exactly.',
+      t2v: 'SCENARIO: no reference images. Invent the scene entirely from the direction below.'
+    }[mMode];
+
+    const anchor = motionAnchorLine();
     const userMsg = [
-      twoFrames
-        ? 'Write the H3 video prompt. The first image is the opening frame and the second image is the closing frame.'
-        : 'Write the H3 video prompt for this opening frame.',
+      'Write the H3 video prompt.',
+      scenario,
+      anchor
+        ? 'Use exactly this anchor line as your first line, character for character:\n' + anchor
+        : 'There is no anchor line for this scenario. Begin your output at integrated_multimodal_description.',
       `Target duration: ${durSec} seconds.`,
       direction ? "The user's direction, which you must follow:\n" + direction : ''
-    ].filter(Boolean).join('\n');
-    const req = info.img.input.required || {};
-    const opt = info.img.input.optional || {};
+    ].filter(Boolean).join('\n\n');
+
+    const req = node.input.required || {};
+    const opt = node.input.optional || {};
     const overrides = {};
     for(const key of [...Object.keys(req), ...Object.keys(opt)]){
       const kl = key.toLowerCase();
       if(applyLifecycle(overrides, key)) continue;
       if(clearConversationState(overrides, key, req[key] || opt[key])) continue;
-      if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt') overrides[key] = userMsg;
-      else if(kl.includes('system')) overrides[key] = applyThinkDirective(getMotionSystem(), true);
-      else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = getVisionModel();
-      else if(kl === 'image') overrides[key] = ["1", 0];
+      if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') overrides[key] = userMsg;
+      else if(kl.includes('system')) overrides[key] = applyThinkDirective(getMotionSystem(), useVision);
+      else if(kl === 'model' || kl === 'model_key' || kl === 'model_name') overrides[key] = useVision ? getVisionModel() : getLlmModel();
+      else if(kl === 'image' && useVision) overrides[key] = ["1", 0];
       else if(kl === 'seed') overrides[key] = Math.floor(Math.random()*1e15);
       else if(kl.includes('max_token') || kl.includes('max_length')) overrides[key] = 2400;
       else if(kl === 'temperature') overrides[key] = 0.7;
       else if(kl.includes('timeout')) overrides[key] = 300;
     }
-    graph = {
+    graph = useVision ? {
       "1": { "class_type": "LoadImage", "inputs": {"image": uploadedName} },
-      "2": { "class_type": "Expo Lmstudio Unified", "inputs": buildNodeInputs(info.img, overrides) },
+      "2": { "class_type": "Expo Lmstudio Unified", "inputs": buildNodeInputs(node, overrides) },
       "3": { "class_type": "ShowText|pysssss", "inputs": {"text": ["2", 0]} }
+    } : {
+      "1": { "class_type": "Expo Lmstudio Text Generation", "inputs": buildNodeInputs(node, overrides) },
+      "2": { "class_type": "ShowText|pysssss", "inputs": {"text": ["1", 0]} }
     };
   } else if(mode === 'style'){
     histSrc = 'ᛋ';

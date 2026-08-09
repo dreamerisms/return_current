@@ -12,7 +12,11 @@ Your GPU, in your pocket.
 
 ## Changelog
 
-### β3.7 — August 7, 2026
+### β3.8 — August 5, 2026
+- **ᛖ Motion handles every input scenario.** First frame only, last frame only, both, or none at all. The two frame slots are independent now, so clearing one no longer promotes the other, and the prompt adapts: a closing frame makes the video *arrive* at that image, and with no frames at all the prompt is written from your direction alone
+- **Fixed: single-image prompts referencing a second picture that was never provided.** The app now hands the model the exact anchor line for the scenario instead of leaving it to choose between templates it cannot verify
+
+### β3.7 — August 5, 2026
 - **Upscale toggle understands two-save workflows.** When a workflow saves both a normal and an upscaled file, switching Upscale off now removes the entire upscale branch, including its own save node, so you get one file instead of two identical ones. Workflows with a single save still route around the upscaler as before, and the toggle says which behaviour applies
 - New example workflow: MiniMax H3 with the upscale branch and both saves
 
