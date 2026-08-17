@@ -12,6 +12,55 @@ Your GPU, in your pocket.
 
 ## Changelog
 
+*Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
+
+### β4.4.0 — August 14, 2026
+- **Spectrum support.** Workflows using Spectrum Apply MiniMax H3 get a single on/off switch; its ten parameters stay hidden, since the conservative preset is the maintained default and is not something to be adjusting from a phone
+- **Spectrum and the turbo LoRA are offered as one choice.** They do not combine, so turning either on turns the other off, and turbo defers to Spectrum when both are in the graph. Spectrum wants 20+ sampler steps and trades speed for quality; turbo does the reverse
+- **ᛖ Motion pins its own encoder** — the 32B H3-tuned repack, which is both faster and more descriptive for shot planning, regardless of the encoder chosen in settings. Every other tool still follows that setting
+
+### β4.3.0 — August 13, 2026
+- **ᛖ Motion writes continuous takes, not slideshows.** Shots now carry their momentum across the cut: each one opens on the motion already in progress, makes exactly one development, and ends on an action still unfinished for the next to pick up. That applies at every keyframe, so a multi-keyframe clip reads as one take rather than a run of poses
+- **Cut count follows content before duration.** A face carrying a line stays in one continuous shot however long the clip; action and reveals get the upper end of the range
+- **Dialogue is exact or explicitly absent** — no more clips where characters vaguely talk
+
+### β4.2.0 — August 13, 2026
+- **Edits survive navigation, but workflows stay templates.** What you type or upload is held for the session, so glancing at the gallery no longer loses it. Nothing is written back to the stored workflow, which opens clean every time rather than carrying yesterday's prompt and reference image into tomorrow
+- **Frames can be cleared** — an ✕ on the tile empties the slot, so a first-frame workflow can go back to text-only without reimporting
+- Frame inputs no longer throw the page off-centre; the pair is laid out as one row inside the reading column
+
+### β4.1.0 — August 12, 2026
+- **Workflows repair themselves.** The app now keeps the original graph alongside the converted one, so when a converter fix lands your saved workflows are rebuilt automatically instead of asking you to delete and re-import. Anything still not valid is corrected against the server's own schema at submit, and the app says what it changed
+- **Fixed a widget mapping bug that had been quietly shifting values.** Node settings are positional, and the app was reading them in schema key order rather than the widget order ComfyUI publishes. Values could land one slot out, which is what put a resolution into a quality dropdown and a frame rate into a bit depth field
+- Preview-only nodes are skipped, since nothing they produce can reach the app
+
+### β4.0.0 — August 12, 2026
+- **LM Studio is no longer needed.** If the H3 Vision nodes are installed, every tool runs on the VLM that ComfyUI already has loaded, using a text encoder you pick from the usual folder browser. No second application, no port, no API. LM Studio still works as a fallback on servers without those nodes, and the app decides on its own which is available
+- **JSON output is gone.** The Text and Image tools write prose, and the ᛗ Character sheet now produces one cohesive Krea 2 image prompt instead of a JSON object. Characters save and round-trip as readable lines
+- Settings loses the provider pills, which were the wrong idea; there is just the encoder picker
+
+### β3.11.0 — August 12, 2026
+- **No LM Studio required for Motion.** A Vision Model section in settings lets you pick the provider: LM Studio as before, or **ComfyUI VLM**, which runs the model on ComfyUI itself using a text encoder you already have. Pick the encoder from the usual folder browser. The app only offers providers actually installed on your server
+- **ᛖ Motion routes through H3VisionPromptor** when ComfyUI VLM is selected. It is purpose-built for this, so it owns the H3 format and the anchor line for each task type; the app hands it the scenario, the duration and up to four keyframes, and your Motion Instructions only override its template when you have edited them
+
+### β3.10.0 — August 12, 2026
+- **Fixed: instructions leaking into Motion output.** The prompt described its own structure using "PART 1, PART 2" scaffolding, and a model with no separate user field would reproduce that text instead of following it. The structure is now described by the labels it actually produces, the anchor line is supplied as a concrete value rather than promised, and a sanitiser trims any preamble and folds duplicated blocks back together
+- **RTX Video Super Resolution** is recognised as an upscaler, so the Upscale toggle works with it. A workflow carrying both RTX and model-based upscaling shows one switch per method, named, and turning either on turns the other off
+- **Bit depth defaults to 8** wherever a workflow arrives with something impossible in that slot
+
+### β3.9.1 — August 11, 2026
+- **Videos play their audio.** MiniMax H3 generates sound, and every video in the app was muted. The lightbox now plays with sound and gains a speaker control beside the other playback buttons; gallery tiles stay silent, since a grid of talking thumbnails is nobody's idea of a good time. If the browser refuses unmuted playback the button corrects itself rather than showing a state that isn't real. `M` toggles it on desktop
+
+### β3.9.0 — August 10, 2026
+- **ᛖ Motion handles up to six keyframes.** Each frame sits at a percentage of the clip, shown on a timeline you can drag. The percentage carries the meaning: one frame at 0% is image-to-video, one at 100% makes the video arrive at that image, two are first-and-last, three or more are keyframes the video passes through in turn. "Space evenly" redistributes them
+- Anchor lines are built from that timeline, so every picture gets the right time and a frame at the end correctly reads "at the final moment" rather than a timestamp
+- **Keyframe positions are editable in workflows too** — a `0%, 33%, 66%` value is recognised by its shape whatever the node calls it, and gets the same timeline with sliders
+- Restored the Upscale toggle's controls, which had gone missing from the editor
+
+### β3.8.1 — August 10, 2026
+- **Recent Prompts previews what you wrote, not what the format demands.** Motion entries all opened with the same anchor line, so the list read as a wall of identical rows. Entries now store the direction you typed alongside the result and preview that instead. With no direction, the preview skips the boilerplate and starts at the part that actually describes the scene
+- Tapping a Motion entry restores the whole run, direction and output together, so you can adjust and regenerate
+
 ### β3.8 — August 5, 2026
 - **ᛖ Motion handles every input scenario.** First frame only, last frame only, both, or none at all. The two frame slots are independent now, so clearing one no longer promotes the other, and the prompt adapts: a closing frame makes the video *arrive* at that image, and with no frames at all the prompt is written from your direction alone
 - **Fixed: single-image prompts referencing a second picture that was never provided.** The app now hands the model the exact anchor line for the scenario instead of leaving it to choose between templates it cannot verify
