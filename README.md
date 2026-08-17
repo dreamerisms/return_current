@@ -14,7 +14,7 @@ Your GPU, in your pocket.
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
 
-### β4.4.0 — August 14, 2026
+### β4.4.0 — August 16, 2026
 - **Spectrum support.** Workflows using Spectrum Apply MiniMax H3 get a single on/off switch; its ten parameters stay hidden, since the conservative preset is the maintained default and is not something to be adjusting from a phone
 - **Spectrum and the turbo LoRA are offered as one choice.** They do not combine, so turning either on turns the other off, and turbo defers to Spectrum when both are in the graph. Spectrum wants 20+ sampler steps and trades speed for quality; turbo does the reverse
 - **ᛖ Motion pins its own encoder** — the 32B H3-tuned repack, which is both faster and more descriptive for shot planning, regardless of the encoder chosen in settings. Every other tool still follows that setting
