@@ -10,6 +10,121 @@ Your GPU, in your pocket.
 
 ---
 
+**Latest: β4.5.x** — the Tools pane runs entirely on ComfyUI's own vision model now. No second application, no API key, no LM Studio. [Full changelog ↓](#changelog)
+
+---
+
+## What is this?
+
+A single HTML file that turns your phone into a remote for your ComfyUI rig. Import any workflow, edit every meaningful field with a thumb-friendly UI, queue generations, and watch images and video land in a live gallery — from the couch, the yard, or anywhere your network reaches.
+
+No app store. No install. No subscription. No cloud middleman. Your PC does the work.
+
+## Quick Start
+
+**Requirements:** ComfyUI on your PC, and [Tailscale](https://tailscale.com/) on both PC and phone (or just the same Wi-Fi for home-only use). Everything else is optional — see [What each feature needs](#what-each-feature-needs) below.
+
+**1. Add two flags to your ComfyUI launch `.bat`:**
+
+```
+--listen 0.0.0.0 --enable-cors-header
+```
+
+`--listen` opens ComfyUI to your network. `--enable-cors-header` lets the app talk to ComfyUI's API from a different port. Restart ComfyUI.
+
+**2. Serve the app from your PC.** Drop `return_current_beta.html` in a folder. **Rename it to `index.html`** — this is worth doing, because it's the difference between typing an address and typing an address plus a filename. Then create `serve.bat` next to it:
+
+```
+cd /d "%~dp0"
+python -m http.server 8000
+```
+
+No system Python? Use ComfyUI portable's embedded one:
+
+```
+cd /d "%~dp0"
+..\ComfyUI_windows_portable\python_embeded\python.exe -m http.server 8000
+```
+
+Double-click it. Leave it running.
+
+**3. Get your IP.** Right-click the Tailscale tray icon — your IP is right there under your device name. A LAN IP works too for home-only use.
+
+**4. Open it on your phone.** The address depends on what you named the file:
+
+| File is named | Browse to |
+|---|---|
+| `index.html` | `http://YOUR-IP:8000` |
+| `return_current_beta.html` | `http://YOUR-IP:8000/return_current_beta.html` |
+| anything else | `http://YOUR-IP:8000/whatever-you-named-it.html` |
+
+A plain server only serves `index.html` automatically. Any other name has to be typed in full, exactly, including the `.html`. If you get a directory listing instead of the app, you're in the right folder — just tap the file.
+
+Once it loads, use your browser's **Add to Home Screen** for the full-screen app experience.
+
+**5. Connect.** Tap ⚙ → enter your IP and **ComfyUI's** port (`8188`, not the `8000` you're serving the app from) → Save. The dot turns green.
+
+## What each feature needs
+
+The app works with plain ComfyUI. These unlock specific parts of it:
+
+| For | Install | Why |
+|---|---|---|
+| **The Tools pane** | [ComfyUI-H3-VisionPromptor](https://github.com/benjiyaya/ComfyUI-H3-VisionPromptor) + any Qwen3-VL or Gemma instruct repack in `models/text_encoders/` | Every tool runs on a vision model ComfyUI hosts itself. Pick the encoder in ⚙ → Vision Model |
+| **LoRA stacking** | [rgthree-comfy](https://github.com/rgthree/rgthree-comfy) | The Power Lora Loader is what the app's LoRA system reads and writes |
+| **Video output** | Core ComfyUI, or [VideoHelperSuite](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite) | Both are recognised; audio plays in the lightbox |
+| **Frame interpolation** | [Frame Interpolation](https://github.com/Fannovel16/ComfyUI-Frame-Interpolation) | Appears as a single RIFE on/off switch |
+| **Tool results** | [pythongosssss custom scripts](https://github.com/pythongosssss/ComfyUI-Custom-Scripts) | ShowText is how tool output gets back to the app |
+| **MiniMax H3 quality** | [Spectrum](https://github.com/xmarre/ComfyUI-Spectrum-MiniMax-H3) | Offered as one switch against the turbo LoRA; they don't combine |
+| **Video upscaling** | [NVIDIA RTX Nodes](https://github.com/Comfy-Org/Nvidia_RTX_Nodes_ComfyUI) | RTX VSR and frame-by-frame model upscaling appear as named, mutually exclusive toggles |
+
+**LM Studio is no longer required or supported.** Earlier versions used it for the Tools pane; everything now runs on the vision model ComfyUI already has loaded. If you were running it for this app, you can close it.
+
+## Import a workflow
+
+Drop in a **`.json` workflow**, a **PNG** ComfyUI rendered, or an **MP4 / MOV / WebM** it rendered — all three carry the workflow inside them. The ∞ button on any gallery item does the same thing, pulling the graph back out of a finished render so you can iterate on it.
+
+Nodes the app doesn't recognise are skipped and named, not fatal. The workflow still imports and usually still runs.
+
+The **[`workflows/`](workflows/) folder** has tested examples for SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, LTX-2 video, and MiniMax H3 video, including multi-keyframe and first-to-last-frame variants. They all open cleanly in ComfyUI and import into the app. The image workflows share a surrealist botanical prompt and the Wan 2.2 workflow animates their output — an end-to-end demo chain out of the box. Full prerequisite download tables are in that folder's README.
+
+## Troubleshooting
+
+**"Disconnected"** — Confirm ComfyUI is running with both flags above. Settings should point to ComfyUI's port (`8188`), not the app server (`8000`).
+
+**Page not found on your phone** — You almost certainly need the filename in the URL. See the table in step 4.
+
+**Missing fields** — The workflow uses custom nodes the app doesn't recognise yet. They still generate with defaults; check the Advanced section at the bottom of the editor.
+
+**Tools do nothing** — ⚙ → Vision Model → pick a text encoder. Without one the tools have no model to run on.
+
+**Editor error / import error** — The toast names the failing node. Open an [issue](../../issues) with the message and the workflow file; that's everything needed to add support.
+
+**A workflow behaves oddly after an update** — Open it once and the app rebuilds it with the current converter, silently. If it was imported before that became possible, delete it and re-import.
+
+**App looks stale after an update** — Hard-refresh (pull down, or Ctrl+Shift+R). If you added it to your home screen, remove and re-add it; those cache harder than a normal tab.
+
+## Standing On Shoulders
+
+Return Current is a thin layer over an enormous amount of other people's work. It connects things; these people built the things:
+
+- **comfyanonymous & Comfy Org** — ComfyUI itself, the engine this entire app exists to reach. None of this means anything without it. Also the RTX video super-resolution nodes.
+- **rgthree** — the Power Lora Loader that anchors the app's LoRA system, and an info-panel concept this app's ⌬ button openly borrows from.
+- **benjiyaya** — H3 Vision Promptor, which runs a vision model on ComfyUI's own text generation and is the reason the Tools pane no longer needs a second application running.
+- **jlucasmcrell** — H3 Multishot, the keyframe node behind multi-image MiniMax workflows and the percentage timeline.
+- **xmarre** — Spectrum for MiniMax H3, and the clear documentation that made it straightforward to support.
+- **Kosinkadink** — Video Helper Suite, the reason video output works at all.
+- **Fannovel16** — frame interpolation that makes 16fps generations feel like film.
+- **city96** — GGUF loaders that let big video models fit on real people's GPUs.
+- **mattjohnpowell** — the LM Studio bridge nodes that carried the Tools pane through its first year, before ComfyUI could host a vision model itself.
+- **pythongosssss** — ShowText and a pile of quality-of-life nodes the ecosystem quietly runs on.
+- **CivitAI** — the public API powering trigger word lookup and example galleries, and the community hosting the LoRAs themselves.
+- **Every LoRA trainer and model creator** whose work passes through this app — the researchers and teams behind SDXL, Ideogram, Krea, Wan, MiniMax, and Gemma, and the individuals training and freely sharing the fine-tunes that make local generation interesting.
+- **Tailscale** — the plumbing that makes "from anywhere" true instead of marketing.
+- **Anthropic's Claude** — this app was built in conversation with Claude, by a designer who doesn't write code. That sentence would have been science fiction recently. Credit where due, to the model and to everyone whose collective knowledge trained it.
+
+If your work is in this list and you'd like something corrected, credited differently, or removed, open an [issue](../../issues) and it's done.
+
 ## Changelog
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
@@ -239,80 +354,8 @@ Your GPU, in your pocket.
 
 ---
 
-## What is this?
-
-A single HTML file that turns your phone into a remote for your ComfyUI rig. Import any workflow, edit every meaningful field with a thumb-friendly UI, queue generations, and watch images and video land in a live gallery — from the couch, the yard, or anywhere your network reaches.
-
-No app store. No install. No subscription. No cloud middleman. Your PC does the work.
-
-## Quick Start
-
-**Requirements:** ComfyUI on your PC, [Tailscale](https://tailscale.com/) on PC + phone (or same LAN), and for full features: [rgthree-comfy](https://github.com/rgthree/rgthree-comfy), [VHS](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite), and LM Studio nodes.
-
-**1. Add two flags to your ComfyUI launch .bat:**
-
-```
---listen 0.0.0.0 --enable-cors-header
-```
-
-`--listen` opens ComfyUI to your network. `--enable-cors-header` lets the app talk to ComfyUI's API from a different port. Restart ComfyUI.
-
-**2. Serve the app from your PC.** Drop `return_current_beta.html` in a folder (rename to `index.html` for a clean URL). Create `serve.bat` next to it:
-
-```
-cd /d "%~dp0"
-python -m http.server 8000
-```
-
-No system Python? Use ComfyUI portable's embedded one:
-
-```
-cd /d "%~dp0"
-..\ComfyUI_windows_portable\python_embeded\python.exe -m http.server 8000
-```
-
-Double-click it. Leave it running.
-
-**3. Get your IP.** Right-click the Tailscale tray icon — your IP is right there under your device name. LAN IP works too for home-only use.
-
-**4. Open on your phone.** Browse to `http://YOUR-IP:8000`. Add to Home Screen for the full-screen app experience.
-
-**5. Connect.** Tap ⚙ → enter your IP and ComfyUI's port (`8188`) → Save. Dot turns green.
-
-## Example Workflows
-
-The [`workflows/`](workflows/) folder has tested examples for **SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, LTX-2 video, and MiniMax H3 video** — all open cleanly in ComfyUI *and* import into the app. The four image workflows share a surrealist botanical prompt, and the Wan 2.2 workflow's default prompt animates their outputs: an end-to-end demo chain out of the box. Full prerequisite download tables in the folder README.
-
-## Troubleshooting
-
-**"Disconnected"** — Confirm ComfyUI is running with both flags above. Settings should point to ComfyUI's port (`8188`), not the app server (`8000`).
-
-**Missing fields** — The workflow uses custom nodes the app doesn't recognize yet. They still generate with defaults; check the Advanced section.
-
-**Editor error / import error** — The toast names the failing node. Open an [issue](../../issues) with the message and the workflow file; that's everything needed to add support.
-
-**App looks stale after an update** — Hard-refresh (pull down / Ctrl+Shift+R). Browsers cache aggressively.
-
-## Standing On Shoulders
-
-Return Current is a thin layer over an enormous amount of other people's work. It connects things; these people built the things:
-
-- **[comfyanonymous & Comfy Org](https://github.com/comfyanonymous/ComfyUI)** — ComfyUI itself, the engine this entire app exists to reach. None of this means anything without it.
-- **[rgthree](https://github.com/rgthree/rgthree-comfy)** — the Power Lora Loader that anchors the app's LoRA system, and an info-panel concept this app's ⌬ button openly borrows from.
-- **[Kosinkadink](https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite)** — Video Helper Suite, the reason video output works at all.
-- **[Fannovel16](https://github.com/Fannovel16/ComfyUI-Frame-Interpolation)** — frame interpolation that makes 16fps generations feel like film.
-- **[city96](https://github.com/city96/ComfyUI-GGUF)** — GGUF loaders that let big video models fit on real people's GPUs.
-- **[mattjohnpowell](https://github.com/mattjohnpowell/comfyui-lmstudio-image-to-text-node)** — the LM Studio bridge nodes behind the entire Tools pane.
-- **[pythongosssss](https://github.com/pythongosssss/ComfyUI-Custom-Scripts)** — ShowText and a pile of quality-of-life nodes the ecosystem quietly runs on.
-- **[CivitAI](https://civitai.com)** — the public API powering trigger word lookup and example galleries, and the community hosting the LoRAs themselves.
-- **Every LoRA trainer and model creator** whose work passes through this app — the researchers and teams behind SDXL, Ideogram, Krea, Wan, and Gemma, and the individuals training and freely sharing the fine-tunes that make local generation interesting.
-- **[Tailscale](https://tailscale.com)** — the plumbing that makes "from anywhere" true instead of marketing.
-- **[Anthropic's Claude](https://claude.ai)** — this app was built in conversation with Claude, by a designer who doesn't write code. That sentence would have been science fiction recently. Credit where due, to the model and to everyone whose collective knowledge trained it.
-
-If your work is in this list and you'd like something corrected, credited differently, or removed, open an issue and it's done.
-
 ## License
 
-GPL-3.0 · free and open source · built by [dreamerisms](https://github.com/dreamerisms) in conversation with Claude
+GPL-3.0 · free and open source · built by dreamerisms in conversation with Claude
 
-*If Return Current saves you trips to your desk, consider supporting development.*
+If Return Current saves you trips to your desk, consider [supporting development](https://ko-fi.com/dreamerisms).
