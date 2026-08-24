@@ -10,7 +10,7 @@ Your GPU, in your pocket.
 
 ---
 
-**Latest: β4.5.x** — the Tools pane runs entirely on ComfyUI's own vision model now. No second application, no API key, no LM Studio. [Full changelog ↓](#changelog)
+**Latest: β4.6.x** — the Tools pane runs entirely on ComfyUI's own vision model. No second application, no API key, no LM Studio. [Full changelog ↓](#changelog)
 
 ---
 
@@ -128,6 +128,14 @@ If your work is in this list and you'd like something corrected, credited differ
 ## Changelog
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
+
+### β4.6.1 — August 19, 2026
+- The ▣ Image tool now runs the vision node's own analysis preset rather than sending it an instruction, matching how the reference workflow is configured. Every other tool still sends its own instruction, since no preset can express "describe the style and ignore the subject"
+
+### β4.6.0 — August 19, 2026
+- **Fixed the Tools pane hanging.** The Image tool was sending "generate an incredibly detailed JSON prompt" as the request, directly underneath a system prompt forbidding JSON — a leftover from when the tools produced JSON. Contradictory instructions are a reliable way to make a small model thrash, which is why the same prompt behaved perfectly in ComfyUI and hung in the app. Both dead JSON prompts and the extraction path are gone
+- Token limits and temperature are left to the node throughout. Capping them was guarding against a runaway whose actual cause was that contradiction
+- **ᛗ Character freeform accepts images.** Add reference images and Describe from Images writes the character as prose, so the sheet is optional rather than the only way in
 
 ### β4.5.0 — August 18, 2026
 - **Fixed the Image tool running away.** The permission clause was being appended a second time *after* the task, and an instruction sitting after the request tells a small model there is more to do, so it kept writing until it hit the token ceiling. A prompt that already grants permission is now left exactly as written

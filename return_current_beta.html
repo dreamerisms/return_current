@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β4.5.0</title>
+<title>Return Current β4.7.0</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1660,6 +1660,33 @@
         <div class="field-hint">The VLM that runs the Tools. Any Qwen3-VL or Gemma instruct repack from your text_encoders folder. Leave unset to use whichever the node defaults to.</div>
       </div>
 
+      <div class="field">
+        <label class="toggle-row">
+          <input type="checkbox" id="keepLoadedToggle">
+          <span>Keep model loaded</span>
+        </label>
+        <div class="field-hint">Holds the encoder in memory between calls. Much faster on a large model, at the cost of the VRAM it occupies.</div>
+      </div>
+      <div class="field">
+        <label>Generation timeout</label>
+        <input type="text" id="llmTimeoutInput" inputmode="numeric" placeholder="10">
+        <div class="field-hint">Minutes to wait before giving up on a reply. Raise it if a big encoder is slow to load.</div>
+      </div>
+      <div class="field">
+        <label class="toggle-row">
+          <input type="checkbox" id="thinkingToggle">
+          <span>Thinking</span>
+        </label>
+        <div class="field-hint">Lets the model reason before answering on text tasks. Slower, and only worth it on models trained for it.</div>
+      </div>
+
+      <h2 style="margin-top:22px;">Gallery</h2>
+      <div class="field">
+        <label>Auto-advance delay</label>
+        <input type="text" id="autopanInput" inputmode="decimal" placeholder="4">
+        <div class="field-hint">Seconds each image is held when ▸ auto-advance is running.</div>
+      </div>
+
       <h2 style="margin-top:22px;">Outputs</h2>
       <div class="field checkbox" style="margin-top:14px;">
         <input type="checkbox" id="outputOverrideToggle">
@@ -1670,7 +1697,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.5.0</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.7.0</span></div>
     </div>
   </div>
 
@@ -2556,6 +2583,8 @@ const KNOWN_KEYS = {
   scheduler:       {label:'Scheduler', kind:'select', optionsKey:'schedulers'},
   vae_name:        {label:'VAE', kind:'select'},
   bit_depth:       {label:'Bit Depth', kind:'number'},
+  backend:         {label:'Attention Backend', kind:'select'},
+  ref_image_size:  {label:'Reference Sizing', kind:'select'},
   strength_model:  {label:'LoRA Strength', kind:'number'},
   strength_clip:   {label:'LoRA Strength (CLIP)', kind:'number'},
   first_frame:     {label:'First Frame', kind:'image'},
@@ -2752,9 +2781,10 @@ function sanitizeH3Output(raw){
       const re = new RegExp('(^|\\n)\\s*' + lbl + '\\s*:', 'gi');
       let seen = false;
       body = body.replace(re, (m0, lead) => {
-        if(seen) return lead + '';
-        seen = true;
-        return lead + lbl + ':';
+        // Leave the first occurrence exactly as written. Rebuilding it from the captured
+        // lead silently swallowed the blank line before it on every single output.
+        if(!seen){ seen = true; return m0; }
+        return lead;
       });
     });
     t = head + body;
@@ -2762,6 +2792,7 @@ function sanitizeH3Output(raw){
 
   // A trailing note about what it just wrote is not part of the prompt
   t = t.replace(/\n+\s*(?:note|remember|this prompt|i have|let me know)[^\n]*$/i, '');
+
   return t.trim();
 }
 
@@ -2788,16 +2819,6 @@ function autogrowImageInputs(nodeIds){
   return out;
 }
 /** Our motion scenarios map one to one onto the Promptor's own task types. */
-/** The Motion tool pins its own encoder. The Promptor is a different job from describing
- *  an image: it reasons over the whole shot plan, and the 32B H3-tuned repack is both
- *  faster at it and more descriptive than the smaller vision models. The headline setting
- *  still governs every other tool, so this override is deliberately narrow. */
-const MOTION_ENCODER_HINT = /qwen3vl_32b.*minimax_h3/i;
-function motionEncoder(){
-  const opts = vlmEncoderOptions();
-  const pinned = opts.find(o => MOTION_ENCODER_HINT.test(String(o)));
-  return pinned || getVlmEncoder(); // fall back to the user's choice if it is not installed
-}
 
 function motionTaskType(){
   return {t2v:'T2VA', i2v:'I2VA', fl:'FL2VA', l2v:'L2VA', multi:'Ref2VA'}[motionMode()] || 'Auto';
@@ -2847,19 +2868,66 @@ async function ensureBlankImage(){
 }
 const BLANK_IMAGE_NOTE = 'The attached image is a blank placeholder. Ignore it completely; it carries no information and must not be described or referred to.';
 
+/** Poll history for a queued tool job and return its text output.
+ *  Every tool was doing this inline with the same loop; naming it once means a new tool
+ *  cannot get the retry count or the thinking-strip subtly wrong. */
+async function waitForShowText(promptId, statusEl){
+  for(let attempt = 0; attempt < llmPollCount(); attempt++){
+    await new Promise(r => setTimeout(r, 2000));
+    try{
+      const hRes = await fetch(baseUrl() + '/history/' + promptId);
+      const hist = await hRes.json();
+      const entry = hist[promptId];
+      if(entry && entry.outputs){
+        for(const nid in entry.outputs){
+          const o = entry.outputs[nid];
+          if(o && o.text){
+            return stripThinking(Array.isArray(o.text) ? o.text.join('') : String(o.text));
+          }
+        }
+        return null; // finished, but produced no text
+      }
+    }catch(e){}
+    if(statusEl && attempt % 5 === 4){
+      statusEl.textContent = `Still working… ${(attempt + 1) * 2}s on ${vlmEncoderLabel()}`;
+    }
+  }
+  return null;
+}
+
+/** Short name of the encoder a tool run will use, for the status line.
+ *  A 4B and a 32B encoder differ by three times in both size and speed, and the only way
+ *  that was visible before was watching VRAM in the ComfyUI console. */
+function vlmEncoderLabel(){
+  const enc = getVlmEncoder();
+  if(!enc) return 'the node default';
+  return enc.replace(/\\/g, '/').split('/').pop().replace(/\.(safetensors|gguf|pth)$/i, '');
+}
+
 function buildVlmGraph(instruction, uploadedNames, opts){
   const o = opts || {};
   const def = (state._fullObjectInfo || {})['H3VisionAnalyzer'];
   if(!def) return null;
   const names = uploadedNames || [];
-  const overrides = {
-    vision_mode: 'custom',
-    custom_prompt: enforceUncensored(instruction),
+  // Only set what we actually need. The node author tuned temperature to 0.2 for this job
+  // because describing an image is a precision task, and overriding it with a creative-
+  // writing value sends some seeds into a repetition loop that never emits a stop token,
+  // so generation runs to the token ceiling. buildNodeInputs fills the rest from the schema,
+  // which means the node's own defaults apply unless there is a reason to differ.
+  // A preset runs the node's own built-in analysis prompt and ignores custom_prompt
+  // entirely, so the two are alternatives rather than layers.
+  const overrides = o.visionMode && o.visionMode !== 'custom'
+    ? { vision_mode: o.visionMode }
+    : { vision_mode: 'custom', custom_prompt: enforceUncensored(instruction) };
+  Object.assign(overrides, {
     seed: Math.floor(Math.random() * 4294967295),
-    temperature: o.temperature !== undefined ? o.temperature : 0.6,
-    max_tokens: o.maxTokens || 2400,
     keep_model_loaded: isKeepLoaded()
-  };
+  });
+  // max_tokens and temperature are left to the node. Capping them was a guard against a
+  // runaway whose real cause was a contradictory instruction, and the guard was truncating
+  // legitimate output while the contradiction did the damage.
+  if(o.maxTokens) overrides.max_tokens = o.maxTokens;
+  if(o.temperature !== undefined) overrides.temperature = o.temperature;
   const enc = getVlmEncoder();
   if(enc) overrides.text_encoder = enc;
   const graph = {};
@@ -2973,6 +3041,10 @@ function repairGraphAgainstSchema(graph){
   return fixed;
 }
 
+/** Describing an image is the one job H3VisionAnalyzer has a tuned preset for, and it beats
+ *  anything we can write. A request opts into it by setting __visionPreset on its graph. */
+const IMAGE_TOOL_VISION_MODE = 'detailed_subject_scene';
+
 function translateToVlm(graph){
   if(!vlmReady() || !graph || typeof graph !== 'object') return graph;
   const ids = Object.keys(graph);
@@ -2980,7 +3052,9 @@ function translateToVlm(graph){
   if(!expoId) return graph;
 
   const inputs = graph[expoId].inputs || {};
-  let userText = '', systemText = '', maxTokens = 2400, temperature = 0.6;
+  let userText = '', systemText = '';
+  let maxTokens; // left undefined so the node's own default applies
+  let temperature; // left undefined so the node's own tuned default applies
   const imageLinks = [];
   for(const k in inputs){
     const kl = k.toLowerCase(), v = inputs[k];
@@ -2990,8 +3064,9 @@ function translateToVlm(graph){
     }
     if(kl === 'prompt' || kl === 'text_input' || kl === 'user_prompt' || kl === 'input_text' || kl === 'text') userText = String(v || '');
     else if(kl.includes('system')) systemText = String(v || '');
-    else if(kl.includes('max_token') || kl.includes('max_length')) maxTokens = Number(v) || maxTokens;
-    else if(kl === 'temperature') temperature = Number(v);
+    // max_tokens is deliberately not carried across from the old graph either
+    // Deliberately not carried across: the Expo node was pointed at a different model with
+    // different sampling behaviour, and its temperature is not meaningful here.
   }
 
   // The VLM node takes one instruction, so the system prompt leads and the request follows
@@ -3006,7 +3081,10 @@ function translateToVlm(graph){
     }
   });
 
-  const out = buildVlmGraph(instruction, uploaded, {maxTokens, temperature});
+  // Only a request that asked for a preset gets one. Everything else keeps its instruction,
+  // because no preset can express "describe the style and ignore the subject".
+  const preset = (graph.__visionPreset && uploaded.length) ? graph.__visionPreset : 'custom';
+  const out = buildVlmGraph(instruction, uploaded, {maxTokens, temperature, visionMode: preset});
   if(out && !uploaded.length && _blankImageName){
     // Text-only work still needs the vision node to have something to look at
     out['1'] = {class_type:'LoadImage', inputs:{image: _blankImageName}};
@@ -3444,7 +3522,8 @@ function imageRoleLabel(apiGraph, nodeId){
     [/^start_image$/i,          'Start Frame',  10],
     [/^end_image$/i,            'End Frame',    11],
     [/^image_(\d+)$/i,          'Keyframe $1',  20],
-    [/^images\.image_(\d+)$/i,  'Reference $1', 30],
+    [/^images\.image_(\d+)$/i,      'Reference $1', 30],
+    [/^ref_images\.ref_image_(\d+)$/i, 'Reference $1', 30],
     [/^reference_image$/i,      'Reference',    30],
   ];
   for(const nid in apiGraph){
@@ -3826,6 +3905,57 @@ function buildEditableFields(apiGraph, titleMap){
     f._imgRole = role.order;
     f._framePair = true;
   });
+
+  // Record which autogrow socket an image field belongs to, and how far it can grow
+  for(const nid in apiGraph){
+    const def = (state._fullObjectInfo || {})[apiGraph[nid].class_type];
+    const ins = apiGraph[nid].inputs || {};
+    for(const key in ins){
+      const m = key.match(/^([A-Za-z_]+)\.([A-Za-z_]+?)(\d+)$/);
+      if(!m || !Array.isArray(ins[key])) continue;
+      const [, socket, prefix, idx] = m;
+      const spec = def && def.input && ((def.input.optional || {})[socket] || (def.input.required || {})[socket]);
+      const tpl = Array.isArray(spec) && spec[1] && spec[1].template;
+      const src = apiGraph[String(ins[key][0])];
+      if(!src || !/^LoadImage/.test(src.class_type || '')) continue;
+      const field = groups.find(f => f.kind === 'image' && String(f.nodeId) === String(ins[key][0]));
+      if(!field) continue;
+      field._autogrow = true;
+      field._autogrowKey = socket;
+      field._autogrowPrefix = prefix;
+      field._autogrowIdx = parseInt(idx);
+      field._autogrowMax = (tpl && tpl.max) || 6;
+    }
+  }
+
+  // An autogrow input takes more than it shows. Once every declared slot has an image,
+  // offer one more so references can be added without editing the workflow.
+  (function offerNextAutogrowSlot(){
+    const groups_ = groups;
+    const bySocket = {};
+    groups_.forEach(f => {
+      if(f.kind !== 'image' || !f._autogrow) return;
+      (bySocket[f._autogrowKey] = bySocket[f._autogrowKey] || []).push(f);
+    });
+    Object.keys(bySocket).forEach(key => {
+      const slots = bySocket[key].sort((a, b) => a._autogrowIdx - b._autogrowIdx);
+      const allFilled = slots.every(s => String(s.value || '').trim());
+      const last = slots[slots.length - 1];
+      if(!allFilled || !last || slots.length >= (last._autogrowMax || 6)) return;
+      const nextIdx = last._autogrowIdx + 1;
+      groups_.push({
+        nodeId: last.nodeId,
+        key: `${key}.${last._autogrowPrefix}${nextIdx}`,
+        kind: 'image',
+        label: `Reference ${nextIdx + 1}`,
+        value: '',
+        _imgRole: 30, _framePair: true,
+        _autogrow: true, _autogrowKey: key, _autogrowIdx: nextIdx,
+        _autogrowPrefix: last._autogrowPrefix, _autogrowMax: last._autogrowMax,
+        _isNewSlot: true
+      });
+    });
+  })();
 
   // Bit depth only has a handful of legal values. A widget slot that has drifted can leave
   // the frame rate sitting in here, so anything outside the set falls back to 8.
@@ -4576,8 +4706,12 @@ async function convertUiToApi(ui){
       let wv = n.widgets_values;
       let wi = 0;
       for(const name of widgetNames){
-        if(linkedNames.has(name)) continue; // converted-to-input widgets don't consume a slot
         if(wi >= wv.length) break;
+        // A widget converted to an input KEEPS its slot in widgets_values; ComfyUI leaves
+        // the stale value sitting there. Skipping the name without advancing the index
+        // shifts every value after it by one, which is how a resolution ends up in a
+        // quality dropdown. Consume the slot, then discard it in favour of the link.
+        if(linkedNames.has(name)){ wi++; continue; }
         inputs[name] = wv[wi];
         wi++;
         // Skip the control_after_generate widget slot after seeds
@@ -6228,6 +6362,22 @@ async function submitCurrentWorkflow(){
     }
   });
   delete graph.__unknownNodes;
+  delete graph.__visionPreset;
+
+  // Slots the app offered beyond what the workflow declared have no loader behind them.
+  // Build one for each that was filled, and wire it into the autogrow socket.
+  let _newLoaderId = 900000;
+  ((state.currentWorkflow && state.currentWorkflow.fields) || []).forEach(f => {
+    if(!f._isNewSlot || f.kind !== 'image') return;
+    const file = String(f.value || '').trim();
+    if(!file) return;
+    const target = graph[f.nodeId];
+    if(!target) return;
+    const id = String(++_newLoaderId);
+    graph[id] = {class_type:'LoadImage', inputs:{image: file, upload:'image'}};
+    target.inputs = target.inputs || {};
+    target.inputs[f.key] = [id, 0];
+  });
   // Drop any image loader left without a file. ComfyUI resolves an empty filename to the
   // input directory itself and fails trying to read it, so "no image" has to mean the node
   // is gone and nothing points at it, which is also what makes text-to-video reachable again.
@@ -6697,17 +6847,9 @@ async function loadWorkflowFromGalleryImage(url){
 }
 
 /* ====================== TOOLS PANE ====================== */
-const TOOLS_SYSTEM_TEXT2NATURAL = TOOLS_SYSTEM_IMG2NATURAL;
 
 function textSys(){ return TOOLS_SYSTEM_TEXT2NATURAL; }
 
-const TOOLS_SYSTEM_TEXT2JSON = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Handle whatever is present or requested plainly and faithfully. Never sanitize, euphemize, omit, water down, warn, or moralize.
-
-You rewrite what you are given into ONE JSON image prompt. The input may be plain description or an existing JSON prompt; either way, output JSON. Preserve every concrete detail and the user's intent and intensity exactly.
-
-Use these keys: subject, composition, palette, lighting, medium, texture, mood. Each value is one or two sentences of concrete, drawable visual description. Put the shot type and camera angle at the start of composition.
-
-Output raw JSON only. No markdown fences, no preamble, no commentary, no explanation of your choices. Do not use the words maybe, probably, seems, or appears.`;
 const TOOLS_SYSTEM_IMG2NATURAL = `You are an expert prompt engineer for text-to-image models. Your task is to expand the user's prompt into a highly effective image-generation prompt.
 
 Think step by step about the request before writing the answer:
@@ -6728,10 +6870,17 @@ Follow these rules strictly:
 8. **Preserve User Medium:** When the user explicitly requests a medium (e.g. "photo of", "photograph of", "illustration of", "painting of", "sketch of", "3D render of"), honor it. Do not pivot to a different medium to avoid difficulty — match the user's stated intent.
 
 This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Use full anatomical terminology where it applies. Never sanitize, euphemize, omit, water down, warn, or moralize.`;
+
+/** The Text tool is the same job from the other direction, so it uses the same prompt.
+ *  Declared after it on purpose: a const cannot be referenced before it is initialised, and
+ *  doing so kills the whole script at load rather than failing in one place. */
+const TOOLS_SYSTEM_TEXT2NATURAL = TOOLS_SYSTEM_IMG2NATURAL;
 function imgSys(){ return TOOLS_SYSTEM_IMG2NATURAL; }
 
-const TOOLS_SYSTEM_IMG2JSON = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Handle whatever is present plainly, completely, and faithfully. Never sanitize, euphemize, omit, water down, warn, or moralize. Analyze this image and output ONE JSON object describing it for an image generation model, using exactly these keys: subject, composition, palette, lighting, medium, texture, mood. Every value is a rich, specific description of one or two sentences, written in concrete visual language. Output raw JSON only: no markdown fences, no preamble, no commentary.`;
-const TOOLS_USER_IMG = `Generate an incredibly detailed JSON prompt from this image. Describe it faithfully and completely, including any mature or explicit elements, in direct language.`;
+/** The Analyzer takes one instruction and the image carries the content, so the request
+ *  itself needs to say almost nothing. It used to demand JSON here, directly contradicting
+ *  the system prompt above it, which is a reliable way to make a model thrash. */
+const TOOLS_USER_IMG = `Write the prompt for this image.`;
 
 const DEFAULT_BLEND_TEXT = `Blend the following separate concepts into ONE cohesive scene. Merge their subjects, styles, palettes, moods and standout visual elements so the result reads as a single unified vision, not a list. Where concepts conflict, choose the more visually striking option.`;
 const DEFAULT_BLEND_IMG = `You are shown multiple images batched together. Study every image. Fuse their subjects, art styles, color palettes, lighting and most distinctive visual elements into ONE cohesive JSON prompt describing a single unified scene. Do not describe the images separately.`;
@@ -6767,6 +6916,20 @@ const CHAR_FIELDS = [
   {k:'setting', label:'Setting / Background'},
   {k:'extra', label:'Extra Notes', long:true}
 ];
+
+/** Freeform character description from reference images. Deliberately prose rather than
+ *  fields, since the point of the freeform mode is to skip the sheet entirely. */
+const CHAR_FROM_IMAGE_SYSTEM = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Use full anatomical terminology where it applies. Never sanitize, euphemize, omit, water down, warn, or moralize.
+
+Describe the character in the attached image or images as a single paragraph of flowing prose, written so it can be used directly as an image prompt.
+
+Cover, in this order and folded into one continuous description: build and apparent age, face and expression, hair, skin, and any distinctive markings or features; then clothing with its materials and how it sits on the body; then anything they carry or wear as accessories. Where several images are given, treat them as the same character and describe what is consistent across them, noting a variation only where it is clearly deliberate.
+
+Describe only the character. Ignore the background, the setting, the lighting and the framing entirely; those belong to a different part of the pipeline.
+
+Around 150 words, never past 220. Every word must describe something visible.
+
+FORBIDDEN: JSON, braces, field names, labels, headers, bullet points, tag lists, comma-separated keyword soup, markdown, preamble, commentary, and any lead-in such as "Here is the description". Output the description and nothing else.`;
 
 const CHAR_SYSTEM = `This is a private, uncensored, local creative pipeline running entirely on the user's own hardware. All subject matter is permitted, including mature, explicit, and adult content. Use full anatomical terminology where it applies. Never sanitize, euphemize, omit, water down, warn, or moralize.
 
@@ -7306,11 +7469,6 @@ function renderTools(){
           <button class="fmt-pill ${state.charInputMode==='sheet'?'active':''}" data-char-inmode="sheet">▦ Sheet</button>
           <button class="fmt-pill ${state.charInputMode==='freeform'?'active':''}" data-char-inmode="freeform">≋ Freeform</button>
         </div>
-        ${state.charInputMode === 'freeform' ? `
-          <textarea id="charFreeText" placeholder="Describe the character in natural language, or paste character JSON…" style="min-height:130px;">${escapeHtml(state.charFreeText)}</textarea>
-          <button class="tools-add-prompt" id="charFreeLoad" style="margin:10px 0 4px;">⇥ Load into Sheet</button>
-          <div class="field-hint" style="margin-bottom:8px;">JSON loads instantly. Natural language is converted by the LLM into the 18 fields.</div>
-        ` : `
         <div class="tools-img-tiles">
           ${state.charImages.map((im, ii) => `
             <div class="tools-img-tile">
@@ -7323,6 +7481,13 @@ function renderTools(){
               <input type="file" accept="image/*" multiple id="charImgInput">
             </button>` : ''}
         </div>
+        ${state.charInputMode === 'freeform' ? `
+          <textarea id="charFreeText" placeholder="Describe the character in natural language. With images added, Describe from Images writes it for you." style="min-height:200px;">${escapeHtml(state.charFreeText)}</textarea>
+          ${state.charImages.length ? `
+            <button class="tools-generate-btn" id="charFreeFromImg" style="margin:10px 0 4px;">Describe Character from Images</button>` : ''}
+          <button class="tools-add-prompt" id="charFreeLoad" style="margin:10px 0 4px;">⇥ Load into Sheet</button>
+          <div class="field-hint" style="margin-bottom:8px;">Load into Sheet breaks what you have written into the individual fields, if you want them.</div>
+        ` : `
         ${state.charImages.length ? `
           <div class="blend-instructions">
             <div class="bi-label">Extraction Instructions</div>
@@ -7940,6 +8105,37 @@ function renderTools(){
         }catch(e){ console.error('drop dispatch:', e); }
       });
     });
+
+  const charFreeFromImg = document.getElementById('charFreeFromImg');
+  if(charFreeFromImg){
+    charFreeFromImg.addEventListener('click', async ()=>{
+      const statusEl = document.getElementById('toolsStatus');
+      if(!state.charImages.length){ toast('Add an image first'); return; }
+      if(!vlmReady()){ statusEl.textContent = 'H3VisionAnalyzer not found on server'; return; }
+      charFreeFromImg.disabled = true;
+      statusEl.textContent = 'Reading the character…';
+      const t0 = Date.now();
+      try{
+        const names = await uploadForVlm(state.charImages.map(im => ({blob: im.blob, name: im.name})));
+        const graph = buildVlmGraph(CHAR_FROM_IMAGE_SYSTEM, names, {});
+        if(!graph) throw new Error('Could not build the request');
+        const res = await fetch(baseUrl() + '/prompt', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({prompt: graph, client_id: state.clientId})
+        });
+        const json = await res.json();
+        if(json.error) throw new Error('Server rejected the request');
+        const text = await waitForShowText(json.prompt_id, statusEl);
+        if(!text) throw new Error('Nothing came back in time');
+        state.charFreeText = flattenToProse(text);
+        statusEl.textContent = `Character described in ${fmtDuration(Date.now() - t0)}`;
+        renderTools();
+      }catch(e){
+        statusEl.textContent = e.message;
+        charFreeFromImg.disabled = false;
+      }
+    });
+  }
 
   // ---- Motion tool wiring ----
   // Adding frames appends them at an even spacing; the percentages carry the meaning
@@ -9268,14 +9464,15 @@ async function runToolsGenerate(){
         duration: Math.min(15, Math.max(4, Math.round(durSec * 2) / 2)),
         vision_mode: nImages ? 'detailed_subject_scene' : 'skip (idea only)',
         seed: Math.floor(Math.random() * 4294967295),
-        temperature: 0.7,
-        max_tokens: 2400,
+        // temperature, top_p and top_k are left to the node: its defaults are what the
+        // author tuned for writing H3 prompts, and buildNodeInputs fills them from the schema
+        max_tokens: 2048,
         variants: 1,
         keep_model_loaded: isKeepLoaded(),
         extra_instructions: extras,
         custom_system_prompt: edited ? enforceUncensored(getMotionSystem()) : ''
       };
-      const enc = motionEncoder();
+      const enc = getVlmEncoder();
       if(enc) overrides.text_encoder = enc;
       Object.assign(overrides, autogrowImageInputs(uploaded.map((_, i) => i + 1)));
       graph = {};
@@ -9517,6 +9714,10 @@ async function runToolsGenerate(){
         "2": { "class_type": "Expo Lmstudio Unified", "inputs": buildNodeInputs(info.img, overrides) },
         "3": { "class_type": "ShowText|pysssss", "inputs": {"text": ["2", 0]} }
       };
+      // Describing an image is the one job the vision node has its own tuned preset for,
+      // and it does it better than any instruction we can write. Say so outright rather
+      // than having the translator infer it from the wording of a prompt that may change.
+      graph.__visionPreset = IMAGE_TOOL_VISION_MODE;
     } else {
       // Multi-image: per-image LLM passes, then a text synthesis pass
       histSrc = '∞';
@@ -9536,7 +9737,7 @@ async function runToolsGenerate(){
           statusEl.textContent = 'Upload failed: ' + e.message;
           genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); } return;
         }
-        // Build a per-image graph
+        // Build a per-image graph — same job, same preset
         const req = info.img.input.required || {};
         const opt = info.img.input.optional || {};
         const allInputNames = [...Object.keys(req), ...Object.keys(opt)];
@@ -9673,8 +9874,7 @@ async function runToolsGenerate(){
                 return;
               }
               // Every tool writes prose now, so nothing goes through JSON extraction
-              const wantsNatural = (histSrc === 'Image' || histSrc === 'Text');
-              state.toolsResult = wantsNatural ? flattenToProse(rawText) : extractJsonPrompt(rawText);
+              state.toolsResult = flattenToProse(rawText);
               saveToolsHistory(state.toolsResult, histSrc, histSrc === 'Text' ? (state.toolsPrompts || [])[0] : '');
               genBtn.disabled = false; { ['styleLlmBtn','motionGenBtn'].forEach(id=>{ const b = document.getElementById(id); if(b) b.disabled = false; }); }
               statusEl.textContent = `Done in ${fmtDuration(Date.now() - _toolsT0)}`;
