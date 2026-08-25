@@ -10,7 +10,7 @@ Your GPU, in your pocket.
 
 ---
 
-**Latest: β4.6.x** — the Tools pane runs entirely on ComfyUI's own vision model. No second application, no API key, no LM Studio. [Full changelog ↓](#changelog)
+**Latest: β4.7.x** — the Tools pane runs entirely on ComfyUI's own vision model. No second application, no API key, no LM Studio. [Full changelog ↓](#changelog)
 
 ---
 
@@ -86,7 +86,7 @@ Drop in a **`.json` workflow**, a **PNG** ComfyUI rendered, or an **MP4 / MOV / 
 
 Nodes the app doesn't recognise are skipped and named, not fatal. The workflow still imports and usually still runs.
 
-The **[`workflows/`](workflows/) folder** has tested examples for SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, LTX-2 video, and MiniMax H3 video, including multi-keyframe and first-to-last-frame variants. They all open cleanly in ComfyUI and import into the app. The image workflows share a surrealist botanical prompt and the Wan 2.2 workflow animates their output — an end-to-end demo chain out of the box. Full prerequisite download tables are in that folder's README.
+The **[`workflows/`](workflows/) folder** has tested examples for SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, LTX-2 video, and MiniMax H3 video, including multi-keyframe, first-to-last-frame and reference-image variants. They all open cleanly in ComfyUI and import into the app. The image workflows share a surrealist botanical prompt and the Wan 2.2 workflow animates their output — an end-to-end demo chain out of the box. Full prerequisite download tables are in that folder's README.
 
 ## Troubleshooting
 
@@ -128,6 +128,15 @@ If your work is in this list and you'd like something corrected, credited differ
 ## Changelog
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
+
+### β4.7.1 — August 20, 2026
+- **Fixed the output folder setting being ignored by video workflows.** It only rewrote four node types by name and the core SaveVideo was not among them, so every MiniMax render went wherever the workflow said instead. It now redirects any node that writes files, whatever that node is called
+
+### β4.7.0 — August 20, 2026
+- **Reference-image workflows.** MiniMax H3 reference-to-video is supported: images are named Reference 1, 2, 3 and a fresh empty slot appears as you fill the last one, up to what the node allows. Filling a slot the workflow never declared creates its loader at submit
+- **Fixed a widget mapping bug affecting any node with converted inputs.** When a widget is turned into an input in ComfyUI, its stale value stays in the saved list. The app was skipping the name without skipping the slot, shifting every value after it — which is how a reference-sizing dropdown ended up holding an empty prompt
+- Attention backend is a labelled dropdown, so Comfy Kitchen and Sage both work depending on what a workflow was built with
+- New example: MiniMax H3 reference-to-video, shipping with the turbo LoRA at 0.75 and an otherwise empty stack
 
 ### β4.6.1 — August 19, 2026
 - The ▣ Image tool now runs the vision node's own analysis preset rather than sending it an instruction, matching how the reference workflow is configured. Every other tool still sends its own instruction, since no preset can express "describe the style and ignore the subject"

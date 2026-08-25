@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β4.7.0</title>
+<title>Return Current β4.7.1</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1697,7 +1697,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.7.0</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.7.1</span></div>
     </div>
   </div>
 
@@ -2096,14 +2096,19 @@ function applyOutputOverride(graph){
   const d = new Date();
   const dateStr = String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0') + String(d.getFullYear()).slice(-2);
   const prefix = `${getOutputRootDir()}/${modelShort}/${dateStr}`;
+  // Match on capability rather than a list of names. A node that has a filename_prefix is
+  // a node that writes files, whatever it is called — the old list omitted the core
+  // SaveVideo, so every MiniMax render quietly ignored this setting and used the path
+  // baked into the workflow instead.
+  let redirected = 0;
   for(const nid in graph){
-    const ct = graph[nid].class_type;
-    if(ct === 'SaveImage' || ct === 'VHS_VideoCombine' || ct === 'SaveAnimatedWEBP' || ct === 'SaveAnimatedPNG'){
-      if(graph[nid].inputs && !Array.isArray(graph[nid].inputs.filename_prefix)){
-        graph[nid].inputs.filename_prefix = prefix;
-      }
-    }
+    const ins = graph[nid].inputs;
+    if(!ins || !('filename_prefix' in ins)) continue;
+    if(Array.isArray(ins.filename_prefix)) continue; // driven by a link; not ours to set
+    ins.filename_prefix = prefix;
+    redirected++;
   }
+  if(!redirected) console.warn('output override is on but no node in this workflow writes files');
 }
 
 function simplifyModelName(full){
