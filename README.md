@@ -78,6 +78,8 @@ The app works with plain ComfyUI. These unlock specific parts of it:
 | **MiniMax H3 quality** | [Spectrum](https://github.com/xmarre/ComfyUI-Spectrum-MiniMax-H3) | Offered as one switch against the turbo LoRA; they don't combine |
 | **Video upscaling** | [NVIDIA RTX Nodes](https://github.com/Comfy-Org/Nvidia_RTX_Nodes_ComfyUI) | RTX VSR and frame-by-frame model upscaling appear as named, mutually exclusive toggles |
 
+Nothing to install for the memory controls: **Unload Models** and **Free Memory** under ⚙ → Server call ComfyUI's own endpoint, as does the optional "free memory when the queue empties".
+
 **LM Studio is no longer required or supported.** Earlier versions used it for the Tools pane; everything now runs on the vision model ComfyUI already has loaded. If you were running it for this app, you can close it.
 
 ## Import a workflow
@@ -89,6 +91,8 @@ Nodes the app doesn't recognise are skipped and named, not fatal. The workflow s
 The **[`workflows/`](workflows/) folder** has tested examples for SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, LTX-2 video, and MiniMax H3 video, including multi-keyframe, first-to-last-frame and reference-image variants. They all open cleanly in ComfyUI and import into the app. The image workflows share a surrealist botanical prompt and the Wan 2.2 workflow animates their output — an end-to-end demo chain out of the box. Full prerequisite download tables are in that folder's README.
 
 ## Troubleshooting
+
+**My render is not where my workflow saves things** — Return Current consolidates output into `output/Return_Current_Output/<model>/<date>/` so the gallery can group it. The app tells you the destination on your first generation. Turn it off, or change the folder, under Outputs in ⚙.
 
 **"Disconnected"** — Confirm ComfyUI is running with both flags above. Settings should point to ComfyUI's port (`8188`), not the app server (`8000`).
 
@@ -128,6 +132,10 @@ If your work is in this list and you'd like something corrected, credited differ
 ## Changelog
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
+
+### β4.8.0 — August 26, 2026
+- **Memory controls in Settings.** Unload Models drops models from VRAM, Free Memory runs collection and empties the CUDA cache. Both call ComfyUI's own endpoint, so nothing extra needs installing
+- **Free memory when the queue empties** — an optional toggle that does both once the last job finishes. Deliberately not between queued jobs: that would throw away the model cache and make the next render reload everything
 
 ### β4.7.1 — August 20, 2026
 - **Fixed the output folder setting being ignored by video workflows.** It only rewrote four node types by name and the core SaveVideo was not among them, so every MiniMax render went wherever the workflow said instead. It now redirects any node that writes files, whatever that node is called

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β4.7.1</title>
+<title>Return Current β4.8.0</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1518,6 +1518,19 @@
     white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere;
     max-width:100%; margin:0;
   }
+  .mem-row{display:flex; gap:8px;}
+  .mem-btn{
+    flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
+    background:var(--bg-card); border:1px solid var(--line); border-radius:10px;
+    color:var(--text-dim); font-family:var(--font-mono); font-size:11px;
+    letter-spacing:.05em; padding:11px 8px; cursor:pointer;
+  }
+  .mem-btn svg{width:17px; height:17px; flex:0 0 17px;}
+  .mem-btn:active{
+    border-color:var(--safelight-dim); color:var(--safelight);
+    box-shadow:0 0 14px var(--safelight-glow);
+  }
+  .mem-btn:disabled{opacity:.45; cursor:default;}
   .lora-combo-row{display:flex; gap:8px; margin-bottom:2px;}
   .stale-banner{
     background:rgba(232,87,74,.10); border:1px solid rgba(232,87,74,.45);
@@ -1653,6 +1666,35 @@
         <label>Port</label>
         <input type="text" id="portInput" placeholder="8188">
       </div>
+      <div class="field">
+        <label>Memory</label>
+        <div class="mem-row">
+          <button class="mem-btn" id="unloadModelsBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="5" width="14" height="14" rx="2"/>
+              <rect x="8.5" y="8.5" width="7" height="7" rx="1" fill="currentColor" stroke="none"/>
+              <path d="M9 2v3M12 2v3M15 2v3M9 19v3M12 19v3M15 19v3M2 9h3M2 12h3M2 15h3M19 9h3M19 12h3M19 15h3"/>
+            </svg>
+            <span>Unload Models</span>
+          </button>
+          <button class="mem-btn" id="freeMemoryBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="5" width="14" height="14" rx="2"/>
+              <path d="M9 2v3M12 2v3M15 2v3M9 19v3M12 19v3M15 19v3M2 9h3M2 12h3M2 15h3M19 9h3M19 12h3M19 15h3"/>
+            </svg>
+            <span>Free Memory</span>
+          </button>
+        </div>
+        <div class="field-hint">Unload drops the models from VRAM. Free runs collection and empties the CUDA cache. Both hit ComfyUI's own endpoint, so no extra nodes are needed.</div>
+      </div>
+      <div class="field">
+        <label class="toggle-row">
+          <input type="checkbox" id="autoFreeToggle">
+          <span>Free memory when the queue empties</span>
+        </label>
+        <div class="field-hint">Runs both of the above once the last job finishes, not between queued jobs, so a batch keeps its models warm and only the idle rig gives the memory back.</div>
+      </div>
+
       <h2 style="margin-top:22px;">Vision Model</h2>
       <div class="field" id="vlmEncoderField">
         <label>Text Encoder</label>
@@ -1697,7 +1739,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.7.1</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.8.0</span></div>
     </div>
   </div>
 
@@ -1963,6 +2005,7 @@ function handleWsMessage(msg){
       // finished
       const promptId = msg.data.prompt_id;
       state.activeJobs.delete(promptId);
+      if(!state.activeJobs.size) scheduleAutoFreeIfIdle();
       if(state.activeJobs.size === 0){
         state.busy = false;
         setConnDot('connected');
@@ -1973,6 +2016,7 @@ function handleWsMessage(msg){
   } else if(msg.type === 'execution_error'){
     const d = msg.data || {};
     state.activeJobs.delete(d.prompt_id);
+    if(!state.activeJobs.size) scheduleAutoFreeIfIdle();
     if(state.activeJobs.size === 0){
       state.busy = false;
       setConnDot('connected');
@@ -2003,6 +2047,7 @@ function handleWsMessage(msg){
   } else if(msg.type === 'execution_interrupted'){
     const d = msg.data || {};
     state.activeJobs.delete(d.prompt_id);
+    if(!state.activeJobs.size) scheduleAutoFreeIfIdle();
     if(state.activeJobs.size === 0){
       state.busy = false;
       setConnDot('connected');
@@ -2078,6 +2123,21 @@ function getOutputRootDir(){
   const clean = raw.replace(/[\\/:*?"<>|.]/g, '').trim();
   return clean || 'Return_Current_Output';
 }
+/** Ask ComfyUI to give memory back.
+ *  POST /free is core: unload_models drops the models from VRAM, free_memory runs Python
+ *  collection and empties the CUDA cache. This is the same endpoint rgthree's toolbar
+ *  buttons call, so nothing extra needs installing. */
+async function freeServerMemory({unloadModels = false, freeMemory = false} = {}){
+  const res = await fetch(baseUrl() + '/free', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({unload_models: !!unloadModels, free_memory: !!freeMemory})
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  return true;
+}
+function isAutoFreeOn(){ return localStorage.getItem('returncurrent_auto_free') === 'on'; }
+
 function applyOutputOverride(graph){
   if(!isOutputOverrideOn()) return;
   // Find the model shortname from the graph's loader
@@ -2173,6 +2233,25 @@ function deleteGalleryImage(url){
    mobile browsers love to drop — if it's missed, the render sits finished on the
    server while the app waits forever. This makes completion inevitable. */
 let _jobWatchdog = null;
+/** Give memory back once the rig is genuinely idle.
+ *  Freeing between queued jobs would throw away the model cache and make the next job
+ *  reload everything, which on a 15GB encoder is the difference between seconds and
+ *  minutes. Waiting for the queue to empty gets the memory back without paying that on
+ *  every render. Debounced, because the last job finishing and the queue reporting empty
+ *  do not always arrive together. */
+let _autoFreeTimer = null;
+function scheduleAutoFreeIfIdle(){
+  if(!isAutoFreeOn()) return;
+  clearTimeout(_autoFreeTimer);
+  _autoFreeTimer = setTimeout(async ()=>{
+    if(state.activeJobs.size) return; // something new arrived while we waited
+    try{
+      await freeServerMemory({unloadModels: true, freeMemory: true});
+      toast('Queue empty — memory released');
+    }catch(e){ console.warn('auto free failed:', e.message); }
+  }, 4000);
+}
+
 function ensureJobWatchdog(){
   if(_jobWatchdog) return;
   _jobWatchdog = setInterval(async ()=>{
@@ -3878,9 +3957,12 @@ function buildEditableFields(apiGraph, titleMap){
     }
   }
 
-  // Ensure a lora_stack always exists for workflows with model loaders
+  // Offer a LoRA stack even when a workflow has none — but only if the server can actually
+  // run one. Without rgthree installed, adding a LoRA here would inject a node the server
+  // has never heard of and fail at validation, naming a node the user never added.
   const hasLoraStack = groups.some(f => f.kind === 'lora_stack');
-  if(!hasLoraStack){
+  const canInjectPll = !!(state._fullObjectInfo || {})['Power Lora Loader (rgthree)'];
+  if(!hasLoraStack && canInjectPll){
     // Find a model loader to attach the virtual LoRA stack to
     let modelLoaderNodeId = null;
     let clipLoaderNodeId = null;
@@ -6406,6 +6488,17 @@ async function submitCurrentWorkflow(){
   }
   // Last line of defence for graphs converted by an older build: anything that cannot pass
   // the server's own validation is corrected here, and the user is told what changed.
+  // A first render that lands somewhere the user did not choose is the most likely support
+  // question on a fresh install. The setting is clearly labelled, but nobody reads settings
+  // before their first generation, so say it once and never again.
+  if(isOutputOverrideOn() && !localStorage.getItem('returncurrent_output_notice')){
+    const sample = Object.values(graph).find(n => n.inputs && typeof n.inputs.filename_prefix === 'string');
+    if(sample){
+      localStorage.setItem('returncurrent_output_notice', 'shown');
+      setTimeout(()=> toast('Saving to output/' + sample.inputs.filename_prefix + ' — change this under Outputs in ⚙'), 900);
+    }
+  }
+
   const repaired = repairGraphAgainstSchema(graph);
   if(repaired.length){
     toast('Corrected ' + repaired.length + ' setting' + (repaired.length > 1 ? 's' : '') + ' this workflow could not use');
@@ -10269,6 +10362,38 @@ function syncVlmEncoderUi(){
   const enc = getVlmEncoder();
   btn.textContent = enc ? enc.replace(/\\/g,'/').split('/').pop() : 'Choose…';
 }
+// Memory controls
+function wireMemButton(id, opts, label){
+  const btn = document.getElementById(id);
+  if(!btn) return;
+  btn.addEventListener('click', async ()=>{
+    if(!state.connected){ toast('Not connected to server'); return; }
+    const original = btn.querySelector('span').textContent;
+    btn.disabled = true;
+    btn.querySelector('span').textContent = 'Working…';
+    try{
+      await freeServerMemory(opts);
+      toast(label);
+    }catch(e){
+      toast('Could not reach the server: ' + e.message);
+    }finally{
+      btn.disabled = false;
+      btn.querySelector('span').textContent = original;
+    }
+  });
+}
+wireMemButton('unloadModelsBtn', {unloadModels: true},                  'Models unloaded from VRAM');
+wireMemButton('freeMemoryBtn',   {freeMemory: true},                    'Memory freed and cache emptied');
+
+const autoFreeEl = document.getElementById('autoFreeToggle');
+if(autoFreeEl){
+  autoFreeEl.checked = isAutoFreeOn();
+  autoFreeEl.addEventListener('change', ()=>{
+    localStorage.setItem('returncurrent_auto_free', autoFreeEl.checked ? 'on' : 'off');
+    toast(autoFreeEl.checked ? 'Memory will be freed once the queue empties' : 'Automatic freeing off');
+  });
+}
+
 const vlmEncoderBtn = document.getElementById('vlmEncoderBtn');
 if(vlmEncoderBtn){
   vlmEncoderBtn.addEventListener('click', ()=>{
