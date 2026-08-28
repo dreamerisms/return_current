@@ -22,47 +22,97 @@ No app store. No install. No subscription. No cloud middleman. Your PC does the 
 
 ## Quick Start
 
-**Requirements:** ComfyUI on your PC, and [Tailscale](https://tailscale.com/) on both PC and phone (or just the same Wi-Fi for home-only use). Everything else is optional — see [What each feature needs](#what-each-feature-needs) below.
+**You need:** ComfyUI on your PC, and [Tailscale](https://tailscale.com/) on both PC and phone — or just the same Wi-Fi, if you only ever use it at home. Everything else is optional; see [What each feature needs](#what-each-feature-needs).
 
-**1. Add two flags to your ComfyUI launch `.bat`:**
+Setup is two things: let ComfyUI talk to the network, and serve one HTML file.
+
+---
+
+### 1. Open ComfyUI to your network
+
+Add two flags to the `.bat` you launch ComfyUI with:
 
 ```
 --listen 0.0.0.0 --enable-cors-header
 ```
 
-`--listen` opens ComfyUI to your network. `--enable-cors-header` lets the app talk to ComfyUI's API from a different port. Restart ComfyUI.
+`--listen` makes ComfyUI reachable from other devices. `--enable-cors-header` lets a page served on a different port talk to its API. Restart ComfyUI.
 
-**2. Serve the app from your PC.** Drop `return_current_beta.html` in a folder. **Rename it to `index.html`** — this is worth doing, because it's the difference between typing an address and typing an address plus a filename. Then create `serve.bat` next to it:
+**Check it worked:** on your PC, open `http://localhost:8188`. ComfyUI should load as normal.
 
-```
+---
+
+### 2. Serve the app
+
+Put `return_current_beta.html` in a folder of its own, anywhere you like, and **rename it `index.html`**. That rename is the difference between typing an address and typing an address plus a filename — worth doing.
+
+Create `serve.bat` in the same folder:
+
+```bat
+@echo off
 cd /d "%~dp0"
 python -m http.server 8000
 ```
 
-No system Python? Use ComfyUI portable's embedded one:
+`%~dp0` is the folder this .bat is sitting in, so the file works wherever you put it. Leave that line as it is.
 
-```
+**No Python on your PC?** ComfyUI portable ships with one. Use this version instead, replacing the path with wherever your ComfyUI actually lives:
+
+```bat
+@echo off
 cd /d "%~dp0"
-..\ComfyUI_windows_portable\python_embeded\python.exe -m http.server 8000
+"C:\ComfyUI_windows_portable\python_embeded\python.exe" -m http.server 8000
 ```
 
-Double-click it. Leave it running.
+To find that path: open your ComfyUI folder, go into `python_embeded`, click the address bar, and copy what it says. Add `\python.exe` to the end.
 
-**3. Get your IP.** Right-click the Tailscale tray icon — your IP is right there under your device name. A LAN IP works too for home-only use.
+<details>
+<summary><b>macOS or Linux</b></summary>
 
-**4. Open it on your phone.** The address depends on what you named the file:
+Save this as `serve.sh` next to the HTML file, then `chmod +x serve.sh` and run it:
+
+```bash
+#!/usr/bin/env bash
+cd "$(dirname "$0")"
+python3 -m http.server 8000
+```
+</details>
+
+Double-click it. A terminal window opens and stays open — that's correct, it's the server running. Closing that window stops it.
+
+**Check it worked:** on your PC, open `http://localhost:8000`. The app should load.
+
+---
+
+### 3. Find your IP
+
+Right-click the Tailscale tray icon; your IP is under your device name, and looks like `100.x.x.x`. On the same Wi-Fi you can use your LAN IP instead (`ipconfig` → IPv4 Address).
+
+---
+
+### 4. Open it on your phone
+
+Browse to **`http://YOUR-IP:8000`**.
+
+If you skipped the rename in step 2, you need the filename too:
 
 | File is named | Browse to |
 |---|---|
 | `index.html` | `http://YOUR-IP:8000` |
 | `return_current_beta.html` | `http://YOUR-IP:8000/return_current_beta.html` |
-| anything else | `http://YOUR-IP:8000/whatever-you-named-it.html` |
+| anything else | `http://YOUR-IP:8000/whatever-you-called-it.html` |
 
-A plain server only serves `index.html` automatically. Any other name has to be typed in full, exactly, including the `.html`. If you get a directory listing instead of the app, you're in the right folder — just tap the file.
+Seeing a list of files instead of the app? You're in the right place — tap the file.
 
-Once it loads, use your browser's **Add to Home Screen** for the full-screen app experience.
+Once it loads, use your browser's **Add to Home Screen** for the full-screen experience.
 
-**5. Connect.** Tap ⚙ → enter your IP and **ComfyUI's** port (`8188`, not the `8000` you're serving the app from) → Save. The dot turns green.
+---
+
+### 5. Connect
+
+Tap ⚙, enter your IP and **ComfyUI's** port — `8188`, not the `8000` you're serving the app from — then Save. The dot next to the title turns green.
+
+Two ports is the part people trip on: `8000` serves the app, `8188` is ComfyUI itself.
 
 ## What each feature needs
 
