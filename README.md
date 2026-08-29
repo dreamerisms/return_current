@@ -16,13 +16,13 @@ Your GPU, in your pocket.
 
 ## What is this?
 
-A single HTML file that turns your phone into a remote for your ComfyUI rig. Import any workflow, edit every meaningful field with a thumb-friendly UI, queue generations, and watch images and video land in a live gallery — from the couch, the yard, or anywhere your network reaches.
+A single HTML file that turns your phone into a remote for your ComfyUI rig. Import any workflow, edit every meaningful field with a thumb-friendly UI, queue generations, and watch images and video land in a live gallery, from the couch, the yard, or anywhere your network reaches.
 
 No app store. No install. No subscription. No cloud middleman. Your PC does the work.
 
 ## Quick Start
 
-**You need:** ComfyUI on your PC, and [Tailscale](https://tailscale.com/) on both PC and phone — or just the same Wi-Fi, if you only ever use it at home. Everything else is optional; see [What each feature needs](#what-each-feature-needs).
+**You need:** ComfyUI on your PC, and [Tailscale](https://tailscale.com/) on both PC and phone, or just the same Wi-Fi if you only ever use it at home. Everything else is optional; see [What each feature needs](#what-each-feature-needs).
 
 Setup is two things: let ComfyUI talk to the network, and serve one HTML file.
 
@@ -78,7 +78,7 @@ python3 -m http.server 8000
 ```
 </details>
 
-Double-click it. A terminal window opens and stays open — that's correct, it's the server running. Closing that window stops it.
+Double-click it. A terminal window opens and stays open. That's correct, it's the server running. Closing that window stops it.
 
 **Check it worked:** on your PC, open `http://localhost:8000`. The app should load.
 
@@ -110,7 +110,7 @@ Once it loads, use your browser's **Add to Home Screen** for the full-screen exp
 
 ### 5. Connect
 
-Tap ⚙, enter your IP and **ComfyUI's** port — `8188`, not the `8000` you're serving the app from — then Save. The dot next to the title turns green.
+Tap ⚙, enter your IP and **ComfyUI's** port, `8188`, not the `8000` you're serving the app from. Save. The dot next to the title turns green.
 
 Two ports is the part people trip on: `8000` serves the app, `8188` is ComfyUI itself.
 
@@ -134,11 +134,11 @@ Nothing to install for the memory controls: **Unload Models** and **Free Memory*
 
 ## Import a workflow
 
-Drop in a **`.json` workflow**, a **PNG** ComfyUI rendered, or an **MP4 / MOV / WebM** it rendered — all three carry the workflow inside them. The ∞ button on any gallery item does the same thing, pulling the graph back out of a finished render so you can iterate on it.
+Drop in a **`.json` workflow**, a **PNG** ComfyUI rendered, or an **MP4 / MOV / WebM** it rendered. All three carry the workflow inside them. The ∞ button on any gallery item does the same thing, pulling the graph back out of a finished render so you can iterate on it.
 
 Nodes the app doesn't recognise are skipped and named, not fatal. The workflow still imports and usually still runs.
 
-The **[`workflows/`](workflows/) folder** has tested examples for SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, LTX-2 video, and MiniMax H3 video, including multi-keyframe, first-to-last-frame and reference-image variants. They all open cleanly in ComfyUI and import into the app. The image workflows share a surrealist botanical prompt and the Wan 2.2 workflow animates their output — an end-to-end demo chain out of the box. Full prerequisite download tables are in that folder's README.
+The **[`workflows/`](workflows/) folder** has tested examples for SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, LTX-2 video, and MiniMax H3 video, including multi-keyframe, first-to-last-frame and reference-image variants. They all open cleanly in ComfyUI and import into the app. The image workflows share a surrealist botanical prompt and the Wan 2.2 workflow animates their output, giving you an end-to-end demo chain out of the box. Full prerequisite download tables are in that folder's README.
 
 ## Troubleshooting
 
@@ -173,7 +173,7 @@ Return Current is a thin layer over an enormous amount of other people's work. I
 - **mattjohnpowell** — the LM Studio bridge nodes that carried the Tools pane through its first year, before ComfyUI could host a vision model itself.
 - **pythongosssss** — ShowText and a pile of quality-of-life nodes the ecosystem quietly runs on.
 - **CivitAI** — the public API powering trigger word lookup and example galleries, and the community hosting the LoRAs themselves.
-- **Every LoRA trainer and model creator** whose work passes through this app — the researchers and teams behind SDXL, Ideogram, Krea, Wan, MiniMax, and Gemma, and the individuals training and freely sharing the fine-tunes that make local generation interesting.
+- **Every LoRA trainer and model creator** whose work passes through this app: the researchers and teams behind SDXL, Ideogram, Krea, Wan, MiniMax, and Gemma, and the individuals training and freely sharing the fine-tunes that make local generation interesting.
 - **Tailscale** — the plumbing that makes "from anywhere" true instead of marketing.
 - **Anthropic's Claude** — this app was built in conversation with Claude, by a designer who doesn't write code. That sentence would have been science fiction recently. Credit where due, to the model and to everyone whose collective knowledge trained it.
 
