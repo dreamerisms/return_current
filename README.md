@@ -10,7 +10,7 @@ Your GPU, in your pocket.
 
 ---
 
-**Latest: β4.7.x** — the Tools pane runs entirely on ComfyUI's own vision model. No second application, no API key, no LM Studio. [Full changelog ↓](#changelog)
+**β4.9.0 — August 29, 2026** — the Tools pane runs entirely on ComfyUI's own vision model. No second application, no API key, no LM Studio. [Full changelog ↓](#changelog)
 
 ---
 
