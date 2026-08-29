@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β4.8.0</title>
+<title>Return Current β4.9.0</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1518,6 +1518,58 @@
     white-space:pre-wrap; word-break:break-word; overflow-wrap:anywhere;
     max-width:100%; margin:0;
   }
+  /* The charge indicator lives in the gap between the rune and the view buttons, where a
+     thumb resting on the button cannot cover it. It is anchored at the rune end and
+     retracts toward it, so the energy reads as being drawn into the glyph. */
+  .purge-track{
+    flex:1; position:relative; height:2px; align-self:center;
+    margin:0 10px; border-radius:2px; overflow:visible;
+  }
+  .purge-bar{
+    position:absolute; left:0; top:0; height:100%; width:0;
+    border-radius:2px; opacity:0;
+    background:linear-gradient(90deg,
+      var(--safelight-dim) 0%,
+      var(--safelight) 55%,
+      var(--safelight) 100%);
+    box-shadow:0 0 10px var(--safelight-glow), 0 0 20px var(--safelight-glow);
+    transition:opacity .1s ease;
+  }
+  .purge-track.charging .purge-bar{opacity:1;}
+  /* The travelling end burns brighter than the rest of the bar */
+  .purge-bar::after{
+    content:''; position:absolute; right:-2px; top:-2px;
+    width:5px; height:6px; border-radius:3px;
+    background:var(--safelight);
+    box-shadow:0 0 8px var(--safelight), 0 0 16px var(--safelight-glow);
+  }
+  .purge-btn{position:relative; overflow:visible;}
+  .purge-glyph{position:relative; z-index:1; transition:color .15s ease, text-shadow .15s ease;}
+  .purge-btn.holding .purge-glyph{
+    color:var(--safelight);
+    text-shadow:0 0 10px var(--safelight-glow);
+  }
+  /* The moment it fires: a single outward pulse, then done */
+  @keyframes purge-fired{
+    0%{transform:scale(1); opacity:1;}
+    45%{transform:scale(1.5); opacity:.65;}
+    100%{transform:scale(2.1); opacity:0;}
+  }
+  .purge-btn.fired::after{
+    content:''; position:absolute; inset:-3px; border-radius:50%;
+    border:2px solid var(--safelight); animation:purge-fired .5s ease-out forwards;
+    pointer-events:none;
+  }
+  .split-row{display:flex; gap:10px;}
+  .split-row > .field{flex:1; min-width:0;}
+  .unit-input{display:flex; gap:6px;}
+  .unit-input input{flex:1; min-width:0;}
+  .unit-pill{
+    flex:0 0 auto; background:var(--bg-card); border:1px solid var(--line);
+    border-radius:6px; color:var(--text-dim); font-family:var(--font-mono);
+    font-size:11px; padding:0 10px; cursor:pointer;
+  }
+  .unit-pill:active{border-color:var(--safelight-dim); color:var(--safelight);}
   .mem-row{display:flex; gap:8px;}
   .mem-btn{
     flex:1; display:flex; align-items:center; justify-content:center; gap:7px;
@@ -1531,6 +1583,14 @@
     box-shadow:0 0 14px var(--safelight-glow);
   }
   .mem-btn:disabled{opacity:.45; cursor:default;}
+  .mem-danger:active{
+    border-color:rgba(232,87,74,.6); color:#f0a89f;
+    box-shadow:0 0 14px rgba(232,87,74,.25);
+  }
+  .mem-danger.armed{
+    border-color:rgba(232,87,74,.75); color:#f0a89f;
+    background:rgba(232,87,74,.10);
+  }
   .lora-combo-row{display:flex; gap:8px; margin-bottom:2px;}
   .stale-banner{
     background:rgba(232,87,74,.10); border:1px solid rgba(232,87,74,.45);
@@ -1675,17 +1735,24 @@
               <rect x="8.5" y="8.5" width="7" height="7" rx="1" fill="currentColor" stroke="none"/>
               <path d="M9 2v3M12 2v3M15 2v3M9 19v3M12 19v3M15 19v3M2 9h3M2 12h3M2 15h3M19 9h3M19 12h3M19 15h3"/>
             </svg>
-            <span>Unload Models</span>
+            <span>Unload</span>
           </button>
           <button class="mem-btn" id="freeMemoryBtn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
               <rect x="5" y="5" width="14" height="14" rx="2"/>
               <path d="M9 2v3M12 2v3M15 2v3M9 19v3M12 19v3M15 19v3M2 9h3M2 12h3M2 15h3M19 9h3M19 12h3M19 15h3"/>
             </svg>
-            <span>Free Memory</span>
+            <span>Free</span>
+          </button>
+          <button class="mem-btn mem-danger" id="restartComfyBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1"/>
+              <path d="M20.5 4v5h-5"/>
+            </svg>
+            <span>Restart</span>
           </button>
         </div>
-        <div class="field-hint">Unload drops the models from VRAM. Free runs collection and empties the CUDA cache. Both hit ComfyUI's own endpoint, so no extra nodes are needed.</div>
+        <div class="field-hint">Unload drops the models from VRAM. Free runs collection and empties the CUDA cache. Both use ComfyUI's own endpoint. Restart needs ComfyUI-Manager and asks twice before it does anything.</div>
       </div>
       <div class="field">
         <label class="toggle-row">
@@ -1723,10 +1790,20 @@
       </div>
 
       <h2 style="margin-top:22px;">Gallery</h2>
-      <div class="field">
-        <label>Auto-advance delay</label>
-        <input type="text" id="autopanInput" inputmode="decimal" placeholder="4">
-        <div class="field-hint">Seconds each image is held when ▸ auto-advance is running.</div>
+      <div class="split-row">
+        <div class="field">
+          <label>Auto-advance delay</label>
+          <input type="text" id="autopanInput" inputmode="decimal" placeholder="4">
+          <div class="field-hint">Seconds each image is held when ▸ auto-advance runs.</div>
+        </div>
+        <div class="field">
+          <label>Clear the last</label>
+          <div class="unit-input">
+            <input type="text" id="purgeNInput" inputmode="numeric" placeholder="7">
+            <button class="unit-pill" id="purgeUnitBtn">days</button>
+          </div>
+          <div class="field-hint">How far back ⧖ in the gallery reaches. Anything older is left alone.</div>
+        </div>
       </div>
 
       <h2 style="margin-top:22px;">Outputs</h2>
@@ -1739,7 +1816,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.8.0</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.9.0</span></div>
     </div>
   </div>
 
@@ -2136,6 +2213,49 @@ async function freeServerMemory({unloadModels = false, freeMemory = false} = {})
   if(!res.ok) throw new Error('HTTP ' + res.status);
   return true;
 }
+/** Restart ComfyUI.
+ *  Core has no such endpoint; this is a ComfyUI-Manager function, and Manager has moved its
+ *  routes between versions and again when it became a pip package. Rather than pick one and
+ *  hope, try the known paths in turn and say plainly when none of them answer. */
+const RESTART_ENDPOINTS = [
+  '/api/manager/reboot',
+  '/manager/reboot',
+  '/api/reboot',
+  '/reboot'
+];
+async function restartComfyUI(){
+  let lastStatus = null;
+  for(const path of RESTART_ENDPOINTS){
+    try{
+      const res = await fetch(baseUrl() + path, {method:'GET'});
+      // A restarting server often drops the socket mid-reply, which reads as an error here
+      // even though the reboot is under way. Treat a 2xx as success and keep going otherwise.
+      if(res.ok) return path;
+      lastStatus = res.status;
+    }catch(e){
+      // Connection torn down mid-request is the expected shape of a successful reboot
+      if(/network|fetch|load failed/i.test(e.message)) return path;
+      lastStatus = e.message;
+    }
+  }
+  throw new Error(lastStatus === 404 || lastStatus === null
+    ? 'No restart endpoint answered — this needs ComfyUI-Manager installed'
+    : 'Restart failed: ' + lastStatus);
+}
+
+/** Poll until the server is answering again, so the app can reconnect on its own. */
+async function waitForServerBack(maxSeconds = 180){
+  const started = Date.now();
+  while((Date.now() - started) / 1000 < maxSeconds){
+    await new Promise(r => setTimeout(r, 3000));
+    try{
+      const res = await fetch(baseUrl() + '/system_stats', {cache:'no-store'});
+      if(res.ok) return true;
+    }catch(e){}
+  }
+  return false;
+}
+
 function isAutoFreeOn(){ return localStorage.getItem('returncurrent_auto_free') === 'on'; }
 
 function applyOutputOverride(graph){
@@ -6639,7 +6759,14 @@ function galleryViewClass(){
 function galleryViewBar(){
   const v = getGalleryView();
   // ᛜ Ingwaz (dense lattice) · ▣ frame (comfy) · ▤ full-bleed
+  // ⧖ hourglass — the action is defined by time, and the ring around it carries the warning
   return `<div class="gallery-view-bar">
+    <button class="gv-btn purge-btn" id="purgeBtn" title="Hold to clear recent generations">
+      <span class="purge-glyph">⧖</span>
+    </button>
+    <span class="purge-track" id="purgeTrack" aria-hidden="true">
+      <span class="purge-bar" id="purgeBar"></span>
+    </span>
     <button class="gv-btn ${v==='dense'?'active':''}" data-gview="dense" title="Dense">ᛜ</button>
     <button class="gv-btn ${v==='comfy'?'active':''}" data-gview="comfy" title="Comfortable">▣</button>
     <button class="gv-btn ${v==='full'?'active':''}" data-gview="full" title="Full size">▤</button>
@@ -6649,6 +6776,91 @@ function wireGalleryViewBar(){
   document.querySelectorAll('[data-gview]').forEach(btn => {
     btn.addEventListener('click', ()=> setGalleryView(btn.dataset.gview));
   });
+  wirePurgeButton();
+}
+
+/** Which gallery entries fall inside the recent window.
+ *  The gallery is where the keepers accumulate; what needs clearing in bulk is the output
+ *  of a session that did not work out. So this targets the newest work and leaves anything
+ *  older than the window alone — an entry with no timestamp predates the metadata entirely
+ *  and is therefore old, which makes it safe. */
+function entriesInRecentWindow(){
+  const cutoff = Date.now() - getPurgeAge().ms;
+  return (state.gallery || []).filter(url => {
+    const m = state.galleryMeta[url];
+    if(!m || !m.ts) return false; // no timestamp means old, and old is kept
+    return m.ts >= cutoff;
+  });
+}
+
+/** Hold ⧖ to clear history. The ring is the confirmation: it takes deliberate, sustained
+ *  contact, it shows exactly how far along you are, and letting go at any point cancels. */
+const PURGE_HOLD_MS = 3000;
+function wirePurgeButton(){
+  const btn = document.getElementById('purgeBtn');
+  if(!btn || btn._wired) return;
+  btn._wired = true;
+  const track = document.getElementById('purgeTrack');
+  const bar = document.getElementById('purgeBar');
+  let raf = null, startedAt = 0, holding = false;
+
+  const reset = ()=>{
+    holding = false;
+    if(raf) cancelAnimationFrame(raf);
+    raf = null;
+    btn.classList.remove('holding');
+    if(track) track.classList.remove('charging');
+    if(bar) bar.style.width = '0%';
+  };
+
+  const fire = ()=>{
+    reset();
+    const doomed = entriesInRecentWindow();
+    if(!doomed.length){
+      toast('Nothing from the last ' + purgeAgeLabel());
+      return;
+    }
+    btn.classList.add('fired');
+    setTimeout(()=> btn.classList.remove('fired'), 520);
+    doomed.forEach(url => {
+      state.gallery = state.gallery.filter(u => u !== url);
+      delete state.galleryMeta[url];
+      state.seenImages.delete(url);
+    });
+    try{
+      localStorage.setItem('returncurrent_gallery', JSON.stringify(state.gallery));
+      localStorage.setItem('returncurrent_gallery_meta', JSON.stringify(state.galleryMeta));
+      localStorage.setItem('returncurrent_seen', JSON.stringify([...state.seenImages]));
+    }catch(e){}
+    toast(`Cleared ${doomed.length} item${doomed.length > 1 ? 's' : ''} from the last ${purgeAgeLabel()}`);
+    renderGallery();
+  };
+
+  const step = ()=>{
+    if(!holding) return;
+    const p = Math.min(1, (Date.now() - startedAt) / PURGE_HOLD_MS);
+    // Full width at the start, retracting toward the rune as the hold completes
+    if(bar) bar.style.width = ((1 - p) * 100).toFixed(2) + '%';
+    if(p >= 1){ fire(); return; }
+    raf = requestAnimationFrame(step);
+  };
+
+  const begin = (e)=>{
+    if(e.type === 'mousedown' && e.button !== 0) return;
+    e.preventDefault();
+    const n = entriesInRecentWindow().length;
+    if(!n){ toast('Nothing from the last ' + purgeAgeLabel()); return; }
+    holding = true;
+    startedAt = Date.now();
+    btn.classList.add('holding');
+    if(track) track.classList.add('charging');
+    if(bar) bar.style.width = '100%';
+    raf = requestAnimationFrame(step);
+  };
+
+  ['mousedown','touchstart'].forEach(ev => btn.addEventListener(ev, begin, {passive:false}));
+  ['mouseup','mouseleave','touchend','touchcancel'].forEach(ev => btn.addEventListener(ev, reset));
+  btn.addEventListener('contextmenu', e => e.preventDefault()); // long-press menu on mobile
 }
 
 /** Index of the gallery tile currently nearest the top of the viewport.
@@ -10385,6 +10597,49 @@ function wireMemButton(id, opts, label){
 wireMemButton('unloadModelsBtn', {unloadModels: true},                  'Models unloaded from VRAM');
 wireMemButton('freeMemoryBtn',   {freeMemory: true},                    'Memory freed and cache emptied');
 
+// Restart: armed on the first tap, fired on the second. A modal would be heavier than the
+// action deserves, but a single tap next to two harmless buttons is asking for an accident.
+const restartBtn = document.getElementById('restartComfyBtn');
+if(restartBtn){
+  let armed = false, disarmTimer = null;
+  const disarm = ()=>{
+    armed = false;
+    restartBtn.classList.remove('armed');
+    restartBtn.querySelector('span').textContent = 'Restart';
+  };
+  restartBtn.addEventListener('click', async ()=>{
+    if(!state.connected){ toast('Not connected to server'); return; }
+    if(!armed){
+      armed = true;
+      restartBtn.classList.add('armed');
+      restartBtn.querySelector('span').textContent = 'Sure?';
+      clearTimeout(disarmTimer);
+      disarmTimer = setTimeout(disarm, 4000);
+      return;
+    }
+    clearTimeout(disarmTimer);
+    disarm();
+    restartBtn.disabled = true;
+    restartBtn.querySelector('span').textContent = 'Restarting';
+    try{
+      await restartComfyUI();
+      toast('Restarting ComfyUI — waiting for it to come back');
+      const back = await waitForServerBack();
+      if(back){
+        toast('ComfyUI is back');
+        try{ tryConnect(); }catch(e){}
+      } else {
+        toast('ComfyUI has not answered in three minutes — check the console on your PC');
+      }
+    }catch(e){
+      toast(e.message);
+    }finally{
+      restartBtn.disabled = false;
+      restartBtn.querySelector('span').textContent = 'Restart';
+    }
+  });
+}
+
 const autoFreeEl = document.getElementById('autoFreeToggle');
 if(autoFreeEl){
   autoFreeEl.checked = isAutoFreeOn();
@@ -10407,6 +10662,43 @@ if(vlmEncoderBtn){
   });
 }
 syncVlmEncoderUi();
+
+// How far back counts as history, for the gallery's purge control
+function getPurgeAge(){
+  const n = parseFloat(localStorage.getItem('returncurrent_purge_n'));
+  const unit = localStorage.getItem('returncurrent_purge_unit') === 'd' ? 'd' : 'h';
+  // Hours by default, and only a few: this clears a testing run, not an archive
+  const val = (!isNaN(n) && n > 0) ? n : 6;
+  return {n: val, unit, ms: val * (unit === 'h' ? 3600e3 : 86400e3)};
+}
+function purgeAgeLabel(){
+  const a = getPurgeAge();
+  return a.n + ' ' + (a.unit === 'h' ? (a.n === 1 ? 'hour' : 'hours') : (a.n === 1 ? 'day' : 'days'));
+}
+
+// History age
+const purgeNEl = document.getElementById('purgeNInput');
+const purgeUnitEl = document.getElementById('purgeUnitBtn');
+function syncPurgeUi(){
+  const a = getPurgeAge();
+  if(purgeNEl) purgeNEl.value = a.n;
+  if(purgeUnitEl) purgeUnitEl.textContent = a.unit === 'h' ? 'hours' : 'days';
+}
+if(purgeNEl){
+  purgeNEl.addEventListener('change', ()=>{
+    const n = parseFloat(purgeNEl.value);
+    if(!isNaN(n) && n > 0) localStorage.setItem('returncurrent_purge_n', String(n));
+    syncPurgeUi();
+  });
+}
+if(purgeUnitEl){
+  purgeUnitEl.addEventListener('click', ()=>{
+    const next = getPurgeAge().unit === 'h' ? 'd' : 'h';
+    localStorage.setItem('returncurrent_purge_unit', next);
+    syncPurgeUi();
+  });
+}
+syncPurgeUi();
 
 // Auto-advance delay
 const autopanEl = document.getElementById('autopanInput');

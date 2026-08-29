@@ -183,6 +183,13 @@ If your work is in this list and you'd like something corrected, credited differ
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
 
+### β4.9.0 — August 29, 2026
+- **⧖ Clear recent**, on the left of the gallery bar. Hold it for three seconds and a glowing bar spans the gallery bar and retracts into the rune as it charges; let go at any point and nothing happens. It clears the last few hours of output — a testing run that did not work out — and leaves everything older alone, so the gallery you have built up is never at risk
+- The window sits beside Auto-advance delay, in hours or days, and defaults to six hours
+
+### β4.8.1 — August 29, 2026
+- **Restart ComfyUI** joins the memory controls in ⚙ → Server. Asks twice, then waits for the server to come back and reconnects on its own. Needs ComfyUI-Manager, since core has no restart endpoint
+
 ### β4.8.0 — August 26, 2026
 - **Memory controls in Settings.** Unload Models drops models from VRAM, Free Memory runs collection and empties the CUDA cache. Both call ComfyUI's own endpoint, so nothing extra needs installing
 - **Free memory when the queue empties** — an optional toggle that does both once the last job finishes. Deliberately not between queued jobs: that would throw away the model cache and make the next render reload everything
