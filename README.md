@@ -10,7 +10,7 @@ Your GPU, in your pocket.
 
 ---
 
-**β4.9.0 — August 29, 2026** — the Tools pane runs entirely on ComfyUI's own vision model. No second application, no API key, no LM Studio. [Full changelog ↓](#changelog)
+**Latest: β4.9.x** — the Tools pane runs entirely on ComfyUI's own vision model. No second application, no API key, no LM Studio. [Full changelog ↓](#changelog)
 
 ---
 
@@ -182,6 +182,22 @@ If your work is in this list and you'd like something corrected, credited differ
 ## Changelog
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
+
+### β4.9.4 — September 11, 2026
+- **Fixed video downloads saving as .png.** The download filename ended in a hardcoded .png, so every clip arrived as a valid MP4 that nothing would open. The extension now comes from the file itself
+- Switching DLSS off no longer breaks the workflow. The bypass only knew how to reroute a model input, so an image node was deleted without its consumers being rewired
+
+### β4.9.2 — September 10, 2026
+- **Chips.** A Style or Character inserted into a prompt now appears as 『 ᛋ Chrome Object 』 rather than the paragraph it stands for, with a glowing pill under the field to remove it and a backspace at its edge that takes the whole thing in one press
+- **They survive iteration.** ComfyUI receives fully expanded text, while the chip form travels in the output metadata, so hitting ∞ on a finished render gives you your prompt back with the chips intact rather than the paragraphs they were hiding
+- A chip whose library entry has since been deleted shows in red and expands to nothing, rather than leaving its name stranded in the prompt
+
+### β4.9.1 — September 6, 2026
+- **Switchable nodes with their settings folded away.** DLSS Ray Reconstruction, Sparse Attention, Chunked Feed-Forward, Low VRAM Attention and the turbo LoRA each get a single on/off control, with that node own parameters behind a Settings disclosure underneath rather than scattered through Advanced. The defaults are tuned, so most people never open it
+- Options that cancel each other out, like Spectrum and the turbo LoRA, still switch each other off
+- **System prompt boxes** are half the height and sit at the bottom of their tool, above the history. They hold a block you paste in rather than something you compose in place
+- **Recent Prompts is built like the Saved Styles library**, with the same filter box and two-column layout. Motion entries show what you asked for above what came back; every other tool keeps its single line
+- New examples: MiniMax H3 with Sparse Attention and the 8-step turbo LoRA, and Krea 2 with DLSS
 
 ### β4.9.0 — August 29, 2026
 - **⧖ Clear recent**, on the left of the gallery bar. Hold it for three seconds and a glowing bar spans the gallery bar and retracts into the rune as it charges; let go at any point and nothing happens. It clears the last few hours of output — a testing run that did not work out — and leaves everything older alone, so the gallery you have built up is never at risk
