@@ -126,6 +126,7 @@ The app works with plain ComfyUI. These unlock specific parts of it:
 | **Frame interpolation** | [Frame Interpolation](https://github.com/Fannovel16/ComfyUI-Frame-Interpolation) | Appears as a single RIFE on/off switch |
 | **Tool results** | [pythongosssss custom scripts](https://github.com/pythongosssss/ComfyUI-Custom-Scripts) | ShowText is how tool output gets back to the app |
 | **MiniMax H3 quality** | [Spectrum](https://github.com/xmarre/ComfyUI-Spectrum-MiniMax-H3) | Offered as one switch against the turbo LoRA; they don't combine |
+| **Moving video previews** | [KJNodes](https://github.com/kijai/ComfyUI-KJNodes) | Its Model Preview Override sends the clip in motion each step; core only sends one frame |
 | **Video upscaling** | [NVIDIA RTX Nodes](https://github.com/Comfy-Org/Nvidia_RTX_Nodes_ComfyUI) | RTX VSR and frame-by-frame model upscaling appear as named, mutually exclusive toggles |
 
 Nothing to install for the memory controls: **Unload Models** and **Free Memory** under ⚙ → Server call ComfyUI's own endpoint, as does the optional "free memory when the queue empties".
@@ -158,6 +159,8 @@ The **[`workflows/`](workflows/) folder** has tested examples for SDXL, Anima, I
 
 **No live preview** — Check ⚙ → Server → Live preview isn't Off. Detailed needs the TAESD decoders in `models/vae_approx/`; without them, use Auto or Fast. Some custom samplers never report steps, so they have nothing to preview.
 
+**Video preview is a still frame** — That's all core ComfyUI sends for video. Put KJNodes' Model Preview Override between the model loader and the sampler, then raise Frames above 1 under Live Video Preview → Settings. If the app says the browser couldn't play the moving preview, the clip arrived but this browser won't decode it; the last still stays up instead.
+
 **Stop takes a moment** — ComfyUI checks for an interrupt between steps, so the current step finishes first. A node that never checks, like a long LLM call, runs to the end.
 
 **Restart says Manager refused** — ComfyUI-Manager's `security_level` in its `config.ini` is stricter than `normal`. Set it to `normal` and restart ComfyUI once by hand.
@@ -175,6 +178,7 @@ Return Current is a thin layer over an enormous amount of other people's work. I
 - **xmarre** — Spectrum for MiniMax H3, and the clear documentation that made it straightforward to support.
 - **Kosinkadink** — Video Helper Suite, the reason video output works at all.
 - **Fannovel16** — frame interpolation that makes 16fps generations feel like film.
+- **kijai** — KJNodes, whose Model Preview Override is what makes a video preview move while it renders, plus half the utility nodes in anyone's graph.
 - **city96** — GGUF loaders that let big video models fit on real people's GPUs.
 - **mattjohnpowell** — the LM Studio bridge nodes that carried the Tools pane through its first year, before ComfyUI could host a vision model itself.
 - **pythongosssss** — ShowText and a pile of quality-of-life nodes the ecosystem quietly runs on.
@@ -191,6 +195,8 @@ If your work is in this list and you'd like something corrected, credited differ
 
 ### β4.9.9 — October 5, 2026
 - **Live preview.** The progress banner now shows the render forming, step by step, out of a coarse mosaic into the picture. ComfyUI was already streaming these frames down the connection the app holds; they were being thrown away. Tap the preview to shrink it to a strip if you'd rather see the form, tap again to bring it back. On a wide screen the banner becomes a card in the corner. Pick Fast, Detailed or Off under ⚙ → Server → Live preview. No launch flag needed, the app asks for previews per job
+- **Moving video previews.** Core ComfyUI previews a video model as one still frame. Add KJNodes' **Model Preview Override** to a video workflow and the banner plays the whole clip as it forms instead, re-rendered every step. It shows up in the editor as a **Live Video Preview** switch with its settings folded underneath; set Frames above 1 for motion. Off routes around it like any other switch
+- **Tap a picture in the Tools to swap it.** The Image, Character, Motion and Style tools now work like a workflow's image field: tap a picture you've added and choose another, no ✕ and re-add. It keeps its place, so a Motion frame stays where it sits on the timeline. Dropping a file onto a picture swaps it too
 - **■ Stop**, on the progress banner. Halts the running job after its current step, the same interrupt as ComfyUI's own ✕. It only stops your job, so on a shared server nobody else's render gets killed. If your job hasn't started yet, Stop takes it out of the queue instead
 - **Cancel in the Queue tab now works on the running job.** It used to delete the job from the queue, which does nothing once a job is executing, so the render ran to the end anyway. The running row now says Stop and interrupts it. Cancelled pending jobs also stop being waited on, so the banner no longer counts jobs that will never come back
 - **Restart works with current ComfyUI-Manager.** Manager changed its restart from GET to POST, so every attempt was refused and the app blamed a missing Manager. It now asks the way Manager expects, also covers the newer /v2 route, and when Manager does answer with a refusal, says so instead of claiming it isn't installed

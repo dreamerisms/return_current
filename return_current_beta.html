@@ -805,17 +805,18 @@
   .stop-btn.stopping span{opacity:.45;}
   .preview-wrap{display:flex; justify-content:center; margin:0 0 10px; cursor:zoom-out;}
   .preview-wrap[hidden]{display:none;}
-  .preview-wrap img{
+  .preview-wrap video[hidden], .preview-wrap img[hidden]{display:none;}
+  .preview-wrap img, .preview-wrap video{
     display:block; max-width:100%; max-height:min(34vh, 320px); width:auto; height:auto;
     border-radius:6px; background:var(--bg-raised);
   }
   .preview-wrap img.mosaic{image-rendering:pixelated; min-height:min(34vh, 320px); object-fit:contain;}
   .progress-banner.preview-small .preview-wrap{cursor:zoom-in;}
-  .progress-banner.preview-small .preview-wrap img{max-height:64px; min-height:0;}
+  .progress-banner.preview-small .preview-wrap img, .progress-banner.preview-small .preview-wrap video{max-height:64px; min-height:0;}
   @media (min-width: 900px){
     /* On a wide screen the banner is a card in the corner, so the preview never sits on the form */
     .progress-container{left:auto; right:24px; width:400px; padding:0 0 12px;}
-    .preview-wrap img{max-height:min(46vh, 480px);}
+    .preview-wrap img, .preview-wrap video{max-height:min(46vh, 480px);}
     .preview-wrap img.mosaic{min-height:min(46vh, 480px);}
   }
   .progress-banner .row{display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); font-family:var(--font-mono); margin-bottom:8px;}
@@ -1211,6 +1212,8 @@
     width:144px; height:144px; border-radius:10px; border:1px solid var(--line);
     position:relative; flex:0 0 144px; overflow:visible;
   }
+  .tools-img-tile[data-tile-list]{cursor:pointer;}
+  .tools-img-tile.drop-hot{border-color:var(--safelight);}
   .tools-img-tile img{width:100%; height:100%; object-fit:cover; border-radius:10px; display:block;}
   .tools-img-tile .tile-remove{
     position:absolute; top:-8px; right:-8px; width:24px; height:24px;
@@ -1825,7 +1828,7 @@
   <div class="action-bar" id="actionBar" style="display:none;"></div>
   <div class="progress-container" id="progressContainer" style="display:none;">
     <div class="progress-banner" id="progressBanner">
-      <div class="preview-wrap" id="previewWrap" hidden><img id="previewImg" alt="Live preview"></div>
+      <div class="preview-wrap" id="previewWrap" hidden><img id="previewImg" alt="Live preview"><video id="previewVid" muted loop playsinline autoplay hidden></video></div>
       <div class="progress-line">
         <div class="progress-main">
           <div class="row" id="progressRow">QUEUED</div>
@@ -2209,14 +2212,18 @@ async function fetchAvailableLoras(){
 }
 
 function handleWsMessage(msg){
-  if(msg.type === 'execution_start'){
+  if(msg.type === 'kj_preview_override'){
+    handleKjPreview(msg.data);
+  } else if(msg.type === 'execution_start'){
     const pid = msg.data && msg.data.prompt_id;
     if(pid && state.activeJobs.has(pid)){ state.runningPromptId = pid; clearLivePreview(); }
   } else if(msg.type === 'progress'){
+    adoptRunningJob(msg.data && msg.data.prompt_id);
     state.busy = true;
     setConnDot('busy');
     updateProgressUI(msg.data.value, msg.data.max);
   } else if(msg.type === 'executing'){
+    if(msg.data.node !== null) adoptRunningJob(msg.data.prompt_id);
     if(msg.data.node !== null && msg.data.prompt_id && state.activeJobs.has(msg.data.prompt_id)){
       state.runningPromptId = msg.data.prompt_id;
     }
@@ -2306,6 +2313,8 @@ function previewExtraData(body){
 let _previewUrl = null;
 function handlePreviewFrame(buf){
   if(!state.activeJobs.size || getPreviewMethod() === 'none' || buf.byteLength < 9) return;
+  // A Model Preview Override node is sending better frames for this job; don't fight it
+  if(state._kjPreviewActive) return;
   const view = new DataView(buf);
   const event = view.getUint32(0);
   let mime, start;
@@ -2331,7 +2340,78 @@ function handlePreviewFrame(buf){
     if(_previewUrl && _previewUrl !== url) URL.revokeObjectURL(_previewUrl);
     _previewUrl = url;
   };
+  showPreviewElement('img');
   img.src = url;
+  wrap.hidden = false;
+  document.getElementById('progressContainer').style.display = 'block';
+}
+function showPreviewElement(which){
+  const img = document.getElementById('previewImg');
+  const vid = document.getElementById('previewVid');
+  if(img) img.hidden = which !== 'img';
+  if(vid){
+    vid.hidden = which !== 'video';
+    if(which !== 'video' && vid.getAttribute('src')){ vid.pause(); vid.removeAttribute('src'); vid.load(); }
+  }
+}
+
+/** KJNodes' Model Preview Override sends its frames as JSON, base64 inside: a JPEG for a
+ *  still, or for a video model with preview_frames above 1, an animated WebP or a short MP4
+ *  of the whole clip as it stands at this step. That is the moving preview core can't do.
+ *  The first message of a run carries only the sigma schedule, no picture. */
+let _kjVideoUrl = null;
+function handleKjPreview(d){
+  if(!d || !d.image || !state.activeJobs.size || getPreviewMethod() === 'none') return;
+  state._kjPreviewActive = true;
+  const wrap = document.getElementById('previewWrap');
+  const img = document.getElementById('previewImg');
+  const vid = document.getElementById('previewVid');
+  if(!wrap || !img || !vid) return;
+  const mime = d.mime || 'image/jpeg';
+  let bytes;
+  try{
+    const bin = atob(d.image);
+    bytes = new Uint8Array(bin.length);
+    for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  }catch(e){ return; }
+  const url = URL.createObjectURL(new Blob([bytes], {type: mime}));
+  if(mime === 'video/mp4'){
+    // Swap to the clip only once it has a frame to show. Until then, and for good if this
+    // browser can't decode it, the last picture stays up instead of an empty box.
+    if(!vid._kjWired){
+      vid._kjWired = true;
+      vid.addEventListener('loadeddata', ()=>{
+        if(!vid.getAttribute('src')) return;
+        const img2 = document.getElementById('previewImg');
+        if(img2) img2.hidden = true;
+        vid.hidden = false;
+        document.getElementById('previewWrap').hidden = false;
+        vid.play().catch(()=>{});
+      });
+      vid.addEventListener('error', ()=>{
+        if(!vid.getAttribute('src')) return;
+        const code = vid.error ? vid.error.code : '?';
+        console.warn('Live video preview would not play, media error', code, vid.error && vid.error.message);
+        if(!state._kjVideoErrShown){
+          state._kjVideoErrShown = true;
+          toast('This browser could not play the moving preview (media error ' + code + ')');
+        }
+      });
+    }
+    const old = _kjVideoUrl;
+    _kjVideoUrl = url;
+    vid.src = url;
+    vid.load();
+    if(old) setTimeout(()=> URL.revokeObjectURL(old), 1500);
+  } else {
+    showPreviewElement('img');
+    img.onload = () => {
+      img.classList.toggle('mosaic', img.naturalWidth < 256);
+      if(_previewUrl && _previewUrl !== url) URL.revokeObjectURL(_previewUrl);
+      _previewUrl = url;
+    };
+    img.src = url;
+  }
   wrap.hidden = false;
   document.getElementById('progressContainer').style.display = 'block';
 }
@@ -2341,6 +2421,20 @@ function clearLivePreview(){
   if(wrap) wrap.hidden = true;
   if(img){ img.removeAttribute('src'); img.classList.remove('mosaic'); }
   if(_previewUrl){ URL.revokeObjectURL(_previewUrl); _previewUrl = null; }
+  showPreviewElement('img');
+  if(_kjVideoUrl){ URL.revokeObjectURL(_kjVideoUrl); _kjVideoUrl = null; }
+  state._kjPreviewActive = false;
+}
+/** A refresh forgets which jobs are ours, so previews and Stop went dead for the rest of
+ *  the render. The submitted list survives a refresh in session storage; a job on it that
+ *  is reporting progress and hasn't been collected yet is picked back up. */
+function adoptRunningJob(pid){
+  if(!pid || state.activeJobs.has(pid) || state.processedPrompts.has(pid)) return;
+  if(!getSubmittedPrompts().includes(pid)) return;
+  state.activeJobs.set(pid, {timestamp: Date.now(), adopted: true});
+  state.runningPromptId = pid;
+  try{ ensureJobWatchdog(); }catch(e){}
+  try{ updateQueueButton(); }catch(e){}
 }
 /** A job of ours stopped running, however it ended. */
 function jobLeftServer(promptId){
@@ -2873,6 +2967,55 @@ function findNullByte(data, start){
 /** Make any element accept a dropped image. One helper behind every image input in the
  *  app, so a picker and its drop target can never drift apart.
  *  TOP-LEVEL on purpose: the editor and the Tools panes both call it. */
+/** One reusable file input for "choose a picture", kept in the document so iOS honours the
+ *  tap that opens it. Each pick hands the file to whoever asked last. */
+let _pickOneInput = null, _pickOneCb = null;
+function pickOneImage(cb){
+  if(!_pickOneInput){
+    _pickOneInput = document.createElement('input');
+    _pickOneInput.type = 'file';
+    _pickOneInput.accept = 'image/*';
+    _pickOneInput.style.display = 'none';
+    _pickOneInput.addEventListener('change', ()=>{
+      const file = _pickOneInput.files && _pickOneInput.files[0];
+      const done = _pickOneCb;
+      _pickOneCb = null;
+      _pickOneInput.value = '';
+      if(file && done) done(file);
+    });
+    document.body.appendChild(_pickOneInput);
+  }
+  _pickOneCb = cb;
+  _pickOneInput.click();
+}
+
+/** Replace one picture in a Tools tile row, keeping its place and anything attached to it:
+ *  a Motion frame keeps its timeline position, an Image-tool picture gets fresh dimensions. */
+async function swapToolsTile(listName, idx, file){
+  if(!file || !/^image\//i.test(file.type || 'image/')) return;
+  const list = state[listName];
+  if(!Array.isArray(list)) return;
+  const target = listName === 'motionFrames' ? motionFramesSorted()[idx] : list[idx];
+  if(!target) return;
+  const blob = new Blob([await file.arrayBuffer()], {type: file.type || 'image/png'});
+  const url = URL.createObjectURL(blob);
+  const fresh = Object.assign({}, target, {blob, url, name: file.name || target.name});
+  if(listName === 'toolsImages'){
+    const dims = await new Promise(res => {
+      const im = new Image();
+      im.onload = ()=> res({w: im.naturalWidth, h: im.naturalHeight});
+      im.onerror = ()=> res({w: 0, h: 0});
+      im.src = url;
+    });
+    fresh.w = dims.w; fresh.h = dims.h;
+  }
+  const at = list.indexOf(target);
+  if(at < 0){ URL.revokeObjectURL(url); return; }
+  try{ URL.revokeObjectURL(target.url); }catch(e){}
+  list[at] = fresh;
+  renderTools();
+}
+
 function bindImageDrop(el, onFiles){
   if(!el || el._dropBound) return;
   el._dropBound = true;
@@ -3965,7 +4108,17 @@ const TOGGLEABLE_NODES = {
   H3SLAAttention:         {label:'Sparse Attention',                enableKey:null,      passInput:'model', order:6.6},
   MiniMaxChunkFeedForward:{label:'Chunked Feed-Forward',            enableKey:null,      passInput:'model', order:6.7},
   MiniMaxLowVRAMAttention:{label:'Low VRAM Attention',              enableKey:null,      passInput:'model', order:6.8},
-  DLSSNR_Image:           {label:'DLSS Ray Reconstruction',         enableKey:null,      passInput:'image', order:8.4}
+  DLSSNR_Image:           {label:'DLSS Ray Reconstruction',         enableKey:null,      passInput:'image', order:8.4},
+  // KJNodes. Sends its own preview over the socket, and for video models a moving clip
+  // instead of core's single frame. Switching it off costs nothing but the preview.
+  ModelPreviewOverrideKJ: {label:'Live Video Preview',              enableKey:null,      passInput:'model', order:6.9}
+};
+const NESTED_LABELS = {
+  preview_frames: 'Frames (1 = still, more = moving)',
+  preview_fps: 'Playback FPS',
+  suppress_default_preview: 'Replace core preview',
+  tiny_vae: 'Tiny VAE (sharper)',
+  jpeg_quality: 'JPEG Quality'
 };
 // Kept for anything still referring to the old name
 const H3_QUALITY_NODES = TOGGLEABLE_NODES;
@@ -4380,7 +4533,7 @@ function buildEditableFields(apiGraph, titleMap){
 
   // --- Universal fallback: expose remaining primitive inputs as Advanced fields ---
   const capturedKeys = new Set(groups.map(f => `${f.nodeId}:${f.key}`));
-  const SKIP_NODE_TYPES = new Set(['Power Lora Loader (rgthree)','RIFE VFI','IdeogramStudio','Ideogram4Scheduler','UpscaleModelLoader','UnetLoaderGGUF','ResolutionSelector','Note','MarkdownNote','Reroute','PrimitiveNode','PrimitiveStringMultiline','PrimitiveString','VHS_VideoCombine','SaveImage','PreviewImage','VRAMCleanup','ModelPreviewOverrideKJ','VRAM_Debug','SpectrumApplyMiniMaxH3','MiniMaxH3TurboLoRA']);
+  const SKIP_NODE_TYPES = new Set(['Power Lora Loader (rgthree)','RIFE VFI','IdeogramStudio','Ideogram4Scheduler','UpscaleModelLoader','UnetLoaderGGUF','ResolutionSelector','Note','MarkdownNote','Reroute','PrimitiveNode','PrimitiveStringMultiline','PrimitiveString','VHS_VideoCombine','SaveImage','PreviewImage','VRAMCleanup','VRAM_Debug','SpectrumApplyMiniMaxH3','MiniMaxH3TurboLoRA']);
   const SKIP_KEYS = new Set(['control_after_generate','filename_prefix','choose file to upload']);
   for(const nodeId in apiGraph){
     const node = apiGraph[nodeId];
@@ -4609,7 +4762,11 @@ function buildEditableFields(apiGraph, titleMap){
 
       // This node's own fields become its nested settings rather than Advanced clutter
       const nested = groups.filter(f => String(f.nodeId) === String(nid) && f.key !== spec.enableKey);
-      nested.forEach(f => { f._nestedUnder = String(nid); f.advanced = false; });
+      // Under its own switch the node name is already said, so the label is just the setting
+      nested.forEach(f => {
+        f._nestedUnder = String(nid); f.advanced = false;
+        f.label = NESTED_LABELS[f.key] || String(f.key).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      });
 
       groups.push({
         nodeId: nid, key:'__node_toggle__', kind:'upscale_toggle',
@@ -8453,7 +8610,7 @@ function renderTools(){
       ` : mode === 'image2json' ? `
         <div class="tools-img-tiles">
           ${state.toolsImages.map((im, ii) => `
-            <div class="tools-img-tile">
+            <div class="tools-img-tile" data-tile-list="toolsImages" data-tile-idx="${ii}" title="Tap to swap">
               <img src="${im.url}">
               <button class="tile-remove" data-img-remove="${ii}">✕</button>
             </div>
@@ -8581,7 +8738,7 @@ function renderTools(){
         </div>
         <div class="tools-img-tiles">
           ${state.charImages.map((im, ii) => `
-            <div class="tools-img-tile">
+            <div class="tools-img-tile" data-tile-list="charImages" data-tile-idx="${ii}" title="Tap to swap">
               <img src="${im.url}">
               <button class="tile-remove" data-char-img-remove="${ii}">✕</button>
             </div>
@@ -8644,7 +8801,7 @@ function renderTools(){
       ${mode === 'motion' ? `
         <div class="tools-img-tiles">
           ${motionFramesSorted().map((im, ii) => `
-            <div class="tools-img-tile">
+            <div class="tools-img-tile" data-tile-list="motionFrames" data-tile-idx="${ii}" title="Tap to swap">
               <img src="${im.url}">
               <span class="frame-role">${ii + 1} · ${Math.round(im.pct)}%</span>
               <button class="tile-remove" data-motion-frame-remove="${ii}">✕</button>
@@ -8699,7 +8856,7 @@ function renderTools(){
         <textarea id="styleTextInput" placeholder="Define the style in detail. What medium, what materials, what light, what lens, what mood…" style="min-height:110px;">${escapeHtml(state.styleText)}</textarea>
         <div class="tools-img-tiles" style="margin-top:10px;">
           ${state.styleImages.map((im, ii) => `
-            <div class="tools-img-tile">
+            <div class="tools-img-tile" data-tile-list="styleImages" data-tile-idx="${ii}" title="Tap to swap">
               <img src="${im.url}">
               <button class="tile-remove" data-style-img-remove="${ii}">✕</button>
             </div>
@@ -9213,6 +9370,17 @@ function renderTools(){
       state.charFormat = btn.dataset.charFmt;
       main.querySelectorAll('[data-char-fmt]').forEach(b=>b.classList.toggle('active', b === btn));
     });
+  });
+
+  // Tap a filled tile to swap its picture, the way a workflow's image field works, instead
+  // of ✕ then + to get the same result. Dropping a file onto a tile swaps it too.
+  main.querySelectorAll('.tools-img-tile[data-tile-list]').forEach(tile => {
+    const swap = (file)=> swapToolsTile(tile.dataset.tileList, parseInt(tile.dataset.tileIdx), file);
+    tile.addEventListener('click', (e)=>{
+      if(e.target.closest('.tile-remove')) return;
+      pickOneImage(swap);
+    });
+    bindImageDrop(tile, (files)=> swap(files[0]));
   });
 
   // Drops onto any Tools tile row behave exactly like choosing files with the + button.
