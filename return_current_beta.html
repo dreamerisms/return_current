@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β4.9.4</title>
+<title>Return Current β4.9.9</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -445,6 +445,29 @@
     .gallery-grid.view-dense{grid-template-columns:repeat(7,1fr); gap:6px;}
     .gallery-grid.view-full{grid-template-columns:1fr; max-width:1100px; margin:0 auto;}
   }
+  /* Justified rows: whole images, several per row, newest first left to right.
+     Each tile's flex-grow and flex-basis are both proportional to its aspect ratio, so
+     every tile in a row stretches by the same factor and the row lands at one height with
+     nothing cropped. The ratio arrives as --ar, cached per image once it has loaded. */
+  .gallery-grid.view-rows{display:flex; flex-wrap:wrap; gap:6px; --rowh:105px;}
+  .gallery-grid.view-rows > .gallery-tile{
+    flex:var(--ar, 1) 1 calc(var(--ar, 1) * var(--rowh)); min-width:0; position:relative;
+    /* A tile left alone on a row would stretch to fill it, and a lone portrait becomes a
+       wall. Past twice its natural size it stops growing and the row stays ragged. */
+    max-width:calc(var(--ar, 1) * var(--rowh) * 2.2);
+  }
+  .gallery-grid.view-rows > .gallery-tile > img,
+  .gallery-grid.view-rows > .gallery-tile > video{
+    aspect-ratio:var(--ar, 1); width:100%; height:auto; object-fit:cover;
+  }
+  .gallery-grid.view-rows > .gallery-date{flex:0 0 100%;}
+  /* Absorbs the leftover width at the end of each date section, so a short final row keeps
+     its natural size instead of being blown up to span the screen. Invisible elsewhere. */
+  .gallery-fill{display:none;}
+  .gallery-grid.view-rows > .gallery-fill{display:block; flex:999999 1 0; height:0;}
+  @media (min-width: 900px){
+    .gallery-grid.view-rows{gap:8px; --rowh:250px;}
+  }
   /* View switcher */
   .gallery-view-bar{
     display:flex; justify-content:flex-end; gap:6px; margin-bottom:10px;
@@ -769,6 +792,31 @@
   .progress-banner{
     background:var(--bg-card); border:1px solid var(--safelight-dim); border-radius:10px;
     padding:12px 14px;
+  }
+  .progress-line{display:flex; align-items:center; gap:12px;}
+  .progress-main{flex:1; min-width:0;}
+  .stop-btn{
+    flex:0 0 auto; width:34px; height:34px; border-radius:8px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    background:transparent; border:1px solid var(--line); cursor:pointer;
+  }
+  .stop-btn span{width:11px; height:11px; border-radius:2px; background:#e5484d; box-shadow:0 0 10px rgba(229,72,77,.45);}
+  .stop-btn:active, .stop-btn.stopping{border-color:#e5484d;}
+  .stop-btn.stopping span{opacity:.45;}
+  .preview-wrap{display:flex; justify-content:center; margin:0 0 10px; cursor:zoom-out;}
+  .preview-wrap[hidden]{display:none;}
+  .preview-wrap img{
+    display:block; max-width:100%; max-height:min(34vh, 320px); width:auto; height:auto;
+    border-radius:6px; background:var(--bg-raised);
+  }
+  .preview-wrap img.mosaic{image-rendering:pixelated; min-height:min(34vh, 320px); object-fit:contain;}
+  .progress-banner.preview-small .preview-wrap{cursor:zoom-in;}
+  .progress-banner.preview-small .preview-wrap img{max-height:64px; min-height:0;}
+  @media (min-width: 900px){
+    /* On a wide screen the banner is a card in the corner, so the preview never sits on the form */
+    .progress-container{left:auto; right:24px; width:400px; padding:0 0 12px;}
+    .preview-wrap img{max-height:min(46vh, 480px);}
+    .preview-wrap img.mosaic{min-height:min(46vh, 480px);}
   }
   .progress-banner .row{display:flex; justify-content:space-between; font-size:11px; color:var(--text-dim); font-family:var(--font-mono); margin-bottom:8px;}
   .progress-bar-track{height:5px; background:var(--bg-raised); border-radius:3px; overflow:hidden;}
@@ -1247,6 +1295,12 @@
     font-family:var(--font-mono); font-size:10px; color:var(--text-dim);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
+  .insert-filter{
+    position:sticky; top:0; z-index:1; display:block; width:100%; box-sizing:border-box;
+    background:var(--bg-card); border:none; border-bottom:1px solid var(--line);
+    color:var(--text); font-family:var(--font-mono); font-size:12px; padding:10px 14px;
+  }
+  .insert-filter:focus{outline:none; border-bottom-color:var(--safelight-dim);}
   .insert-empty{padding:14px; font-family:var(--font-mono); font-size:11px; color:var(--text-dim); text-align:center;}
   /* LoRA folder-tree picker */
   .picker-overlay{
@@ -1770,9 +1824,15 @@
 
   <div class="action-bar" id="actionBar" style="display:none;"></div>
   <div class="progress-container" id="progressContainer" style="display:none;">
-    <div class="progress-banner">
-      <div class="row" id="progressRow">QUEUED</div>
-      <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+    <div class="progress-banner" id="progressBanner">
+      <div class="preview-wrap" id="previewWrap" hidden><img id="previewImg" alt="Live preview"></div>
+      <div class="progress-line">
+        <div class="progress-main">
+          <div class="row" id="progressRow">QUEUED</div>
+          <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+        </div>
+        <button class="stop-btn" id="stopBtn" title="Stop the running job" aria-label="Stop the running job"><span></span></button>
+      </div>
     </div>
   </div>
   <div class="toast" id="toast"></div>
@@ -1823,6 +1883,16 @@
           <span>Free memory when the queue empties</span>
         </label>
         <div class="field-hint">Runs both of the above once the last job finishes, not between queued jobs, so a batch keeps its models warm and only the idle rig gives the memory back.</div>
+      </div>
+      <div class="field">
+        <label>Live preview</label>
+        <select id="previewMethodSelect">
+          <option value="auto">Auto</option>
+          <option value="latent2rgb">Fast</option>
+          <option value="taesd">Detailed</option>
+          <option value="none">Off</option>
+        </select>
+        <div class="field-hint">Watch each render resolve as it samples. Fast costs nothing and shows a coarse mosaic. Detailed is sharper but needs the TAESD decoders in models/vae_approx. Auto uses Detailed when they're there and Fast when they're not.</div>
       </div>
 
       <h2 style="margin-top:22px;">Vision Model</h2>
@@ -1879,7 +1949,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.9.4</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.9.9</span></div>
     </div>
   </div>
 
@@ -1929,6 +1999,7 @@ const state = {
   styleImages: [], // [{blob,name,url}] for style extraction
   busy: false,
   activeJobs: new Map(), // {promptId: {fields, timestamp}}
+  runningPromptId: null,  // which of ours ComfyUI is executing right now, for Stop
   processedPrompts: new Set(JSON.parse(sessionStorage.getItem('returncurrent_processed') || '[]')),
   availableLoras: [], // fetched from server on connect
   serverOptions: {samplers:[], schedulers:[], checkpoints:[], unets:[], unet_gguf:[], upscale_models:[], _res_ratios:[]},
@@ -1990,7 +2061,9 @@ async function tryConnect(){
 function connectWebSocket(){
   if(state.ws) { try{state.ws.close();}catch(e){} }
   state.ws = new WebSocket(wsUrl());
+  state.ws.binaryType = 'arraybuffer';
   state.ws.onmessage = (event) => {
+    if(event.data instanceof ArrayBuffer){ handlePreviewFrame(event.data); return; }
     if(typeof event.data !== 'string') return;
     let msg;
     try{ msg = JSON.parse(event.data); }catch(e){ return; }
@@ -2136,14 +2209,21 @@ async function fetchAvailableLoras(){
 }
 
 function handleWsMessage(msg){
-  if(msg.type === 'progress'){
+  if(msg.type === 'execution_start'){
+    const pid = msg.data && msg.data.prompt_id;
+    if(pid && state.activeJobs.has(pid)){ state.runningPromptId = pid; clearLivePreview(); }
+  } else if(msg.type === 'progress'){
     state.busy = true;
     setConnDot('busy');
     updateProgressUI(msg.data.value, msg.data.max);
   } else if(msg.type === 'executing'){
+    if(msg.data.node !== null && msg.data.prompt_id && state.activeJobs.has(msg.data.prompt_id)){
+      state.runningPromptId = msg.data.prompt_id;
+    }
     if(msg.data.node === null){
       // finished
       const promptId = msg.data.prompt_id;
+      jobLeftServer(promptId);
       state.activeJobs.delete(promptId);
       if(!state.activeJobs.size) scheduleAutoFreeIfIdle();
       if(state.activeJobs.size === 0){
@@ -2155,6 +2235,7 @@ function handleWsMessage(msg){
     }
   } else if(msg.type === 'execution_error'){
     const d = msg.data || {};
+    jobLeftServer(d.prompt_id);
     state.activeJobs.delete(d.prompt_id);
     if(!state.activeJobs.size) scheduleAutoFreeIfIdle();
     if(state.activeJobs.size === 0){
@@ -2186,6 +2267,9 @@ function handleWsMessage(msg){
     updateQueueButton();
   } else if(msg.type === 'execution_interrupted'){
     const d = msg.data || {};
+    // Interrupts are broadcast, so someone else's stopped job is none of our business
+    if(!state.activeJobs.has(d.prompt_id)) return;
+    jobLeftServer(d.prompt_id);
     state.activeJobs.delete(d.prompt_id);
     if(!state.activeJobs.size) scheduleAutoFreeIfIdle();
     if(state.activeJobs.size === 0){
@@ -2193,9 +2277,129 @@ function handleWsMessage(msg){
       setConnDot('connected');
       document.getElementById('progressContainer').style.display = 'none';
     }
-    toast('Generation interrupted');
+    toast('Stopped');
     updateQueueButton();
   }
+}
+
+/* ---- Live preview and Stop ----
+ * ComfyUI streams a small preview of the latent after every sampler step, as a binary
+ * frame on the same socket we already hold: 4 bytes of event type, then for type 1 a
+ * 4-byte image format (1 JPEG, 2 PNG) and the image itself. Type 4 is the newer form with
+ * a JSON header; we never ask for it, but read it if a server sends it anyway.
+ * The server only renders previews if asked, so each Generate carries preview_method in
+ * extra_data, which overrides --preview-method for that one prompt. */
+const PREVIEW_METHODS = {
+  auto:       'Auto',
+  latent2rgb: 'Fast',
+  taesd:      'Detailed',
+  none:       'Off'
+};
+function getPreviewMethod(){
+  const v = localStorage.getItem('returncurrent_preview_method');
+  return PREVIEW_METHODS[v] ? v : 'auto';
+}
+function previewExtraData(body){
+  body.extra_data = Object.assign({}, body.extra_data, {preview_method: getPreviewMethod()});
+  return body;
+}
+let _previewUrl = null;
+function handlePreviewFrame(buf){
+  if(!state.activeJobs.size || getPreviewMethod() === 'none' || buf.byteLength < 9) return;
+  const view = new DataView(buf);
+  const event = view.getUint32(0);
+  let mime, start;
+  if(event === 1){
+    mime = view.getUint32(4) === 2 ? 'image/png' : 'image/jpeg';
+    start = 8;
+  } else if(event === 4){
+    const metaLen = view.getUint32(4);
+    let meta = {};
+    try{ meta = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 8, metaLen))); }catch(e){}
+    if(meta.prompt_id && !state.activeJobs.has(meta.prompt_id)) return;
+    mime = meta.image_type || 'image/jpeg';
+    start = 8 + metaLen;
+  } else return;
+  const url = URL.createObjectURL(new Blob([new Uint8Array(buf, start)], {type: mime}));
+  const img = document.getElementById('previewImg');
+  const wrap = document.getElementById('previewWrap');
+  if(!img || !wrap){ URL.revokeObjectURL(url); return; }
+  img.onload = () => {
+    // A fast preview is an eighth of the render's size. Drawn with hard pixels it reads as
+    // the mosaic resolving; smoothed it just looks like a blurry mistake.
+    img.classList.toggle('mosaic', img.naturalWidth < 256);
+    if(_previewUrl && _previewUrl !== url) URL.revokeObjectURL(_previewUrl);
+    _previewUrl = url;
+  };
+  img.src = url;
+  wrap.hidden = false;
+  document.getElementById('progressContainer').style.display = 'block';
+}
+function clearLivePreview(){
+  const wrap = document.getElementById('previewWrap');
+  const img = document.getElementById('previewImg');
+  if(wrap) wrap.hidden = true;
+  if(img){ img.removeAttribute('src'); img.classList.remove('mosaic'); }
+  if(_previewUrl){ URL.revokeObjectURL(_previewUrl); _previewUrl = null; }
+}
+/** A job of ours stopped running, however it ended. */
+function jobLeftServer(promptId){
+  if(!promptId || promptId === state.runningPromptId){
+    state.runningPromptId = null;
+    clearLivePreview();
+    const btn = document.getElementById('stopBtn');
+    if(btn) btn.classList.remove('stopping');
+  }
+}
+
+/** Stop what is running, the way ComfyUI's own ✕ does.
+ *  /interrupt with a prompt_id only fires if that prompt is the one executing, so another
+ *  person's job on a shared server can't be killed by accident. If nothing of ours has
+ *  started yet, there is nothing to interrupt, so the next job of ours is taken out of the
+ *  queue instead. */
+async function stopRunningJob(){
+  const btn = document.getElementById('stopBtn');
+  const running = state.runningPromptId && state.activeJobs.has(state.runningPromptId) ? state.runningPromptId : null;
+  try{
+    if(running){
+      if(btn) btn.classList.add('stopping');
+      const res = await fetch(baseUrl() + '/interrupt', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({prompt_id: running})
+      });
+      if(!res.ok) throw new Error('HTTP ' + res.status);
+      toast('Stopping after this step…');
+      return;
+    }
+    const next = [...state.activeJobs.keys()][0];
+    if(!next){ toast('Nothing running'); return; }
+    await cancelQueuedJob(next);
+    toast('Removed from the queue');
+  }catch(e){
+    if(btn) btn.classList.remove('stopping');
+    toast('Could not stop: ' + e.message);
+  }
+}
+/** Take a pending job out of ComfyUI's queue and stop waiting for it here. */
+async function cancelQueuedJob(promptId){
+  const res = await fetch(baseUrl() + '/queue', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({delete:[promptId]})
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  forgetJob(promptId);
+}
+/** A cancelled job never reaches history, so the watchdog would wait on it forever. */
+function forgetJob(promptId){
+  if(!state.activeJobs.delete(promptId)) return;
+  if(!state.activeJobs.size){
+    state.busy = false;
+    setConnDot('connected');
+    document.getElementById('progressContainer').style.display = 'none';
+    clearLivePreview();
+    scheduleAutoFreeIfIdle();
+  }
+  updateQueueButton();
 }
 
 function updateProgressUI(value, max){
@@ -2277,44 +2481,55 @@ async function freeServerMemory({unloadModels = false, freeMemory = false} = {})
   return true;
 }
 /** Restart ComfyUI.
- *  Core has no such endpoint; this is a ComfyUI-Manager function, and Manager has moved its
- *  routes between versions and again when it became a pip package. Rather than pick one and
- *  hope, try the known paths in turn and say plainly when none of them answer. */
+ *  Core has no such endpoint; this is a ComfyUI-Manager function. Manager moved reboot from
+ *  GET to POST (a cross-site form could otherwise restart your server), and its pip-package
+ *  build serves it under /v2. So each path is tried as a bodiless POST first, which is what
+ *  current Manager wants, then as a GET for older installs. A bodiless POST sends no
+ *  Content-Type, which is exactly what Manager's CSRF guard accepts. */
 const RESTART_ENDPOINTS = [
   '/api/manager/reboot',
   '/manager/reboot',
-  '/api/reboot',
-  '/reboot'
+  '/api/v2/manager/reboot',
+  '/v2/manager/reboot'
 ];
 async function restartComfyUI(){
-  let lastStatus = null;
-  for(const path of RESTART_ENDPOINTS){
-    try{
-      const res = await fetch(baseUrl() + path, {method:'GET'});
-      // A restarting server often drops the socket mid-reply, which reads as an error here
-      // even though the reboot is under way. Treat a 2xx as success and keep going otherwise.
-      if(res.ok) return path;
-      lastStatus = res.status;
-    }catch(e){
-      // Connection torn down mid-request is the expected shape of a successful reboot
-      if(/network|fetch|load failed/i.test(e.message)) return path;
-      lastStatus = e.message;
+  const seen = [];
+  for(const method of ['POST', 'GET']){
+    for(const path of RESTART_ENDPOINTS){
+      try{
+        const res = await fetch(baseUrl() + path, {method, cache:'no-store'});
+        if(res.ok) return path;
+        seen.push(res.status);
+        // Manager is there but its security level forbids restarts from this client
+        if(res.status === 403) throw new Error('ComfyUI-Manager refused the restart. Its security_level in config.ini is set too strict; "normal" allows it');
+      }catch(e){
+        if(/refused the restart/.test(e.message)) throw e;
+        // A server that tears the connection down mid-reply is the shape of a reboot under way
+        if(/network|fetch|load failed/i.test(e.message)) return path;
+        seen.push(e.message);
+      }
     }
   }
-  throw new Error(lastStatus === 404 || lastStatus === null
-    ? 'No restart endpoint answered — this needs ComfyUI-Manager installed'
-    : 'Restart failed: ' + lastStatus);
+  // 404 everywhere means no Manager. Anything else means Manager answered and said no.
+  const telling = seen.find(s => s !== 404);
+  throw new Error(telling === undefined
+    ? 'No restart endpoint answered. Restart needs ComfyUI-Manager installed'
+    : 'Restart failed: ' + telling);
 }
 
-/** Poll until the server is answering again, so the app can reconnect on its own. */
+/** Poll until the server is answering again, so the app can reconnect on its own.
+ *  The server has to be seen going down first; otherwise the poll can catch the old
+ *  process in its last second and report it back before it has left. */
 async function waitForServerBack(maxSeconds = 180){
   const started = Date.now();
+  let wentDown = false;
   while((Date.now() - started) / 1000 < maxSeconds){
-    await new Promise(r => setTimeout(r, 3000));
+    await new Promise(r => setTimeout(r, 2000));
     try{
       const res = await fetch(baseUrl() + '/system_stats', {cache:'no-store'});
-      if(res.ok) return true;
-    }catch(e){}
+      if(res.ok && (wentDown || Date.now() - started > 20000)) return true;
+      if(!res.ok) wentDown = true;
+    }catch(e){ wentDown = true; }
   }
   return false;
 }
@@ -3816,6 +4031,25 @@ function upscaleBranch(graph, upNodeId){
 /** A LoadImage is anonymous on its own. What it feeds is what it means, so follow the link
  *  and name it accordingly: two identical "Input Image" fields tell the user nothing about
  *  which one is the opening frame. */
+/** A socket that takes video or audio, whatever type its slots declare. */
+/** One clear behaviour for every image tile, whether its button was drawn with the editor
+ *  or added after an upload finished. */
+function wireImageClear(btn, f){
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    e.preventDefault();
+    f.value = '';
+    f._picked = false;
+    f._uploadOk = false;
+    renderEditor();
+  });
+}
+
+function isMotionSocket(socketName, innerSlots){
+  const names = [String(socketName || '')].concat(Object.keys(innerSlots || {}));
+  return names.some(n => /video|audio|frames?$/i.test(n));
+}
+
 function imageRoleLabel(apiGraph, nodeId){
   const ROLES = [
     [/^first_frame$/i,          'First Frame',  10],
@@ -3837,8 +4071,10 @@ function imageRoleLabel(apiGraph, nodeId){
         if(!m) continue;
         let out = label;
         if(m[1] !== undefined){
-          // image_1 is already 1-based; the autogrow sockets start at 0
-          const n = /^images\./.test(key) ? Number(m[1]) + 1 : Number(m[1]);
+          // image_1 is already 1-based; every autogrow socket starts at 0. ref_images was
+          // missing from this shift, so the first reference read as "Reference 0" while a
+          // slot added later read as "Reference 2".
+          const n = /^(images|ref_images)\./.test(key) ? Number(m[1]) + 1 : Number(m[1]);
           out = label.replace('$1', String(n));
         }
         return {label: out, order};
@@ -4236,6 +4472,78 @@ function buildEditableFields(apiGraph, titleMap){
       field._autogrowMax = (tpl && tpl.max) || 6;
     }
   }
+
+  /* An image input a workflow never used leaves no trace in the graph, so there was nothing
+     to render and no way to add one. That made a text-only render a dead end: you could not
+     take a clip you liked and feed references back into the same workflow.
+     The node's schema still declares those inputs though, whether the author wired them or
+     not. So offer a tile for every image input the node accepts and the graph has not
+     filled, and let the existing new-slot path build the loader at submit. */
+  (function offerUnwiredImageInputs(){
+    const info = state._fullObjectInfo || {};
+    const LABELS = {
+      image: 'Image', images: 'Image', first_image: 'First Frame', start_image: 'First Frame',
+      last_image: 'Last Frame', end_image: 'Last Frame', ref_image: 'Reference',
+      pixels: 'Image', source: 'Image', destination: 'Image', mask: 'Mask'
+    };
+    for(const nid in apiGraph){
+      const type = apiGraph[nid].class_type;
+      if(SKIP_NODE_TYPES.has(type)) continue;
+      const def = info[type];
+      if(!def || !def.input) continue;
+      const ins = apiGraph[nid].inputs || {};
+      const slots = Object.assign({}, def.input.optional || {}, def.input.required || {});
+
+      for(const key in slots){
+        const spec = slots[key];
+        if(!Array.isArray(spec)) continue;
+        const tpl = spec[1] && spec[1].template;
+
+        // An autogrow socket of images: offer its first slot when none are filled
+        if(tpl && tpl.input){
+          const inner = Object.assign({}, tpl.input.optional || {}, tpl.input.required || {});
+          const takesImage = Object.values(inner).some(s => Array.isArray(s) && s[0] === 'IMAGE');
+          if(!takesImage) continue;
+          // ref_videos declares its slots as IMAGE because a video arrives as a batch of
+          // frames, but it wants a clip, not a still. Offering it as a reference tile put a
+          // second "Reference 1" on screen, and an image dropped into it failed the node's
+          // minimum frame count.
+          if(isMotionSocket(key, inner)) continue;
+          const prefix = (spec[1].prefix) || (Object.keys(inner)[0] + '_');
+          const already = Object.keys(ins).some(k => k.indexOf(key + '.') === 0);
+          if(already) continue;
+          const graphKey = key + '.' + prefix + '0';
+          groups.push({
+            nodeId: nid, key: graphKey, kind: 'image',
+            label: (LABELS[Object.keys(inner)[0]] || 'Reference') + ' 1',
+            value: '', _imgRole: 30, _framePair: true,
+            _autogrow: true, _autogrowKey: key, _autogrowIdx: 0,
+            _autogrowPrefix: prefix, _autogrowMax: (spec[1].max) || 6,
+            _isNewSlot: true
+          });
+          continue;
+        }
+
+        // A plain image input nobody wired
+        if(spec[0] !== 'IMAGE') continue;
+        if(ins[key] !== undefined) continue;                       // already wired or set
+        if(groups.some(f => String(f.nodeId) === String(nid) && f.key === key)) continue;
+        // A node that also takes a closing frame means its plain `image` is the opening one,
+        // and calling it "Image" next to "Last Frame" tells you nothing about the pairing
+        const hasClosing = Object.keys(slots).some(k => /^(last_image|end_image|last_frame|end_frame)$/i.test(k));
+        const isClosing = /(last|end)/i.test(key);
+        const label = isClosing ? 'Last Frame'
+          : (hasClosing && /^(image|first_image|start_image)$/i.test(key)) ? 'First Frame'
+          : (LABELS[key] || key.replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase()));
+        groups.push({
+          nodeId: nid, key, kind: 'image',
+          label,
+          value: '', _imgRole: isClosing ? 20 : 10,
+          _framePair: true, _isNewSlot: true
+        });
+      }
+    }
+  })();
 
   // An autogrow input takes more than it shows. Once every declared slot has an image,
   // offer one more so references can be added without editing the workflow.
@@ -5678,10 +5986,12 @@ function renderEditor(){
       const negClass = f.negPrompt ? ' neg-prompt' : '';
       const savedChars = f.negPrompt ? [] : getSavedCharacters();
       const savedStyles = f.negPrompt ? [] : getStyles();
-      const insertRow = (savedChars.length || savedStyles.length) ? `
+      const recentPrompts = f.negPrompt ? [] : recallablePrompts();
+      const insertRow = (savedChars.length || savedStyles.length || recentPrompts.length) ? `
           <div class="insert-row">
             ${savedChars.length ? `<button class="insert-btn" data-insert-kind="char" data-insert-target="${i}"><span class="g">ᛗ</span> Character ▾</button>` : ''}
             ${savedStyles.length ? `<button class="insert-btn" data-insert-kind="style" data-insert-target="${i}"><span class="g">ᛋ</span> Style ▾</button>` : ''}
+            ${recentPrompts.length ? `<button class="insert-btn" data-insert-kind="recent" data-insert-target="${i}"><span class="g">⟲</span> Recent ▾</button>` : ''}
           </div>` : '';
       html += `
         <div class="field-group">
@@ -5983,31 +6293,48 @@ function renderEditor(){
       document.querySelectorAll('.insert-menu').forEach(m => m.remove());
       if(wasOpen) return;
       const kind = btn.dataset.insertKind;
+      const isRecent = kind === 'recent';
       const items = kind === 'char'
         ? getSavedCharacters().map(x => ({name: x.name, text: x.text, g: 'ᛗ'}))
+        : isRecent ? recallablePrompts()
         : getStyles().map(s => ({name: s.name, text: s.text, g: 'ᛋ'}));
       const menu = document.createElement('div');
       menu.className = 'insert-menu';
       menu.dataset.kind = kind;
-      menu.innerHTML = items.length ? items.map((it, xi) => `
-        <div class="insert-item" data-ins="${xi}">
+      const filter = items.length > 8
+        ? `<input class="insert-filter" type="text" placeholder="Filter ${items.length}…">` : '';
+      menu.innerHTML = items.length ? filter + items.map((it, xi) => `
+        <div class="insert-item" data-ins="${xi}" data-search="${escapeHtml((it.name + ' ' + it.text.slice(0, 300)).toLowerCase())}">
           <span class="ig">${it.g}</span>
           <div style="flex:1; min-width:0;">
-            <div class="iname">${escapeHtml(it.name)}</div>
-            <div class="iprev">${escapeHtml(it.text.slice(0, 46))}</div>
+            <div class="iname">${escapeHtml(it.name.slice(0, 90))}</div>
+            <div class="iprev">${isRecent ? escapeHtml(it.src + ' · ' + it.when) : escapeHtml(it.text.slice(0, 46))}</div>
           </div>
         </div>`).join('') : `<div class="insert-empty">Nothing saved yet</div>`;
       row.appendChild(menu);
+      const filterEl = menu.querySelector('.insert-filter');
+      if(filterEl){
+        filterEl.addEventListener('click', ev => ev.stopPropagation());
+        filterEl.addEventListener('input', ()=>{
+          const q = filterEl.value.trim().toLowerCase();
+          menu.querySelectorAll('.insert-item').forEach(el => {
+            el.style.display = (!q || el.dataset.search.includes(q)) ? '' : 'none';
+          });
+        });
+        // A phone keyboard covering half the list is worse than tapping the box yourself
+        if(window.matchMedia('(hover:hover)').matches) filterEl.focus();
+      }
       menu.querySelectorAll('[data-ins]').forEach(el => {
         el.addEventListener('click', ()=>{
           const it = items[parseInt(el.dataset.ins)];
           const ta = main.querySelector(`textarea[data-field-idx="${btn.dataset.insertTarget}"]`);
           if(ta && it){
-            insertAtCursor(ta, makeChip(btn.dataset.insertKind === 'char' ? 'char' : 'style', it.name));
+            if(isRecent) recallPromptInto(ta, it.text);
+            else insertAtCursor(ta, makeChip(btn.dataset.insertKind === 'char' ? 'char' : 'style', it.name));
             renderChipRow(ta, parseInt(btn.dataset.insertTarget));
           }
           menu.remove();
-          toast(`${it.g} ${it.name} inserted`);
+          toast(isRecent ? `${it.g} Prompt recalled` : `${it.g} ${it.name} inserted`);
         });
       });
       const closeOnOutside = (ev)=>{
@@ -6043,15 +6370,7 @@ function renderEditor(){
     if(f.kind==='image'){
       const camBtn = main.querySelector(`[data-camera-idx="${i}"]`);
       const clearBtn = main.querySelector(`[data-image-clear="${i}"]`);
-      if(clearBtn){
-        clearBtn.addEventListener('click', (e)=>{
-          e.stopPropagation();
-          f.value = '';
-          f._picked = false;
-          f._uploadOk = false;
-          renderEditor();
-        });
-      }
+      if(clearBtn) wireImageClear(clearBtn, f);
       const libBtn = main.querySelector(`[data-library-idx="${i}"]`);
       const camInput = document.getElementById(`cameraInput${i}`);
       const libInput = document.getElementById(`libraryInput${i}`);
@@ -6551,6 +6870,19 @@ async function handleImageFieldUpload(file, fieldIdx){
     f.value = json.subfolder ? `${json.subfolder}/${json.name}` : json.name;
     f._uploadOk = true;
     rememberUploadedImage(f.value);
+    // The tile was drawn while it was empty, so it has no clear button yet, and the editor
+    // is not redrawn after an upload. Add the button here rather than waiting for the next
+    // render, which is why switching panes and back used to be the only way to get one.
+    const tile = preview && preview.closest('.img-drop');
+    if(tile && !tile.querySelector('[data-image-clear]')){
+      const btn = document.createElement('button');
+      btn.className = 'img-drop-clear';
+      btn.dataset.imageClear = String(fieldIdx);
+      btn.title = 'Clear';
+      btn.textContent = '✕';
+      tile.appendChild(btn);
+      wireImageClear(btn, f);
+    }
     toast('Image uploaded to server');
   }catch(e){
     toast('⚠ Image upload failed — tap it and pick again');
@@ -6742,6 +7074,10 @@ async function submitCurrentWorkflow(){
       // Model field on a UNET loader: swap the node to whichever loader can read this file
       const swapped = swapLoaderForFile(graph, f.nodeId, String(f.value));
       if(swapped) toast(`Loader switched to ${graph[f.nodeId].class_type} for this model`);
+    } else if(f.kind === 'image' && f._isNewSlot){
+      // Deliberately nothing. This slot has no loader behind it yet, and writing the
+      // filename here would hand the node a string where it expects an image tensor.
+      // The loader pass below owns this field.
     } else {
       graph[f.nodeId].inputs[f.key] = f.value;
     }
@@ -6763,6 +7099,41 @@ async function submitCurrentWorkflow(){
     target.inputs = target.inputs || {};
     target.inputs[f.key] = [id, 0];
   });
+  /* Whatever happened above, an image input holding a filename is fatal: the node calls
+     .shape on it and dies. Anything still in that state gets a loader built for it here, and
+     an empty one is removed rather than sent. This is a backstop, not the main path. */
+  (function noStringsInImageInputs(){
+    const oi = state._fullObjectInfo || {};
+    for(const nid in graph){
+      const node = graph[nid];
+      if(!node || !node.inputs) continue;
+      if(/^LoadImage/.test(node.class_type || '')) continue; // its filename belongs there
+      const def = oi[node.class_type];
+      const slots = def && def.input
+        ? Object.assign({}, def.input.optional || {}, def.input.required || {}) : {};
+      for(const key of Object.keys(node.inputs)){
+        const val = node.inputs[key];
+        if(typeof val !== 'string') continue;
+        // Is this key an image input? Either declared IMAGE, or a slot of an autogrow
+        // socket whose template takes an image.
+        const socket = key.indexOf('.') > -1 ? key.slice(0, key.indexOf('.')) : key;
+        const spec = slots[socket];
+        let isImage = Array.isArray(spec) && spec[0] === 'IMAGE';
+        if(!isImage && Array.isArray(spec) && spec[1] && spec[1].template && spec[1].template.input){
+          const inner = Object.assign({}, spec[1].template.input.optional || {}, spec[1].template.input.required || {});
+          isImage = Object.values(inner).some(s => Array.isArray(s) && s[0] === 'IMAGE')
+                 && !isMotionSocket(socket, inner);
+        }
+        if(!isImage) continue;
+        if(!val.trim()){ delete node.inputs[key]; continue; }
+        const id = String(++_newLoaderId);
+        graph[id] = {class_type:'LoadImage', inputs:{image: val, upload:'image'}};
+        node.inputs[key] = [id, 0];
+        console.warn('built a loader for', node.class_type + '.' + key, '— it held a filename');
+      }
+    }
+  })();
+
   // Drop any image loader left without a file. ComfyUI resolves an empty filename to the
   // input directory itself and fails trying to read it, so "no image" has to mean the node
   // is gone and nothing points at it, which is also what makes text-to-video reachable again.
@@ -6821,10 +7192,10 @@ async function submitCurrentWorkflow(){
     const res = await fetch(`${baseUrl()}/prompt`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify(Object.assign(
+      body: JSON.stringify(previewExtraData(Object.assign(
         {prompt: translateToVlm(graph), client_id: state.clientId},
         chipExtraData(graph)
-      ))
+      )))
     });
     const json = await res.json();
     if(json.error){
@@ -6895,12 +7266,25 @@ async function renderQueue(){
         <div>
           <div class="name">${item.status} — #${item[0]}</div>
         </div>
-        <button data-cancel-id="${item[1]}">Cancel</button>
+        <button data-cancel-id="${item[1]}" data-running="${item.status === 'Running' ? '1' : ''}">${item.status === 'Running' ? 'Stop' : 'Cancel'}</button>
       </div>
     `).join('');
     main.querySelectorAll('[data-cancel-id]').forEach(btn=>{
       btn.addEventListener('click', async ()=>{
-        await fetch(`${baseUrl()}/queue`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({delete:[btn.dataset.cancelId]})});
+        const pid = btn.dataset.cancelId;
+        btn.disabled = true;
+        try{
+          if(btn.dataset.running){
+            // Deleting a running job from the queue does nothing; it has already left the
+            // queue for the executor. Only an interrupt stops it.
+            const res = await fetch(`${baseUrl()}/interrupt`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt_id: pid})});
+            if(!res.ok) throw new Error('HTTP ' + res.status);
+            toast('Stopping after this step…');
+            setTimeout(renderQueue, 1500);
+            return;
+          }
+          await cancelQueuedJob(pid);
+        }catch(e){ toast('Could not cancel: ' + e.message); }
         renderQueue();
       });
     });
@@ -6926,6 +7310,49 @@ function getItemDate(url){
 }
 
 /** Gallery view density: 'dense' | 'comfy' | 'full' */
+const GALLERY_FILL = '<i class="gallery-fill" aria-hidden="true"></i>';
+
+/** The aspect ratio a tile should take, from what we learned the last time it loaded.
+ *  Clamped so one extreme panorama or sliver cannot take over a row. */
+function tileAr(url){
+  const ar = Number((state.galleryMeta[url] || {}).ar);
+  return ar > 0 ? Math.min(3, Math.max(0.4, ar)) : 0;
+}
+function tileArStyle(url){
+  const ar = tileAr(url);
+  return ar ? `--ar:${ar.toFixed(4)};` : '';
+}
+
+/** Learn each tile's real shape as it loads and remember it, so the next render lays out
+ *  correctly straight away instead of starting square and settling. Saved in a batch,
+ *  because a full gallery loading would otherwise write storage once per image. */
+let _arSaveTimer = null;
+function captureTileRatios(){
+  const record = (el, w, h) => {
+    if(!w || !h) return;
+    const url = el.dataset.url;
+    const tile = el.closest('.gallery-tile');
+    const ar = w / h;
+    if(tile) tile.style.setProperty('--ar', Math.min(3, Math.max(0.4, ar)).toFixed(4));
+    if(!url) return;
+    const meta = state.galleryMeta[url] || (state.galleryMeta[url] = {});
+    if(meta.ar && Math.abs(meta.ar - ar) < 0.001) return;
+    meta.ar = Math.round(ar * 10000) / 10000;
+    clearTimeout(_arSaveTimer);
+    _arSaveTimer = setTimeout(()=>{
+      try{ localStorage.setItem('returncurrent_gallery_meta', JSON.stringify(state.galleryMeta)); }catch(e){}
+    }, 1200);
+  };
+  main.querySelectorAll('.gallery-tile img[data-url]').forEach(img => {
+    if(img.complete && img.naturalWidth) record(img, img.naturalWidth, img.naturalHeight);
+    else img.addEventListener('load', ()=> record(img, img.naturalWidth, img.naturalHeight), {once:true});
+  });
+  main.querySelectorAll('.gallery-tile video[data-url]').forEach(v => {
+    if(v.readyState >= 1 && v.videoWidth) record(v, v.videoWidth, v.videoHeight);
+    else v.addEventListener('loadedmetadata', ()=> record(v, v.videoWidth, v.videoHeight), {once:true});
+  });
+}
+
 function getGalleryView(){
   return localStorage.getItem('returncurrent_gallery_view') || 'comfy';
 }
@@ -6950,6 +7377,7 @@ function galleryViewBar(){
     </span>
     <button class="gv-btn ${v==='dense'?'active':''}" data-gview="dense" title="Dense">ᛜ</button>
     <button class="gv-btn ${v==='comfy'?'active':''}" data-gview="comfy" title="Comfortable">▣</button>
+    <button class="gv-btn ${v==='rows'?'active':''}" data-gview="rows" title="Justified rows, uncropped">▥</button>
     <button class="gv-btn ${v==='full'?'active':''}" data-gview="full" title="Full size">▤</button>
   </div>`;
 }
@@ -7058,12 +7486,18 @@ function currentGalleryTileIndex(tiles){
 
 /** Step to the previous/next image in the gallery, whatever the view density. */
 function galleryStep(dir){
-  const tiles = [...main.querySelectorAll('.gallery-grid > *')];
+  // Step by row rather than by element. Several tiles share a row in every view but Full,
+  // so stepping to the next element often meant scrolling to where you already were.
+  const tiles = [...main.querySelectorAll('.gallery-grid > .gallery-tile, .gallery-grid > .gallery-date')];
   if(tiles.length < 2) return;
-  const i = currentGalleryTileIndex(tiles);
-  const next = Math.min(Math.max(i + dir, 0), tiles.length - 1);
+  const tops = [...new Set(tiles.map(t => t.offsetTop))].sort((a, b) => a - b);
+  const here = main.scrollTop;
+  let i = 0, bestDist = Infinity;
+  tops.forEach((t, k) => { const d = Math.abs(t - here); if(d < bestDist){ bestDist = d; i = k; } });
+  const next = Math.min(Math.max(i + dir, 0), tops.length - 1);
   if(next === i) return;
-  tiles[next].scrollIntoView({behavior:'smooth', block:'start'});
+  const target = tiles.find(t => t.offsetTop === tops[next]);
+  if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 /** Scroll the gallery by a comfortable chunk. */
@@ -7168,6 +7602,7 @@ function renderGallery(){
     const url = item.type === 'group' ? item.cover : item.url;
     const dateStr = getItemDate(url);
     if(dateStr && dateStr !== lastDate){
+      if(lastDate) gridHtml += GALLERY_FILL;
       gridHtml += `<div class="gallery-date">${dateStr}</div>`;
       lastDate = dateStr;
     } else if(!dateStr && !lastDate && i === 0){
@@ -7179,7 +7614,7 @@ function renderGallery(){
     if(unseen) classes.push('unseen');
     if(item.type === 'group') classes.push('group-tile');
     gridHtml += `
-    <div class="${classes.join(' ')}" data-gallery-url="${escapeHtml(url)}" ${isNew(url) ? 'style="animation-delay:'+i*60+'ms"' : ''}>
+    <div class="${classes.join(' ')}" data-gallery-url="${escapeHtml(url)}" style="${tileArStyle(url)}${isNew(url) ? 'animation-delay:'+i*60+'ms;' : ''}">
       ${(()=>{
         const isVid = state.galleryMeta[url]?.video;
         const action = item.type === 'group' ? 'expand' : 'view';
@@ -7199,7 +7634,7 @@ function renderGallery(){
       })()}
     </div>`;
   });
-  main.innerHTML = galleryViewBar() + `<div class="gallery-grid${galleryViewClass()}">${gridHtml}</div>`;
+  main.innerHTML = galleryViewBar() + `<div class="gallery-grid${galleryViewClass()}">${gridHtml}${GALLERY_FILL}</div>`;
   wireGalleryViewBar();
   ensureGalleryRail();
   wireGalleryScroll();
@@ -7219,7 +7654,7 @@ function renderGalleryTiles(urls, newCount, isExpanded){
     if(isNew) classes.push('new-tile');
     if(unseen) classes.push('unseen');
     return `
-    <div class="${classes.join(' ')}" data-gallery-url="${escapeHtml(url)}" ${isNew ? 'style="animation-delay:'+i*60+'ms"' : ''}>
+    <div class="${classes.join(' ')}" data-gallery-url="${escapeHtml(url)}" style="${tileArStyle(url)}${isNew ? 'animation-delay:'+i*60+'ms;' : ''}">
       ${state.galleryMeta[url]?.video
         ? `<video src="${url}" muted loop preload="metadata" playsinline data-action="view" data-url="${escapeHtml(url)}" data-vid="1"></video>`
         : `<img src="${url}" loading="lazy" data-action="view" data-url="${escapeHtml(url)}">`}
@@ -7227,7 +7662,7 @@ function renderGalleryTiles(urls, newCount, isExpanded){
       <button class="gallery-remove" data-remove-url="${escapeHtml(url)}">✕</button>
       <button class="gallery-iterate" data-iterate-url="${escapeHtml(url)}" title="Iterate">∞</button>
     </div>`;
-  }).join('')}</div>`;
+  }).join('')}${GALLERY_FILL}</div>`;
 
   if(isExpanded){
     wireGalleryViewBar();
@@ -7240,6 +7675,7 @@ function renderGalleryTiles(urls, newCount, isExpanded){
 }
 
 function wireGalleryEvents(){
+  captureTileRatios();
   // Image click: view or expand group
   main.querySelectorAll('[data-action]').forEach(img=>{
     img.addEventListener('click', ()=>{
@@ -7615,6 +8051,11 @@ function wireChipTextarea(ta, fieldIdx){
   ta._chipWired = true;
 
   ta.addEventListener('keydown', (e)=>{
+    if(e.key === 'ArrowUp' && !ta.value.trim() && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey){
+      const recentBtn = main.querySelector(`[data-insert-kind="recent"][data-insert-target="${fieldIdx}"]`);
+      if(recentBtn){ e.preventDefault(); recentBtn.click(); }
+      return;
+    }
     if(e.key !== 'Backspace' && e.key !== 'Delete') return;
     const start = ta.selectionStart, end = ta.selectionEnd;
     if(start !== end) return; // a real selection deletes normally
@@ -7671,6 +8112,20 @@ function restoreChips(graph, chipMap){
     }
   }
   return restored;
+}
+
+/** A recalled prompt replaces the field unless you have been working in it.
+ *  An untouched field still holds whatever the workflow shipped with, and swapping that out
+ *  is the point. Once you have clicked into it this session, your cursor says where you
+ *  want the text, so it is inserted there and nothing you wrote is lost. */
+function recallPromptInto(ta, text){
+  if(ta.dataset.touched === '1' && ta.value.trim()){
+    insertAtCursor(ta, text);
+    return;
+  }
+  ta.value = text;
+  try{ ta.setSelectionRange(text.length, text.length); }catch(e){}
+  ta.dispatchEvent(new Event('input', {bubbles:true}));
 }
 
 function insertAtCursor(ta, text){
@@ -9127,6 +9582,21 @@ function renderTools(){
 function getToolsHistory(){
   try{ return JSON.parse(localStorage.getItem('returncurrent_tools_history') || '[]'); }catch(e){ return []; }
 }
+/** Prompts worth pulling back into a workflow: what the Text, Image and Motion tools have
+ *  written, newest first. Character and Style output already has its own buttons. */
+const RECALL_SOURCES = {'Text':'≡', 'Image':'▣', '∞':'▣', 'ᛖ':'ᛖ'};
+function recallablePrompts(){
+  return getToolsHistory()
+    .filter(h => RECALL_SOURCES[h.src] && String(h.text || '').trim())
+    .map(h => ({
+      g: RECALL_SOURCES[h.src],
+      name: historyPreview(h).replace(/\s+/g, ' ').trim(),
+      text: String(h.text).trim(),
+      when: h.ts ? new Date(h.ts).toLocaleDateString() : '',
+      src: h.src === 'ᛖ' ? 'Motion' : (h.src === 'Text' ? 'Text' : 'Image')
+    }));
+}
+
 /** What to show in the Recent Prompts list. Prefers what the user typed; failing that,
  *  skips any boilerplate opening so two entries never look identical. */
 function historyPreview(h){
@@ -10987,13 +11457,13 @@ if(restartBtn){
     restartBtn.querySelector('span').textContent = 'Restarting';
     try{
       await restartComfyUI();
-      toast('Restarting ComfyUI — waiting for it to come back');
+      toast('Restarting ComfyUI, waiting for it to come back');
       const back = await waitForServerBack();
       if(back){
         toast('ComfyUI is back');
         try{ tryConnect(); }catch(e){}
       } else {
-        toast('ComfyUI has not answered in three minutes — check the console on your PC');
+        toast('ComfyUI has not answered in three minutes. Check the console on your PC');
       }
     }catch(e){
       toast(e.message);
@@ -11001,6 +11471,31 @@ if(restartBtn){
       restartBtn.disabled = false;
       restartBtn.querySelector('span').textContent = 'Restart';
     }
+  });
+}
+
+const stopBtnEl = document.getElementById('stopBtn');
+if(stopBtnEl) stopBtnEl.addEventListener('click', stopRunningJob);
+
+// Tap the preview to shrink it to a strip, tap again to bring it back. Remembered, since
+// someone who wants the form visible while rendering will want it every time.
+const previewWrapEl = document.getElementById('previewWrap');
+const progressBannerEl = document.getElementById('progressBanner');
+if(previewWrapEl && progressBannerEl){
+  try{ progressBannerEl.classList.toggle('preview-small', localStorage.getItem('returncurrent_preview_size') === 'small'); }catch(e){}
+  previewWrapEl.addEventListener('click', ()=>{
+    const small = progressBannerEl.classList.toggle('preview-small');
+    try{ localStorage.setItem('returncurrent_preview_size', small ? 'small' : 'large'); }catch(e){}
+  });
+}
+
+const previewMethodEl = document.getElementById('previewMethodSelect');
+if(previewMethodEl){
+  previewMethodEl.value = getPreviewMethod();
+  previewMethodEl.addEventListener('change', ()=>{
+    localStorage.setItem('returncurrent_preview_method', previewMethodEl.value);
+    if(previewMethodEl.value === 'none') clearLivePreview();
+    toast(previewMethodEl.value === 'none' ? 'Live preview off' : 'Live preview: ' + PREVIEW_METHODS[previewMethodEl.value]);
   });
 }
 

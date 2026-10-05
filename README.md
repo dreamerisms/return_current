@@ -10,7 +10,7 @@ Your GPU, in your pocket.
 
 ---
 
-**Latest: β4.9.x** — the Tools pane runs entirely on ComfyUI's own vision model. No second application, no API key, no LM Studio. [Full changelog ↓](#changelog)
+**Latest: β4.9.9.** Watch every render resolve live as it samples, and stop it the moment it goes wrong. [Full changelog ↓](#changelog)
 
 ---
 
@@ -156,6 +156,12 @@ The **[`workflows/`](workflows/) folder** has tested examples for SDXL, Anima, I
 
 **A workflow behaves oddly after an update** — Open it once and the app rebuilds it with the current converter, silently. If it was imported before that became possible, delete it and re-import.
 
+**No live preview** — Check ⚙ → Server → Live preview isn't Off. Detailed needs the TAESD decoders in `models/vae_approx/`; without them, use Auto or Fast. Some custom samplers never report steps, so they have nothing to preview.
+
+**Stop takes a moment** — ComfyUI checks for an interrupt between steps, so the current step finishes first. A node that never checks, like a long LLM call, runs to the end.
+
+**Restart says Manager refused** — ComfyUI-Manager's `security_level` in its `config.ini` is stricter than `normal`. Set it to `normal` and restart ComfyUI once by hand.
+
 **App looks stale after an update** — Hard-refresh (pull down, or Ctrl+Shift+R). If you added it to your home screen, remove and re-add it; those cache harder than a normal tab.
 
 ## Standing On Shoulders
@@ -182,6 +188,29 @@ If your work is in this list and you'd like something corrected, credited differ
 ## Changelog
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
+
+### β4.9.9 — October 5, 2026
+- **Live preview.** The progress banner now shows the render forming, step by step, out of a coarse mosaic into the picture. ComfyUI was already streaming these frames down the connection the app holds; they were being thrown away. Tap the preview to shrink it to a strip if you'd rather see the form, tap again to bring it back. On a wide screen the banner becomes a card in the corner. Pick Fast, Detailed or Off under ⚙ → Server → Live preview. No launch flag needed, the app asks for previews per job
+- **■ Stop**, on the progress banner. Halts the running job after its current step, the same interrupt as ComfyUI's own ✕. It only stops your job, so on a shared server nobody else's render gets killed. If your job hasn't started yet, Stop takes it out of the queue instead
+- **Cancel in the Queue tab now works on the running job.** It used to delete the job from the queue, which does nothing once a job is executing, so the render ran to the end anyway. The running row now says Stop and interrupts it. Cancelled pending jobs also stop being waited on, so the banner no longer counts jobs that will never come back
+- **Restart works with current ComfyUI-Manager.** Manager changed its restart from GET to POST, so every attempt was refused and the app blamed a missing Manager. It now asks the way Manager expects, also covers the newer /v2 route, and when Manager does answer with a refusal, says so instead of claiming it isn't installed
+
+### β4.9.8 — October 4, 2026
+- **▥ Justified rows**, a new gallery view. Every image shows whole, at its own aspect ratio, several to a row at one shared height, newest first left to right. Portraits stop losing their heads and landscapes stop losing their edges. Each image's shape is learned the first time it loads and remembered, so later visits lay out instantly
+- **⟲ Recent ▾** on every prompt field. It lists the prompts the Text, Image and Motion tools have written for you, newest first, with where each came from and when. Pick one to drop it straight into the workflow, no copy and paste. An untouched field gets replaced; a field you've been editing gets it inserted at the cursor. A filter box appears once the list gets long, and on a keyboard, pressing ↑ in an empty prompt opens the list
+- Stepping through the gallery with the keyboard now moves a row at a time. Stepping by tile used to scroll nowhere whenever the next tile sat on the same row
+
+### β4.9.7 — October 4, 2026
+- **Fixed a second "Reference 1" that was really a video input.** MiniMax's reference node has a video socket whose slots are typed as images, so the app offered it as a reference tile, and an image dropped into it failed the node's minimum frame count. Video and audio sockets no longer get image tiles
+- **The ✕ on an image tile appears as soon as the upload finishes**, instead of only after switching panes and back
+
+### β4.9.6 — September 13, 2026
+- Fixed an image added to a slot the workflow never had arriving at the node as a filename instead of an image, which failed with `'str' object has no attribute 'shape'`. A final check before submitting now guarantees no image input can carry a bare filename
+
+### β4.9.5 — September 12, 2026
+- **An image input a workflow never used still shows up.** Render a clip from text alone, iterate it, and the reference and frame slots are there waiting, because they are read from what the node accepts rather than from what the last run happened to wire. Dropping an image in builds its loader at submit
+- The first reference slot read as Reference 0 while one added later read as Reference 2; both autogrow sockets are now numbered from 1
+- On a node that also takes a closing frame, the plain image input is labelled First Frame rather than just Image
 
 ### β4.9.4 — September 11, 2026
 - **Fixed video downloads saving as .png.** The download filename ended in a hardcoded .png, so every clip arrived as a valid MP4 that nothing would open. The extension now comes from the file itself
