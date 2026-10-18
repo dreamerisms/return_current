@@ -10,7 +10,19 @@ Your GPU, in your pocket.
 
 ---
 
-**Latest: β4.9.9.** Watch every render resolve live as it samples, and stop it the moment it goes wrong. [Full changelog ↓](#changelog)
+> [!NOTE]
+> ### What's new in β4.9
+> - **MOSS Image, built in.** The new 5B MOSS image model as a ready-to-run example: turbo LoRA at 0.7, DLSS and RTX upscale switches, the full LoRA stack
+> - **Watch it render.** A live preview resolves out of a pixel mosaic as it samples, with a **■ Stop** button that halts the running job. Add KJNodes' Model Preview Override and video models preview in motion, the whole clip playing as it forms
+> - **Prompt chips.** Drop a saved style ᛋ or character ᛗ into any prompt as one compact chip. It expands into the full text when you hit Generate, and survives ∞ iterate
+> - **⟲ Recent ▾** on every prompt field pulls back anything the Tools wrote for you, no copy and paste
+> - **▥ Justified rows gallery.** Every image whole, uncropped, at its own shape
+> - **Tools run on ComfyUI itself.** Image to prompt, characters, styles and video direction all use a vision model ComfyUI hosts. No LM Studio, no second app
+> - **Nothing is ever dropped.** No caps on characters, styles, prompts, sessions or gallery. Tools lists fold up by day, and import syncs devices with the newest version winning
+> - **One-tap switches** for DLSS, RTX upscaling, turbo and quality modes, with their fiddly settings folded away underneath
+> - **Server control from your phone.** Unload models, free VRAM, restart ComfyUI
+>
+> [Full changelog ↓](#changelog)
 
 ---
 
@@ -139,7 +151,7 @@ Drop in a **`.json` workflow**, a **PNG** ComfyUI rendered, or an **MP4 / MOV / 
 
 Nodes the app doesn't recognise are skipped and named, not fatal. The workflow still imports and usually still runs.
 
-The **[`workflows/`](workflows/) folder** has tested examples for SDXL, Anima, Ideogram 4, Krea 2, Wan 2.2 video, LTX-2 video, and MiniMax H3 video, including multi-keyframe, first-to-last-frame and reference-image variants. They all open cleanly in ComfyUI and import into the app. The image workflows share a surrealist botanical prompt and the Wan 2.2 workflow animates their output, giving you an end-to-end demo chain out of the box. Full prerequisite download tables are in that folder's README.
+The **[`workflows/`](workflows/) folder** has tested examples for SDXL, Anima, Ideogram 4, Krea 2, MOSS Image, Wan 2.2 video, LTX-2 video, and MiniMax H3 video, including multi-keyframe, first-to-last-frame and reference-image variants. They all open cleanly in ComfyUI and import into the app. The image workflows share a surrealist botanical prompt and the Wan 2.2 workflow animates their output, giving you an end-to-end demo chain out of the box. Full prerequisite download tables are in that folder's README.
 
 ## Troubleshooting
 
@@ -192,6 +204,20 @@ If your work is in this list and you'd like something corrected, credited differ
 ## Changelog
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
+
+### β4.9.11 — October 17, 2026
+- **MOSS Image example workflow.** OpenMOSS's 5B image model, with its turbo LoRA preloaded at 0.7, the shared botanical demo prompt, Skip Layer Guidance and the official sigma shift already set, and DLSS plus RTX upscaling as switches. Needs the MOSS-Image ComfyUI plugin and its model files
+- **Upscale switches in image workflows.** RTX Video Super Resolution and model upscalers now get an on/off switch after an image model too, not just in video workflows
+- **Switches in a chain no longer trip over each other.** With DLSS feeding the upscaler, turning both off could route the image to the DLSS node that had just been removed. Each switch now reads its input from the graph as it stands at that moment
+- **Output folders name custom loaders too.** A model loaded through a custom loader node (MOSS's own, for one) now gets its own folder under Return_Current_Output instead of landing in "Output"
+
+### β4.9.10 — October 9, 2026
+- **Imports sync by newest version.** A character or style whose name you already have is updated in place, as before, but only when the incoming version is newer. Exports now carry each entry's last-edited time, so importing an older export can never roll back an edit you've made since. New names are added, and nothing is ever removed. Export everything on each device, import everywhere, and every copy ends up with the latest of each
+- **No more caps.** Several lists were quietly trimming their oldest entries: Recent Prompts kept 50, chat sessions kept 20 and each saved session kept its last 60 messages, and the gallery list kept the newest 200 renders. Worst, the ᛗ insert menu only offered your first 30 characters, and a ᛗ chip naming any character past the thirtieth expanded to nothing. All gone. Everything you make stays, however many there are. Gallery files were never deleted, only dropped from the list
+- **If the browser runs out of room, it says so.** A browser gives each site a few megabytes. If a save would go past that, the app now refuses that one save and tells you, rather than throwing away anything older to make space
+- **Justified rows are twice the size on a phone.** The shared row height was tuned for a desktop and left phone thumbnails cramped. Desktop is unchanged
+- **The live preview moves to the right** (and is half the size on a phone), sitting above the Stop button in a frame that hugs the picture instead of a box with empty space around it. Wide previews run left from the right edge. Tap it to shrink it further, as before
+- **Tools lists fold up by day.** Saved Characters, Saved Styles, Recent Prompts and chat Sessions are now filed under date headings like the gallery: Today, Yesterday, then dates. Tap a day to open it. The newest day starts open and the app remembers which ones you opened. Filtering searches every day at once and opens the days with a match. Recent Prompts now shows the time on each entry, since the date is the heading
 
 ### β4.9.9 — October 5, 2026
 - **Live preview.** The progress banner now shows the render forming, step by step, out of a coarse mosaic into the picture. ComfyUI was already streaming these frames down the connection the app holds; they were being thrown away. Tap the preview to shrink it to a strip if you'd rather see the form, tap again to bring it back. On a wide screen the banner becomes a card in the corner. Pick Fast, Detailed or Off under ⚙ → Server → Live preview. No launch flag needed, the app asks for previews per job
@@ -361,7 +387,7 @@ If your work is in this list and you'd like something corrected, credited differ
 - **Pinned characters are personas now.** Pin ᛗ in Chat and you're talking TO that character: first person, in their voice, fully uncensored, over your local model. The persona instructions are visible and editable right in the pane. "Show me" renders whatever they just described, and "you" means them
 - **"Show me" is grounded in the moment** — the image prompt is written from the character's latest message plus your request, not a long transcript, so what renders is what was just said
 - **ᚲ Copy / ᛈ Paste LoRA combos** — copy a whole LoRA stack with weights and toggles from one workflow and paste it into any other. Trigger words follow automatically
-- **⇅ Import / Export** for Styles and Characters — a plain JSON array any LLM can write for you. Entries merge by name
+- **⇅ Import / Export** for Styles and Characters — a plain JSON array any LLM can write for you. Entries merge by name (newest version wins since β4.9.10)
 - **Filterable libraries** — past 8 saved entries, a filter box appears; on desktop the lists go two columns
 - Elaborate/Extract moved between Copy-as and Save in the Style tool; Recent Prompts now highlights your selection
 
