@@ -19,7 +19,7 @@ Your GPU, in your pocket.
 > - **▥ Justified rows gallery.** Every image whole, uncropped, at its own shape
 > - **Tools run on ComfyUI itself.** Image to prompt, characters, styles and video direction all use a vision model ComfyUI hosts. No LM Studio, no second app
 > - **Nothing is ever dropped.** No caps on characters, styles, prompts, sessions or gallery. Tools lists fold up by day, and import syncs devices with the newest version winning
-> - **One-tap switches** for DLSS, RTX upscaling, turbo and quality modes, with their fiddly settings folded away underneath
+> - **One-tap switches** for DLSS, RTX upscaling, turbo and quality modes, with their fiddly settings folded away underneath. Upscaling picks a target, Off · 1080p · 2K · 4K, and shows the exact final size before you generate
 > - **Server control from your phone.** Unload models, free VRAM, restart ComfyUI
 >
 > [Full changelog ↓](#changelog)
@@ -205,8 +205,14 @@ If your work is in this list and you'd like something corrected, credited differ
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
 
+### β4.9.12 — October 20, 2026
+- **Upscale sizes as presets.** When a workflow sizes its upscaler from an Int (the target long edge) through Math Expressions, the Upscale switch becomes a preset row: **Off · 1080p · 2K · 4K**. Under it, the final size is worked out live from your aspect ratio and megapixels, for example "Final 1448 × 2560 · from 1088 × 1928", so you always know what you'll get before you hit Generate. The upscaler's own settings and the sizing maths fold away under the switch instead of crowding Advanced
+- To set a workflow up this way: an Int titled anything (say "Upscale Long Edge") feeds `c` on two Math Expressions, the Resolution Selector's width and height feed `a` and `b` on both, and their INT outputs drive the upscaler's width and height. Width: `round(a * max(1, min(4, c / max(a, b))) / 8) * 8`, height: the same with `b * …` in front. Never shrinks, never stretches past 4×, always lands on a multiple of 8
+- **Wired upscaler sizes survive import.** Width and height driven from other nodes used to be overwritten by the stale numbers left in the node on import
+
 ### β4.9.11 — October 17, 2026
-- **MOSS Image example workflow.** OpenMOSS's 5B image model, with its turbo LoRA preloaded at 0.7, the shared botanical demo prompt, Skip Layer Guidance and the official sigma shift already set, and DLSS plus RTX upscaling as switches. Needs the MOSS-Image ComfyUI plugin and its model files
+- **MOSS Image example workflows.** OpenMOSS's 5B image model, with its turbo LoRA preloaded at 0.7, the shared botanical demo prompt, Skip Layer Guidance and the official sigma shift already set, and DLSS plus RTX upscaling as switches. The main example runs on ComfyUI's native MOSS support (v0.42.0 or newer) and loads any MOSS checkpoint. A second version uses the MOSS-Image plugin, which only loads checkpoints exported for it; the workflows README explains the `'NoneType' object has no attribute 'dtype'` error the other files cause there
+- **Fixed RTX Video Super Resolution settings landing in the wrong boxes.** Its Resize Type dropdown brings its own extra values (width and height, or a scale), and the app read them as ordinary settings, so the width landed in Quality, the height in Strength and Quality in Image Encoding, and ComfyUI rejected the run. The app now reads these dropdowns properly, in any node that uses them, and switching Resize Type in the app swaps in the right fields: target dimensions shows width and height, scale by multiplier shows a scale. Workflows already imported pick this up the next time you open them
 - **Upscale switches in image workflows.** RTX Video Super Resolution and model upscalers now get an on/off switch after an image model too, not just in video workflows
 - **Switches in a chain no longer trip over each other.** With DLSS feeding the upscaler, turning both off could route the image to the DLSS node that had just been removed. Each switch now reads its input from the graph as it stands at that moment
 - **Output folders name custom loaders too.** A model loaded through a custom loader node (MOSS's own, for one) now gets its own folder under Return_Current_Output instead of landing in "Output"

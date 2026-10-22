@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β4.9.11</title>
+<title>Return Current β4.9.12</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1064,6 +1064,10 @@
     text-shadow:0 0 10px var(--safelight), 0 0 20px var(--safelight);
   }
   .qp-btn.active .qp-label{font-weight:700;}
+  .qp-btn .ue-name{font-family:var(--font-body); font-size:15px; font-weight:700; font-style:italic; filter:none; opacity:.55;}
+  .qp-btn.active .ue-name{opacity:1; -webkit-text-stroke:0; text-shadow:none;}
+  .ue-readout{margin-top:6px; font-family:var(--font-mono);}
+  .ue-readout b{color:var(--text);}
 
   /* RIFE interpolation toggle */
   .rife-toggle-bar{
@@ -1974,7 +1978,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.9.11</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.9.12</span></div>
     </div>
   </div>
 
@@ -3928,7 +3932,108 @@ function comboOptions(spec){
   if(t === 'COMBO' && spec[1]){
     return spec[1].options || spec[1].choices || spec[1].values || [];
   }
+  // A dynamic combo's choices are its option keys
+  if(t === DYNCOMBO && spec[1] && Array.isArray(spec[1].options)){
+    return spec[1].options.map(o => o.key);
+  }
   return [];
+}
+
+/* ---- Dynamic combos ----
+ * Newer nodes (RTX Video Super Resolution, for one) have a dropdown whose choice brings its
+ * own extra inputs: "target dimensions" adds width and height, "scale by multiplier" adds a
+ * scale. In widgets_values those extra values sit straight after the dropdown's own, and in
+ * the API they are named "dropdown.sub". Reading them as ordinary positional widgets put
+ * every value after the dropdown one or two slots out: the width landed in quality, the
+ * height in strength, and quality in the encoding. */
+const DYNCOMBO = 'COMFY_DYNAMICCOMBO_V3';
+function isDynCombo(spec){ return Array.isArray(spec) && spec[0] === DYNCOMBO; }
+function dynOption(spec, key){
+  const opts = (spec && spec[1] && spec[1].options) || [];
+  return opts.find(o => o.key === key) || null;
+}
+/** The selected option's own inputs, in declared order, as [name, spec] pairs. */
+function dynOptionInputs(opt){
+  if(!opt || !opt.inputs) return [];
+  const ins = opt.inputs;
+  const all = {...(ins.required || {}), ...(ins.optional || {})};
+  const order = [];
+  const io = ins.input_order || opt.input_order || {};
+  ['required','optional'].forEach(sec => (io[sec] || []).forEach(n => { if(all[n] !== undefined && !order.includes(n)) order.push(n); }));
+  Object.keys(all).forEach(n => { if(!order.includes(n)) order.push(n); });
+  return order.map(n => [n, all[n]]);
+}
+function specDefault(spec){
+  const meta = Array.isArray(spec) && spec[1] ? spec[1] : {};
+  if(meta.default !== undefined) return meta.default;
+  const opts = comboOptions(spec);
+  return opts.length ? opts[0] : undefined;
+}
+/** Make every dynamic combo in an API graph carry exactly the inputs its current choice
+ *  needs: drop the other choices' leftovers, fill missing ones with defaults. Lets the
+ *  dropdown be changed in the app without leaving the node half one mode, half another. */
+/** A dynamic combo was changed in the editor: swap its sub-fields for the new choice's,
+ *  so "scale by multiplier" shows a Scale field instead of a stale width and height. */
+function swapDynComboFields(fields, f){
+  try{
+    const graph = state.currentWorkflow && state.currentWorkflow.apiGraph;
+    const node = graph && graph[f.nodeId];
+    const def = node && (state._fullObjectInfo || {})[node.class_type];
+    if(!def || !def.input) return false;
+    const spec = (def.input.required || {})[f.key] || (def.input.optional || {})[f.key];
+    if(!isDynCombo(spec)) return false;
+    const prefix = f.key + '.';
+    // Drop the old choice's sub-fields, from the editor and from the stored graph
+    for(let i = fields.length - 1; i >= 0; i--){
+      if(String(fields[i].nodeId) === String(f.nodeId) && String(fields[i].key).startsWith(prefix)) fields.splice(i, 1);
+    }
+    Object.keys(node.inputs).forEach(k => { if(k.startsWith(prefix)) delete node.inputs[k]; });
+    node.inputs[f.key] = f.value;
+    const at = fields.indexOf(f) + 1;
+    const fresh = [];
+    dynOptionInputs(dynOption(spec, f.value)).forEach(([sub, subSpec]) => {
+      const d = specDefault(subSpec);
+      if(d === undefined) return;
+      node.inputs[prefix + sub] = d;
+      const opts = comboOptions(subSpec);
+      fresh.push({nodeId: f.nodeId, key: prefix + sub, label: sub.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        kind: opts.length ? 'select' : (typeof d === 'number' ? 'number' : 'shorttext'), value: d,
+        advanced: f.advanced, _nestedUnder: f._nestedUnder});
+    });
+    fields.splice(at, 0, ...fresh);
+    return true;
+  }catch(e){ console.error('dyncombo swap:', e); return false; }
+}
+function normalizeDynCombos(graph){
+  const oi = state._fullObjectInfo || {};
+  for(const nid in graph){
+    const node = graph[nid];
+    const def = oi[node.class_type];
+    if(!def || !def.input) continue;
+    const all = {...(def.input.required || {}), ...(def.input.optional || {})};
+    for(const name in all){
+      if(!isDynCombo(all[name])) continue;
+      const fix = (prefix, spec) => {
+        const opt = dynOption(spec, node.inputs[prefix]);
+        if(!opt) return;
+        const want = new Set();
+        dynOptionInputs(opt).forEach(([sub, subSpec]) => {
+          const key = prefix + '.' + sub;
+          want.add(key);
+          if(node.inputs[key] === undefined){
+            const d = specDefault(subSpec);
+            if(d !== undefined) node.inputs[key] = d;
+          }
+          if(isDynCombo(subSpec)) fix(key, subSpec);
+        });
+        Object.keys(node.inputs).forEach(k => {
+          if(k.startsWith(prefix + '.') && !want.has(k) && !k.slice(prefix.length + 1).includes('.')) delete node.inputs[k];
+        });
+      };
+      fix(name, all[name]);
+    }
+  }
+  return graph;
 }
 
 /** Is this node a diffusion-model (UNET) loader of any flavor? */
@@ -4174,6 +4279,173 @@ const H3_QUALITY_NODES = TOGGLEABLE_NODES;
 const LORA_NONE = '— None (bypass) —';
 
 const UPSCALER_TYPES = ['ImageUpscaleWithModel', 'RTXVideoSuperResolution'];
+
+/* ---- Upscale target size ----
+ * A workflow can size its upscaler from the base resolution: an Int holding the target
+ * long edge feeds Math Expressions that scale the Resolution Selector's width and height,
+ * and those drive the upscaler's width and height. The app turns that Int into a row of
+ * presets on the Upscale switch and shows the final size it will produce. */
+const UPSCALE_EDGE_PRESETS = [
+  {label:'1080p', px:1920},
+  {label:'2K',    px:2560},
+  {label:'4K',    px:3840}
+];
+function isIntPrimitive(node){
+  return !!node && typeof (node.inputs || {}).value === 'number' &&
+    /int/i.test(node.class_type || '') && !/math|expression/i.test(node.class_type || '');
+}
+function upscaleSizeKeys(node){
+  const ins = (node && node.inputs) || {};
+  if('resize_type.width' in ins || ins.resize_type === 'target dimensions') return ['resize_type.width', 'resize_type.height'];
+  if('width' in ins && 'height' in ins) return ['width', 'height'];
+  return null;
+}
+/** Which Int sets this upscaler's target, and which helper nodes sit between them. */
+function findUpscaleSizing(apiGraph, upNid){
+  const up = apiGraph[upNid];
+  const keys = upscaleSizeKeys(up);
+  const out = {longEdgeNid: null, helperNids: [], keys};
+  if(!keys) return out;
+  const candidates = [];
+  keys.forEach(k => {
+    const src = up.inputs[k];
+    if(!Array.isArray(src)) return;
+    const s = apiGraph[src[0]];
+    if(!s) return;
+    if(isIntPrimitive(s)){ candidates.push(String(src[0])); return; }
+    if(/MathExpression/i.test(s.class_type || '')){
+      if(!out.helperNids.includes(String(src[0]))) out.helperNids.push(String(src[0]));
+      ['a','b','c'].forEach(v => {
+        const t = s.inputs[v];
+        if(Array.isArray(t) && isIntPrimitive(apiGraph[t[0]])) candidates.push(String(t[0]));
+      });
+    }
+  });
+  out.longEdgeNid = candidates[0] || null;
+  return out;
+}
+
+/** The small expression language of pysssss' Math Expression, enough to work out the
+ *  upscale size in the app: numbers, a b c, + - * / // % **, parentheses, and round, ceil,
+ *  floor, min, max, sqrt, int. Anything else throws, and the size readout is skipped. */
+function pyRound(x){
+  const f = Math.floor(x), d = x - f;
+  if(Math.abs(d - 0.5) < 1e-9) return (f % 2 === 0) ? f : f + 1;  // Python rounds halves to even
+  return Math.round(x);
+}
+function evalMathExpr(src, vars){
+  const toks = String(src).replace(/\s+/g, ' ').match(/\d+\.?\d*|\.\d+|\*\*|\/\/|[A-Za-z_]\w*|[-+*/%(),]/g) || [];
+  let i = 0;
+  const peek = () => toks[i], next = () => toks[i++];
+  const FN = {round: (a, b) => b === undefined ? pyRound(a) : Math.round(a * 10 ** b) / 10 ** b,
+    ceil: Math.ceil, floor: Math.floor, min: Math.min, max: Math.max, sqrt: Math.sqrt, int: Math.trunc};
+  function atom(){
+    const t = next();
+    if(t === undefined) throw new Error('end');
+    if(t === '('){ const v = expr(); if(next() !== ')') throw new Error(')'); return v; }
+    if(/^[\d.]/.test(t)) return parseFloat(t);
+    if(/^[A-Za-z_]/.test(t)){
+      if(peek() === '('){
+        next();
+        const args = [];
+        if(peek() !== ')'){ args.push(expr()); while(peek() === ','){ next(); args.push(expr()); } }
+        if(next() !== ')') throw new Error(')');
+        if(!FN[t]) throw new Error('fn ' + t);
+        return FN[t](...args);
+      }
+      if(vars[t] === undefined || vars[t] === null) throw new Error('var ' + t);
+      return vars[t];
+    }
+    throw new Error('tok ' + t);
+  }
+  function power(){ const b = atom(); if(peek() === '**'){ next(); return b ** unary(); } return b; }
+  function unary(){ if(peek() === '-'){ next(); return -unary(); } if(peek() === '+'){ next(); return unary(); } return power(); }
+  function term(){
+    let v = unary();
+    while(['*','/','//','%'].includes(peek())){
+      const op = next(), r = unary();
+      v = op === '*' ? v * r : op === '/' ? v / r : op === '//' ? Math.floor(v / r) : ((v % r) + r) % r;
+    }
+    return v;
+  }
+  function expr(){
+    let v = term();
+    while(peek() === '+' || peek() === '-'){ const op = next(), r = term(); v = op === '+' ? v + r : v - r; }
+    return v;
+  }
+  const v = expr();
+  if(i < toks.length) throw new Error('trailing');
+  return v;
+}
+const RES_SELECTOR_RATIOS = {'1:1':[1,1],'2:3':[2,3],'3:2':[3,2],'3:4':[3,4],'4:3':[4,3],'9:16':[9,16],'16:9':[16,9],'21:9':[21,9]};
+/** Work out an Int a node will produce, using what the editor currently shows rather than
+ *  what was saved, so the readout follows the user's choices live. */
+function resolveIntSource(apiGraph, fields, src, overrides, depth){
+  if(!Array.isArray(src) || (depth || 0) > 6) return null;
+  const nid = String(src[0]), slot = src[1] || 0;
+  const node = apiGraph[nid];
+  if(!node) return null;
+  const val = (key) => {
+    if(overrides && overrides[nid + ':' + key] !== undefined) return overrides[nid + ':' + key];
+    const f = fields.find(ff => String(ff.nodeId) === nid && ff.key === key);
+    return f ? f.value : node.inputs[key];
+  };
+  if(node.class_type === 'ResolutionSelector'){
+    const m = String(val('aspect_ratio') || '').match(/^(\d+:\d+)/);
+    const r = m && RES_SELECTOR_RATIOS[m[1]];
+    const mp = parseFloat(val('megapixels')), mult = parseInt(val('multiple')) || 8;
+    if(!r || !(mp > 0)) return null;
+    const scale = Math.sqrt(mp * 1024 * 1024 / (r[0] * r[1]));
+    return pyRound(r[slot === 1 ? 1 : 0] * scale / mult) * mult;
+  }
+  if(isIntPrimitive(node)) return Number(val('value'));
+  if(/MathExpression/i.test(node.class_type || '')){
+    const vars = {};
+    ['a','b','c'].forEach(v => {
+      const t = node.inputs[v];
+      if(Array.isArray(t)) vars[v] = resolveIntSource(apiGraph, fields, t, overrides, (depth || 0) + 1);
+      else if(typeof t === 'number') vars[v] = t;
+    });
+    try{ return Math.trunc(evalMathExpr(val('expression'), vars)); }catch(e){ return null; }
+  }
+  const direct = node.inputs[slot === 1 ? 'height' : 'width'];
+  return typeof direct === 'number' ? direct : null;
+}
+/** "Final 1448 × 2560 · from 1088 × 1928" for an upscale switch, or '' if it can't be known. */
+function upscaleReadout(f, fields, apiGraph){
+  try{
+    const up = apiGraph[f.nodeId];
+    if(!up) return '';
+    const sel = Object.keys(apiGraph).find(n => apiGraph[n].class_type === 'ResolutionSelector');
+    const bw = sel ? resolveIntSource(apiGraph, fields, [sel, 0]) : null;
+    const bh = sel ? resolveIntSource(apiGraph, fields, [sel, 1]) : null;
+    const base = (bw && bh) ? `${bw} × ${bh}` : '';
+    if(!f.value) return base ? `Final ${base}` : '';
+    const keys = upscaleSizeKeys(up);
+    const overrides = f.longEdge ? {[f.longEdge.nodeId + ':value']: f.longEdge.value} : {};
+    const fv = (k) => { const ff = fields.find(x => String(x.nodeId) === String(f.nodeId) && x.key === k); return ff ? ff.value : up.inputs[k]; };
+    let w = null, h = null;
+    if(fv('resize_type') === 'scale by multiplier'){
+      const sc = parseFloat(fv('resize_type.scale'));
+      if(bw && bh && sc > 0){ w = Math.round(bw * sc); h = Math.round(bh * sc); }
+    } else if(keys){
+      const W = up.inputs[keys[0]], H = up.inputs[keys[1]];
+      w = Array.isArray(W) ? resolveIntSource(apiGraph, fields, W, overrides) : Number(fv(keys[0]));
+      h = Array.isArray(H) ? resolveIntSource(apiGraph, fields, H, overrides) : Number(fv(keys[1]));
+    }
+    if(!(w > 0 && h > 0)) return base ? `From ${base}` : '';
+    return `Final <b>${w} × ${h}</b>` + (base && base !== `${w} × ${h}` ? ` · from ${base}` : '');
+  }catch(e){ return ''; }
+}
+function updateUpscaleReadouts(){
+  const wf = state.currentWorkflow;
+  if(!wf || !wf.fields) return;
+  wf.fields.forEach((f, i) => {
+    if(f.kind !== 'upscale_toggle') return;
+    const el = document.getElementById('ueReadout' + i);
+    if(el) el.innerHTML = upscaleReadout(f, wf.fields, wf.apiGraph);
+  });
+}
 
 function upscaleBranch(graph, upNodeId){
   const consumersOf = (id)=>{
@@ -4824,11 +5096,16 @@ function buildEditableFields(apiGraph, titleMap){
 
   // ---- Video workflow promotions, once every field exists ----
   const isVideoWf = Object.values(apiGraph).some(n => /CreateVideo|SaveVideo|VHS_VideoCombine|ImageToVideo/i.test(n.class_type || ''));
+  // An Int that sets an upscaler's target size is not a duration, however bare it looks
+  const upscaleEdgeIds = new Set(Object.keys(apiGraph)
+    .filter(nid => UPSCALER_TYPES.includes(apiGraph[nid].class_type))
+    .map(nid => findUpscaleSizing(apiGraph, nid).longEdgeNid).filter(Boolean));
   if(isVideoWf){
     // A bare PrimitiveFloat driving a video graph is its duration. Left alone it reads as
     // "value" and sinks into Advanced, the wrong home for the most-adjusted dial here.
     groups.forEach(f => {
       if(f.key !== 'value' && f.key !== 'value_1') return;
+      if(upscaleEdgeIds.has(String(f.nodeId))) return;
       const owner = apiGraph[f.nodeId];
       if(!owner || !/^PrimitiveFloat|^PrimitiveInt/.test(owner.class_type || '')) return;
       f.label = 'Duration (seconds)';
@@ -4871,6 +5148,23 @@ function buildEditableFields(apiGraph, titleMap){
         hasOwnSave: branch.hasOwnSave,
         upscaleMethod: isRtx ? 'rtx' : 'model',
         exclusive: upscalers.length > 1
+      });
+      const toggle = groups[groups.length - 1];
+      const sizing = findUpscaleSizing(apiGraph, nid);
+      if(sizing.longEdgeNid){
+        // The target Int becomes the preset row on the switch itself, not a loose field
+        for(let gi = groups.length - 1; gi >= 0; gi--){
+          if(String(groups[gi].nodeId) === sizing.longEdgeNid) groups.splice(gi, 1);
+        }
+        toggle.longEdge = {nodeId: sizing.longEdgeNid, key: 'value', value: Number(apiGraph[sizing.longEdgeNid].inputs.value)};
+        toggle.label = upscalers.length > 1 ? name : 'Upscale';
+      }
+      // The upscaler's own knobs and its sizing maths fold away under the switch
+      const owned = new Set([String(nid), ...sizing.helperNids]);
+      groups.forEach(g => {
+        if(g === toggle || !owned.has(String(g.nodeId))) return;
+        g._nestedUnder = String(nid);
+        g.advanced = false;
       });
     });
   }
@@ -5546,6 +5840,25 @@ async function convertUiToApi(ui){
         if(linkedNames.has(name)){ wi++; continue; }
         inputs[name] = wv[wi];
         wi++;
+        // A dynamic combo's chosen option brings its own values, stored right after it
+        if(isDynCombo(allDefs[name])){
+          const take = (prefix, spec) => {
+            dynOptionInputs(dynOption(spec, inputs[prefix])).forEach(([sub, subSpec]) => {
+              if(wi >= wv.length) return;
+              const key = prefix + '.' + sub;
+              // Wired from another node (a Math Expression working out the upscale size,
+              // say): the slot still holds a stale number, so consume it and keep the link
+              if(!linkedNames.has(key) && linkedNames.has(sub) && !allDefs[sub]){
+                // Some frontends name the socket by the bare sub-input; the API wants the full path
+                inputs[key] = inputs[sub]; delete inputs[sub]; linkedNames.add(key);
+              }
+              if(linkedNames.has(key)){ wi++; return; }
+              inputs[key] = wv[wi++];
+              if(isDynCombo(subSpec)) take(key, subSpec);
+            });
+          };
+          take(name, allDefs[name]);
+        }
         // Skip the control_after_generate widget slot after seeds
         if((name === 'seed' || name === 'noise_seed') && wi < wv.length &&
            typeof wv[wi] === 'string' && CTRL_VALUES.includes(wv[wi])){
@@ -6334,12 +6647,22 @@ function renderEditor(){
       const statusText = f.exclusive
         ? f.label.toUpperCase() + (f.value ? ' ON' : ' OFF')
         : (f._qualityRoute ? (f.value ? 'ON' : 'OFF') : (f.value ? 'UPSCALE ON' : 'UPSCALE OFF'));
+      const presetRow = f.longEdge ? (()=>{
+        const cur = f.value ? Number(f.longEdge.value) : 0;
+        const opts = [{label:'Off', px:0}, ...UPSCALE_EDGE_PRESETS];
+        if(cur && !opts.some(o => o.px === cur)) opts.push({label: cur + 'px', px: cur});
+        return `<div class="quality-presets" data-ue-field="${i}">` + opts.map(o => `
+            <button class="qp-btn ${o.px === cur ? 'active' : ''}" data-ue-px="${o.px}">
+              <span class="qp-icon ue-name">${o.label}</span><span class="qp-label">${o.px ? o.px + 'px' : 'native'}</span>
+            </button>`).join('') + `</div>`;
+      })() : '';
       html += `
         <div class="field-group">
           <div class="node-label">${escapeHtml(f.label)}</div>
-          <div class="rife-toggle-bar ${f.value ? 'on' : ''}" data-upscale-field="${i}">
+          ${presetRow || `<div class="rife-toggle-bar ${f.value ? 'on' : ''}" data-upscale-field="${i}">
             <div class="rife-status">${statusText}</div>
-          </div>
+          </div>`}
+          ${f.kind === 'upscale_toggle' && !f._qualityRoute ? `<div class="field-hint ue-readout" id="ueReadout${i}">${upscaleReadout(f, fields, state.currentWorkflow.apiGraph)}</div>` : ''}
           ${nestedIdx.length ? `
             <button class="nested-toggle" data-nested-for="${i}">
               <span class="nested-caret">▸</span> Settings
@@ -6479,8 +6802,10 @@ function renderEditor(){
         }
         f.value = picked;
         f._loraOff = false;
+        setTimeout(updateUpscaleReadouts, 0);
         btn.style.opacity = '1';
         btn.textContent = picked.replace(/\\/g,'/').split('/').pop();
+        if(swapDynComboFields(fields, f)) renderEditor();
       }, 'Select ' + label);
     });
   });
@@ -6719,6 +7044,29 @@ function renderEditor(){
       }
       return;
     }
+    if(f.kind === 'upscale_toggle' && f.longEdge){
+      const row = main.querySelector(`[data-ue-field="${i}"]`);
+      if(row) row.querySelectorAll('[data-ue-px]').forEach(btn => {
+        btn.addEventListener('click', ()=>{
+          const px = parseInt(btn.dataset.uePx) || 0;
+          f.value = px > 0;
+          if(px) f.longEdge.value = px;
+          row.querySelectorAll('[data-ue-px]').forEach(b => b.classList.toggle('active', b === btn));
+          // Two upscalers are alternatives: choosing a size here switches the other off
+          if(f.exclusive && f.value){
+            fields.forEach((other, oi) => {
+              if(oi === i || other.kind !== 'upscale_toggle' || !other.exclusive) return;
+              other.value = false;
+              const ob = main.querySelector(`[data-upscale-field="${oi}"]`);
+              if(ob){ ob.classList.remove('on'); const ost = ob.querySelector('.rife-status'); if(ost) ost.textContent = other.label.toUpperCase() + ' OFF'; }
+              const orow = main.querySelector(`[data-ue-field="${oi}"]`);
+              if(orow) orow.querySelectorAll('[data-ue-px]').forEach(b => b.classList.toggle('active', b.dataset.uePx === '0'));
+            });
+          }
+          updateUpscaleReadouts();
+        });
+      });
+    }
     if(f.kind === 'upscale_toggle'){
       const bar = main.querySelector(`[data-upscale-field="${i}"]`);
       if(bar){
@@ -6741,6 +7089,7 @@ function renderEditor(){
               }
             });
           }
+          updateUpscaleReadouts();
           // The upscale model only matters while upscaling is on
           const mi = fields.findIndex(ff => ff.key === 'model_name');
           if(mi > -1){
@@ -6935,6 +7284,15 @@ function renderEditor(){
     }
   });
 
+  // The upscale readout follows resolution and megapixel edits as they're typed
+  if(!main._ueBound){
+    main._ueBound = true;
+    const refresh = ()=> setTimeout(updateUpscaleReadouts, 0);
+    main.addEventListener('input', refresh);
+    main.addEventListener('change', refresh);
+    main.addEventListener('click', refresh);
+  }
+
   // Move each nested field into its parent's disclosure. They are rendered normally in the
   // flow, directly behind their toggle, then relocated here. That avoids restructuring the
   // whole field renderer, and if a move ever fails the field simply stays visible in place
@@ -6949,7 +7307,7 @@ function renderEditor(){
   };
   fields.forEach((nf, gi)=>{
     if(nf._nestedUnder === undefined) return;
-    const parentIdx = fields.findIndex(g => g._qualityRoute && String(g.nodeId) === String(nf._nestedUnder));
+    const parentIdx = fields.findIndex(g => (g._qualityRoute || g.kind === 'upscale_toggle') && String(g.nodeId) === String(nf._nestedUnder));
     if(parentIdx < 0) return;
     const body = main.querySelector('#nested' + parentIdx);
     const el = findFieldEl(gi);
@@ -7188,6 +7546,9 @@ async function submitCurrentWorkflow(){
       return;
     }
     if(f.kind === 'upscale_toggle'){
+      if(f.value && f.longEdge && graph[f.longEdge.nodeId]){
+        graph[f.longEdge.nodeId].inputs[f.longEdge.key] = Number(f.longEdge.value);
+      }
       if(!f.value){
         const upNodeId = f.nodeId;
         const branch = upscaleBranch(graph, upNodeId);
@@ -7399,6 +7760,7 @@ async function submitCurrentWorkflow(){
     console.error('Graph prep error:', prepErr);
     return;
   }
+  try{ normalizeDynCombos(graph); }catch(e){ console.error('dyncombo normalize:', e); }
   try{
     const res = await fetch(`${baseUrl()}/prompt`, {
       method:'POST',
