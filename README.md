@@ -16,6 +16,7 @@ Your GPU, in your pocket.
 > - **Watch it render.** A live preview resolves out of a pixel mosaic as it samples, with a **■ Stop** button that halts the running job. Add KJNodes' Model Preview Override and video models preview in motion, the whole clip playing as it forms
 > - **Prompt chips.** Drop a saved style ᛋ or character ᛗ into any prompt as one compact chip. It expands into the full text when you hit Generate, and survives ∞ iterate
 > - **⟲ Recent ▾** on every prompt field pulls back anything the Tools wrote for you, no copy and paste
+> - **∞ Roll** spins up a random character plus a d6 of your saved styles. Roll a 6 and it's **Mythic**
 > - **▥ Justified rows gallery.** Every image whole, uncropped, at its own shape
 > - **Tools run on ComfyUI itself.** Image to prompt, characters, styles and video direction all use a vision model ComfyUI hosts. No LM Studio, no second app
 > - **Nothing is ever dropped.** No caps on characters, styles, prompts, sessions or gallery. Tools lists fold up by day, and import syncs devices with the newest version winning
@@ -205,9 +206,14 @@ If your work is in this list and you'd like something corrected, credited differ
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
 
+### β4.9.13 — October 30, 2026
+- **∞ Roll**, glowing on its own at the end of the ᛗ Character / ᛋ Style / ⟲ Recent row on every prompt. Tap it and the runes spin like a reel, then it lands on a d6: one random saved character, then that many random saved styles, dropped in as chips at your cursor. The face sets the rarity the toast calls out: 1 Common, 2 Uncommon, 3 Rare, 4 Epic, 5 Legendary (the toast flares), 6 **Mythic** (the toast goes full holo foil). Styles already in the prompt are skipped while there are others to pick. Tap again before you touch the text and it re-rolls in place, slot-machine style, instead of stacking a second roll on the first. No settings
+- **⧖ Clear recent fires in half the time.** The hold is now a second and a half instead of three
+
 ### β4.9.12 — October 20, 2026
 - **Upscale sizes as presets.** When a workflow sizes its upscaler from an Int (the target long edge) through Math Expressions, the Upscale switch becomes a preset row: **Off · 1080p · 2K · 4K**. Under it, the final size is worked out live from your aspect ratio and megapixels, for example "Final 1448 × 2560 · from 1088 × 1928", so you always know what you'll get before you hit Generate. The upscaler's own settings and the sizing maths fold away under the switch instead of crowding Advanced
 - To set a workflow up this way: an Int titled anything (say "Upscale Long Edge") feeds `c` on two Math Expressions, the Resolution Selector's width and height feed `a` and `b` on both, and their INT outputs drive the upscaler's width and height. Width: `round(a * max(1, min(4, c / max(a, b))) / 8) * 8`, height: the same with `b * …` in front. Never shrinks, never stretches past 4×, always lands on a multiple of 8
+- **Fixed upscale sizes no longer break on other aspect ratios.** A width and height typed into RTX Video Super Resolution (1440 × 2560, say) only fit one shape: a landscape render was asked to shrink its width while growing its height, and the upscaler failed with `NvVFX_Run failed: An invalid parameter value` (code -7). The app now reads the larger number as the target long edge and writes a correctly proportioned size for whatever you render, so the presets and the final-size readout work on any workflow with a fixed size, no Math Expressions needed
 - **Wired upscaler sizes survive import.** Width and height driven from other nodes used to be overwritten by the stale numbers left in the node on import
 
 ### β4.9.11 — October 17, 2026

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β4.9.12</title>
+<title>Return Current β4.9.13</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -1282,6 +1282,28 @@
   }
   .insert-btn .g{color:var(--safelight); text-shadow:0 0 8px var(--safelight-glow); font-size:13px;}
   .insert-btn:active{border-color:var(--safelight-dim);}
+  /* ∞ Roll: no button shape, just the glyph glowing in the theme colour at the end of the row */
+  .roll-btn{margin-left:auto; min-width:40px; padding:4px 6px; display:flex; align-items:center; justify-content:center;
+    background:none; border:none; box-shadow:none;}
+  .roll-btn:active{border:none;}
+  .roll-btn .roll-face{display:inline-block; min-width:1.2em; text-align:center; font-size:24px; line-height:1; transition:transform .12s;
+    color:var(--safelight); text-shadow:0 0 8px var(--safelight-glow), 0 0 18px var(--safelight-glow);}
+  .roll-btn:hover .roll-face{text-shadow:0 0 10px var(--safelight), 0 0 24px var(--safelight-glow);}
+  .roll-btn.rolling .roll-face{text-shadow:0 0 12px var(--safelight), 0 0 30px var(--safelight-glow);}
+  .roll-btn.rolling .roll-face{animation:rollJitter .09s linear infinite;}
+  .roll-btn.landed .roll-face{animation:rollLand .5s cubic-bezier(.2,1.6,.4,1); font-family:var(--font-body); font-weight:700; font-style:italic; font-size:20px;}
+  @keyframes rollJitter{0%{transform:translateY(-1px) rotate(-8deg);}50%{transform:translateY(1px) rotate(8deg);}100%{transform:translateY(-1px) rotate(-8deg);}}
+  @keyframes rollLand{0%{transform:scale(.4);}60%{transform:scale(1.5);}100%{transform:scale(1);}}
+  @media (prefers-reduced-motion: reduce){ .roll-btn.rolling .roll-face, .roll-btn.landed .roll-face{animation:none;} }
+  /* The toast wears the roll's rarity */
+  .toast.roll-t5{border-color:var(--safelight); box-shadow:0 0 22px var(--safelight-glow), 0 0 44px var(--safelight-glow);}
+  .toast.roll-t6{
+    color:#fff; border-color:transparent;
+    background:linear-gradient(90deg, #ff2d7b, #ff8c00, #ffe600, #00e87b, #00bfff, #a855ff, #ff2d7b);
+    background-size:300% 100%; animation:holoBase 2.4s linear infinite;
+    text-shadow:0 1px 3px rgba(0,0,0,.6); font-weight:700;
+    box-shadow:0 0 26px rgba(168,85,255,.55), 0 0 52px rgba(0,191,255,.35);
+  }
   .insert-menu{
     position:absolute; top:calc(100% + 6px); left:0; right:0; z-index:60;
     background:var(--bg-card); border:1px solid var(--line); border-radius:12px;
@@ -1978,7 +2000,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.9.12</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.9.13</span></div>
     </div>
   </div>
 
@@ -4322,6 +4344,8 @@ function findUpscaleSizing(apiGraph, upNid){
     }
   });
   out.longEdgeNid = candidates[0] || null;
+  // Plain numbers typed into the node: the app sizes them from the render instead
+  if(!out.longEdgeNid && keys.every(k => typeof up.inputs[k] === 'number')) out.staticDims = keys.map(k => up.inputs[k]);
   return out;
 }
 
@@ -4411,21 +4435,56 @@ function resolveIntSource(apiGraph, fields, src, overrides, depth){
   const direct = node.inputs[slot === 1 ? 'height' : 'width'];
   return typeof direct === 'number' ? direct : null;
 }
+/** The size the model renders at, from the empty latent (or the Resolution Selector that
+ *  feeds it), using what the editor currently shows. */
+function baseRenderDims(apiGraph, fields){
+  const lat = Object.keys(apiGraph).find(n => /^Empty.*Latent/i.test(apiGraph[n].class_type || '') &&
+    apiGraph[n].inputs && 'width' in apiGraph[n].inputs && 'height' in apiGraph[n].inputs);
+  const dim = (nid, key, slot) => {
+    const v = apiGraph[nid].inputs[key];
+    if(Array.isArray(v)) return resolveIntSource(apiGraph, fields, v);
+    const f = fields.find(ff => String(ff.nodeId) === String(nid) && ff.key === key);
+    return Number(f ? f.value : v);
+  };
+  if(lat){
+    const w = dim(lat, 'width'), h = dim(lat, 'height');
+    if(w > 0 && h > 0) return [w, h];
+  }
+  const sel = Object.keys(apiGraph).find(n => apiGraph[n].class_type === 'ResolutionSelector');
+  if(sel){
+    const w = resolveIntSource(apiGraph, fields, [sel, 0]), h = resolveIntSource(apiGraph, fields, [sel, 1]);
+    if(w > 0 && h > 0) return [w, h];
+  }
+  return null;
+}
+/** A fixed width and height in the upscaler only suit one aspect ratio: anything else asks
+ *  it to shrink one side while growing the other, which RTX VSR refuses outright. So the
+ *  app treats the larger of the two as a target long edge and works out the real width and
+ *  height from the render size: same proportions, never smaller, at most 4x, multiples of 8. */
+function staticUpscaleTarget(longEdge, base){
+  if(!base || !(longEdge > 0)) return null;
+  const [bw, bh] = base;
+  const sc = Math.max(1, Math.min(4, longEdge / Math.max(bw, bh)));
+  return [pyRound(bw * sc / 8) * 8, pyRound(bh * sc / 8) * 8];
+}
+
 /** "Final 1448 × 2560 · from 1088 × 1928" for an upscale switch, or '' if it can't be known. */
 function upscaleReadout(f, fields, apiGraph){
   try{
     const up = apiGraph[f.nodeId];
     if(!up) return '';
-    const sel = Object.keys(apiGraph).find(n => apiGraph[n].class_type === 'ResolutionSelector');
-    const bw = sel ? resolveIntSource(apiGraph, fields, [sel, 0]) : null;
-    const bh = sel ? resolveIntSource(apiGraph, fields, [sel, 1]) : null;
+    const bd = baseRenderDims(apiGraph, fields);
+    const bw = bd ? bd[0] : null, bh = bd ? bd[1] : null;
     const base = (bw && bh) ? `${bw} × ${bh}` : '';
     if(!f.value) return base ? `Final ${base}` : '';
     const keys = upscaleSizeKeys(up);
     const overrides = f.longEdge ? {[f.longEdge.nodeId + ':value']: f.longEdge.value} : {};
     const fv = (k) => { const ff = fields.find(x => String(x.nodeId) === String(f.nodeId) && x.key === k); return ff ? ff.value : up.inputs[k]; };
     let w = null, h = null;
-    if(fv('resize_type') === 'scale by multiplier'){
+    if(f.longEdge && f.longEdge.static && fv('resize_type') !== 'scale by multiplier'){
+      const t = staticUpscaleTarget(Number(f.longEdge.value), bd);
+      if(t){ w = t[0]; h = t[1]; }
+    } else if(fv('resize_type') === 'scale by multiplier'){
       const sc = parseFloat(fv('resize_type.scale'));
       if(bw && bh && sc > 0){ w = Math.round(bw * sc); h = Math.round(bh * sc); }
     } else if(keys){
@@ -5157,6 +5216,14 @@ function buildEditableFields(apiGraph, titleMap){
           if(String(groups[gi].nodeId) === sizing.longEdgeNid) groups.splice(gi, 1);
         }
         toggle.longEdge = {nodeId: sizing.longEdgeNid, key: 'value', value: Number(apiGraph[sizing.longEdgeNid].inputs.value)};
+        toggle.label = upscalers.length > 1 ? name : 'Upscale';
+      } else if(sizing.staticDims && baseRenderDims(apiGraph, [])){
+        // Fixed width and height: the larger becomes the target long edge, and the app
+        // writes a correctly proportioned size at submit. The raw width and height fields go.
+        for(let gi = groups.length - 1; gi >= 0; gi--){
+          if(String(groups[gi].nodeId) === String(nid) && sizing.keys.includes(groups[gi].key)) groups.splice(gi, 1);
+        }
+        toggle.longEdge = {static: true, keys: sizing.keys, value: Math.max(...sizing.staticDims)};
         toggle.label = upscalers.length > 1 ? name : 'Upscale';
       }
       // The upscaler's own knobs and its sizing maths fold away under the switch
@@ -6507,6 +6574,7 @@ function renderEditor(){
             ${savedChars.length ? `<button class="insert-btn" data-insert-kind="char" data-insert-target="${i}"><span class="g">ᛗ</span> Character ▾</button>` : ''}
             ${savedStyles.length ? `<button class="insert-btn" data-insert-kind="style" data-insert-target="${i}"><span class="g">ᛋ</span> Style ▾</button>` : ''}
             ${recentPrompts.length ? `<button class="insert-btn" data-insert-kind="recent" data-insert-target="${i}"><span class="g">⟲</span> Recent ▾</button>` : ''}
+            ${(savedChars.length || savedStyles.length) ? `<button class="insert-btn roll-btn" data-roll-target="${i}" title="Roll: one character and a d6 of styles"><span class="g roll-face">∞</span></button>` : ''}
           </div>` : '';
       html += `
         <div class="field-group">
@@ -6807,6 +6875,17 @@ function renderEditor(){
         btn.textContent = picked.replace(/\\/g,'/').split('/').pop();
         if(swapDynComboFields(fields, f)) renderEditor();
       }, 'Select ' + label);
+    });
+  });
+
+  // ᛈ Roll
+  main.querySelectorAll('[data-roll-target]').forEach(btn => {
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      document.querySelectorAll('.insert-menu').forEach(m => m.remove());
+      const idx = parseInt(btn.dataset.rollTarget);
+      const ta = main.querySelector(`textarea[data-field-idx="${idx}"]`);
+      if(ta) rollInto(btn, ta, idx);
     });
   });
 
@@ -7546,8 +7625,16 @@ async function submitCurrentWorkflow(){
       return;
     }
     if(f.kind === 'upscale_toggle'){
-      if(f.value && f.longEdge && graph[f.longEdge.nodeId]){
+      if(f.value && f.longEdge && !f.longEdge.static && graph[f.longEdge.nodeId]){
         graph[f.longEdge.nodeId].inputs[f.longEdge.key] = Number(f.longEdge.value);
+      }
+      if(f.value && f.longEdge && f.longEdge.static && graph[f.nodeId]){
+        const up = graph[f.nodeId];
+        const rt = (fields.find(x => String(x.nodeId) === String(f.nodeId) && x.key === 'resize_type') || {}).value || up.inputs.resize_type;
+        if(rt !== 'scale by multiplier'){
+          const t = staticUpscaleTarget(Number(f.longEdge.value), baseRenderDims(state.currentWorkflow.apiGraph, fields));
+          if(t){ up.inputs[f.longEdge.keys[0]] = t[0]; up.inputs[f.longEdge.keys[1]] = t[1]; }
+        }
       }
       if(!f.value){
         const upNodeId = f.nodeId;
@@ -7977,7 +8064,7 @@ function entriesInRecentWindow(){
 
 /** Hold ⧖ to clear history. The ring is the confirmation: it takes deliberate, sustained
  *  contact, it shows exactly how far along you are, and letting go at any point cancels. */
-const PURGE_HOLD_MS = 3000;
+const PURGE_HOLD_MS = 1500;
 function wirePurgeButton(){
   const btn = document.getElementById('purgeBtn');
   if(!btn || btn._wired) return;
@@ -8718,6 +8805,81 @@ function recallPromptInto(ta, text){
   ta.value = text;
   try{ ta.setSelectionRange(text.length, text.length); }catch(e){}
   ta.dispatchEvent(new Event('input', {bubbles:true}));
+}
+
+/* ---- ᛈ Roll ----
+ * One saved character, then a d6 worth of saved styles, dropped in as chips at the cursor.
+ * The die face sets the rarity the toast announces. Rolling again before you touch the text
+ * re-rolls in place, slot-machine style, instead of piling a second roll on the first. */
+const ROLL_TIERS = ['', 'COMMON', 'UNCOMMON', 'RARE', 'EPIC', 'LEGENDARY', 'MYTHIC'];
+const ROLL_CRY   = ['', 'Rolled a 1.', 'Nice, a 2!', 'Ooh, a 3!', 'Sweet, a 4!', 'Whoa! A 5!', 'UNREAL! A 6!'];
+const ROLL_SPIN_RUNES = 'ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ';
+function pickDistinct(arr, n, avoid){
+  const fresh = arr.filter(x => !avoid.has(x.name));
+  const pool = (fresh.length >= n ? fresh : arr).slice();
+  for(let i = pool.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  return pool.slice(0, n);
+}
+function toastRoll(msg, tier){
+  const t = document.getElementById('toast');
+  t.classList.remove('roll-t5', 'roll-t6');
+  if(tier >= 5) t.classList.add('roll-t' + tier);
+  toast(msg);
+  clearTimeout(t._rollClear);
+  t._rollClear = setTimeout(()=> t.classList.remove('roll-t5', 'roll-t6'), 2600);
+}
+function rollInto(btn, ta, fieldIdx){
+  if(btn.classList.contains('rolling')) return;
+  const chars = getSavedCharacters();
+  const styles = getStyles();
+  if(!chars.length && !styles.length){ toast('Save a character or style first'); return; }
+  const face = btn.querySelector('.roll-face');
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  btn.classList.remove('landed');
+  btn.classList.add('rolling');
+  // The spin slows like a reel coming to rest
+  let delay = 40, elapsed = 0;
+  const spinFor = reduced ? 0 : 900;
+  const tick = ()=>{
+    face.textContent = ROLL_SPIN_RUNES[Math.floor(Math.random() * ROLL_SPIN_RUNES.length)];
+    elapsed += delay;
+    delay = Math.min(160, delay * 1.18);
+    if(elapsed < spinFor) setTimeout(tick, delay);
+    else land();
+  };
+  const land = ()=>{
+    const roll = 1 + Math.floor(Math.random() * 6);
+    const present = new Set(parseChips(ta.value).map(c => c.name));
+    const ch = chars.length ? pickDistinct(chars, 1, present)[0] : null;
+    const st = pickDistinct(styles, Math.min(roll, styles.length), present);
+    const text = [ch ? makeChip('char', ch.name) : null, ...st.map(x => makeChip('style', x.name))].filter(Boolean).join(', ');
+    // Re-roll in place if the last roll is still sitting there untouched
+    const last = ta._lastRoll;
+    if(last && ta.value.slice(last.start, last.start + last.text.length) === last.text && ta.value === last.after){
+      const before = ta.value.slice(0, last.start), after = ta.value.slice(last.start + last.text.length);
+      ta.value = before + text + after;
+      const pos = (before + text).length;
+      try{ ta.setSelectionRange(pos, pos); }catch(e){}
+      ta.dispatchEvent(new Event('input', {bubbles:true}));
+      ta._lastRoll = {start: before.length, text, after: ta.value};
+    } else {
+      const lenBefore = ta.value.length;
+      insertAtCursor(ta, text);
+      const at = ta.value.indexOf(text, Math.max(0, (ta.selectionStart || ta.value.length) - text.length - 1));
+      ta._lastRoll = at > -1 ? {start: at, text, after: ta.value} : null;
+      if(ta.value.length === lenBefore) ta._lastRoll = null;
+    }
+    renderChipRow(ta, fieldIdx);
+    btn.classList.remove('rolling');
+    face.textContent = String(roll);
+    btn.classList.add('landed');
+    try{ if(navigator.vibrate) navigator.vibrate(roll >= 5 ? [30, 40, 60] : 25); }catch(e){}
+    const got = st.length < roll && styles.length ? ` (you have ${styles.length})` : '';
+    toastRoll(`∞ ${ROLL_TIERS[roll]} · ${ROLL_CRY[roll]} ${ch ? 'ᛗ ' + ch.name + ' + ' : ''}${st.length} ᛋ style${st.length === 1 ? '' : 's'}${got}`, roll);
+    clearTimeout(btn._restore);
+    btn._restore = setTimeout(()=>{ btn.classList.remove('landed'); face.textContent = '∞'; }, 1800);
+  };
+  tick();
 }
 
 function insertAtCursor(ta, text){
