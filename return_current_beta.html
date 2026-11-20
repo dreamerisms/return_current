@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Return Current β4.9.13</title>
+<title>Return Current β4.9.14</title>
 <style>
   :root{
     --iri-a:#9fe8ff; --iri-b:#e3b7ff; --iri-c:#ffd9a8; /* the glass material: never theme-colored */
@@ -2000,7 +2000,7 @@
         </div>
       </div>
       <button class="save-btn" id="saveSettings">Save & Connect</button>
-      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.9.13</span></div>
+      <div class="settings-version">RETURN // CURRENT <span class="v-num" id="appVersionLabel">β4.9.14</span></div>
     </div>
   </div>
 
@@ -7538,15 +7538,21 @@ async function handleImageFieldUpload(file, fieldIdx){
 async function submitCurrentWorkflow(){
   if(!state.connected){ toast('Not connected to server'); return; }
   
-  // Auto-randomize seed unless locked by user
-  const seedField = state.currentWorkflow.fields.find(f => f.key === 'seed' || f.key === 'noise_seed');
-  if(seedField && !seedField._locked){
-    const newSeed = Math.floor(Math.random()*1e15);
+  // Roll every unlocked seed, not just the first one found. A workflow often has two: the
+  // sampler's, and a wildcard prompt node's (DPRandomGenerator) that picks the { a | b }
+  // choices. Only rolling the first meant every repeat reused the same wildcard picks.
+  // Each seed stays inside its own node's limit, since some cap far below the sampler's.
+  state.currentWorkflow.fields.forEach((seedField, seedIdx) => {
+    if(seedField.kind !== 'seed' || seedField._locked) return;
+    const node = state.currentWorkflow.apiGraph[seedField.nodeId];
+    const def = node && (state._fullObjectInfo || {})[node.class_type];
+    const spec = def && def.input && ((def.input.required || {})[seedField.key] || (def.input.optional || {})[seedField.key]);
+    const max = Math.min(1e15, Number(spec && spec[1] && spec[1].max) || 1e15);
+    const newSeed = Math.floor(Math.random() * max);
     seedField.value = newSeed;
-    const seedIdx = state.currentWorkflow.fields.indexOf(seedField);
     const seedInput = main.querySelector(`[data-field-idx="${seedIdx}"]`);
     if(seedInput) seedInput.value = newSeed;
-  }
+  });
   
   const {apiGraph, fields} = state.currentWorkflow;
   // An image you chose that never reached the server must stop the run, not ghost-render
