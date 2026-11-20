@@ -206,6 +206,9 @@ If your work is in this list and you'd like something corrected, credited differ
 
 *Versions run x.y.z. Bug fixes to a just-shipped feature don't get an entry.*
 
+### β4.9.14 — November 20, 2026
+- **Every unlocked seed rolls on Generate, not just the first.** Workflows with a wildcard prompt node (DPRandomGenerator, the `{ red | blue | green }` kind) have two seeds: the sampler's and the wildcard's. Only the sampler's was being rolled, so repeat generations kept making the same wildcard picks. Each seed now rolls on every run unless you've locked it with its own 🔒, and stays inside its node's own range (the wildcard seed tops out far lower than the sampler's)
+
 ### β4.9.13 — October 30, 2026
 - **∞ Roll**, glowing on its own at the end of the ᛗ Character / ᛋ Style / ⟲ Recent row on every prompt. Tap it and the runes spin like a reel, then it lands on a d6: one random saved character, then that many random saved styles, dropped in as chips at your cursor. The face sets the rarity the toast calls out: 1 Common, 2 Uncommon, 3 Rare, 4 Epic, 5 Legendary (the toast flares), 6 **Mythic** (the toast goes full holo foil). Styles already in the prompt are skipped while there are others to pick. Tap again before you touch the text and it re-rolls in place, slot-machine style, instead of stacking a second roll on the first. No settings
 - **⧖ Clear recent fires in half the time.** The hold is now a second and a half instead of three
